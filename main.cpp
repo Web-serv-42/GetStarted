@@ -29,9 +29,10 @@ int main(int argc, char const *argv[])
 		exit(1);
 	}
 
+	// Create the endpoint wich we can use later 
 	sockfd = socket(servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol);
 
-
+	// Bind the endpoint with a port specified by the OS
 	status = bind(sockfd, servinfo->ai_addr, servinfo->ai_addrlen);
 	if (status != 0)
 	{
@@ -39,6 +40,7 @@ int main(int argc, char const *argv[])
 		exit(1);
 	}
 
+	// Clean Recources
 	freeaddrinfo(servinfo);
 	return 0;
 }
