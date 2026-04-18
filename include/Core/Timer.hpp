@@ -1,33 +1,45 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Log.hpp                                            :+:      :+:    :+:   */
+/*   Timer.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/17 17:08:12 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/17 18:58:39 by abnsila          ###   ########.fr       */
+/*   Created: 2026/04/17 19:36:29 by abnsila           #+#    #+#             */
+/*   Updated: 2026/04/18 10:17:05 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include <sys/time.h>
+#include <ctime>
 #include <iostream>
-#include <string>
 
-// Absctract class + colors
-
-class Log
+class Timer
 {
+	protected:
+		Timer();
+
 	private:
-		std::string	name;
+		static struct timeval	s_ServerStart;
+		struct timeval			m_LocalStart;
+		
 	public:
-		Log();
-		~Log();
-		static void	trace(std::string	msg);
-		static void	info(std::string	msg);
-		static void	warn(std::string	msg);
-		static void	error(std::string	msg);
-		static void	success(std::string	msg);
-		static void	critical(std::string	msg);
+		virtual ~Timer() = 0;
+
+		static void	Init();
+		static std::string	GetLogTime();
+		static double		GetServerUptime();
+		
+		void			Reset();
+		double			Elapsed() const;
+		double			ElapsedMillis() const;
+};
+
+class TimerBenchmark : public Timer
+{
+	public:
+		TimerBenchmark() : Timer() {};
+		~TimerBenchmark();
 };

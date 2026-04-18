@@ -9,14 +9,16 @@ INC_DIR     = include
 OBJ_DIR     = build
 
 # ---------------- Files ---------------
-# Explicitly list your files with their subfolder paths
-FILES       = main.cpp \
-              Log/Log.cpp
+# 1. Find all .cpp files
+SRCS        = $(shell find $(SRC_DIR) -name "*.cpp")
 
-SRCS        = $(addprefix $(SRC_DIR)/, $(FILES))
-OBJS        = $(addprefix $(OBJ_DIR)/, $(FILES:.cpp=.o))
+# 2. Transform src/Core/Timer.cpp -> build/Core/Timer.o
+# This is the magic fix! 
+OBJS        = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
-# Adding -I for root include dir only, forcing everyone to use the folder prefix, keeping the codebase consistent.
+# Tracking all headers for recompilation
+HEADERS     = $(shell find $(INC_DIR) -name "*.hpp" -o -name "*.h")
+
 INCLUDES    = -I$(INC_DIR)
 
 # ---------------- Rules ---------------
@@ -27,10 +29,7 @@ $(NAME): $(OBJS)
 	$(CPP) $(CPPFLAGS) $(OBJS) -o $(NAME)
 	@echo "Webserver built! 🚀"
 
-# Using find to track ALL headers in ALL subdirectories
-HEADERS     = $(shell find $(INC_DIR) -name "*.hpp" -o -name "*.h")
-
-# The object rule now depends on that list of headers
+# This rule now matches the paths in $(OBJS)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(CPP) $(CPPFLAGS) $(INCLUDES) -c $< -o $@
