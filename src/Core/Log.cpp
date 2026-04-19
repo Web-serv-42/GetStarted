@@ -6,13 +6,11 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:09:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/18 11:26:33 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/19 15:56:29 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Core/Log.hpp"
-#include "Core/colors.h"
-#include "Timer.hpp"
 
 Log::Log() {}
 
@@ -40,6 +38,7 @@ void	Log::Output(LogLevel level, const std::string& file, int line, const std::s
 	// Format: [Timestamp] [LEVEL] [File:Line] Message
 	*os << WHT << timestamp << " " << RST
 		<< color << label << " " << RST
+		<< msg
 		<< I_BLU  << "[" << file << ":" << line << "] " << RST
-		<< msg << std::endl;
+		<< std::endl;
 }

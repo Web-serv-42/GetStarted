@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:08:12 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/18 10:54:58 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/19 15:40:19 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 
 #include <iostream>
 #include <string>
+#include "Core/colors.h"
+#include "Timer.hpp"
 
 enum	LogLevel
 {
