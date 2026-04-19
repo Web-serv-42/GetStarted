@@ -6,27 +6,26 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/18 11:26:45 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/19 15:52:51 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Core/Log.hpp"
-#include "Timer.hpp"
+#include "Core/Timer.hpp"
+#include "Server/Webserv.hpp"
 
 int main(int argc, char const *argv[])
 {
 	(void)argc;
 	(void)argv;
 
-	Timer::Init();
+	Webserv	engine;
 
-	DEBUG_LOG("Hello World");
-	TRACE_LOG("Hello World");
-	WARNING_LOG("Hello World");
-	CRITICAL_LOG("Hello World");
-	ERROR_LOG("Hello World");
-	INFO_LOG("Hello World");
-	SUCCESS_LOG("Hello World");
+	engine.Init();
+
+	engine.Run();
+
+	engine.Shutdown();
 
 	return 0;
 }
