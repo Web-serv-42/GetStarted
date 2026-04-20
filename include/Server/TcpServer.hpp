@@ -1,33 +1,30 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Webserv.hpp                                        :+:      :+:    :+:   */
+/*   TcpServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/19 16:56:06 by abnsila          ###   ########.fr       */
+/*   Created: 2026/04/19 16:50:03 by abnsila           #+#    #+#             */
+/*   Updated: 2026/04/20 11:05:59 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "vector"
-
-#include "Core/Log.hpp"
-#include "Server/TcpServer.hpp"
-
-class Webserv
+class TcpServer
 {
 	private:
-		bool					m_IsRunning;
-		std::vector<TcpServer*>	m_Servers;
+		int	m_Port;
+		int	m_ListenFd;
 
 	public:
-		Webserv();
-		~Webserv();
+		TcpServer();
+		TcpServer(int port);
+		~TcpServer();
 
-		bool	Init();
-		void	Run();
-		void	Shutdown();
+		bool			Setup();
+		int		GetPort() const;
+		int		GetListenFd() const;
+		
 };
