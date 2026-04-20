@@ -6,24 +6,36 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/19 15:57:20 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/20 15:07:43 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server/Webserv.hpp"
-
+#include "Server/TcpServer.hpp"
 #include "Core/Timer.hpp"
 
 Webserv::Webserv() : m_IsRunning(false) {}
 
 Webserv::~Webserv()
 {
+	for (size_t i = 0; i < this->m_Servers.size(); i++)
+	{
+		delete this->m_Servers[i];
+	}
 }
 
 bool	Webserv::Init()
 {
 	TRACE_LOG("Initializing Webserv Engine...");
 	// Parse config file
+	// std::vector<int>	ports = this->m_Parser.getPorts();	// Real usage
+	std::vector<int>	ports; ports.push_back(8080);		// For testing
+	for (size_t i = 0; i < ports.size(); i++)
+	{
+		TcpServer*	server = new TcpServer(ports[i]);
+		server->Setup();
+		this->m_Servers.push_back(server);
+	}
 	INFO_LOG("Webserv successfully initialized.");
 	return (true);
 }

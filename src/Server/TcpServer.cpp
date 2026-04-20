@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/20 12:20:15 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/20 14:12:17 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,22 +26,24 @@ TcpServer::TcpServer()
 {
 }
 
-TcpServer::TcpServer(int port) : m_Port(port)
+TcpServer::TcpServer(int port) : m_Port(port), m_ListenFd(-1)
 {
 }
 
 TcpServer::~TcpServer()
 {
+	if (this->m_ListenFd != -1)
+		close(this->m_ListenFd);
 }
 
-bool			TcpServer::Setup()
+bool	TcpServer::Setup()
 {
 	struct addrinfo		hints;
 	struct addrinfo*	servinfo;
 
 	int	status;
 	int	sockfd;
-	int	optval;
+	int	optval = 1;
 
 	// Prepare the target connection speceification
 	memset(&hints, 0, sizeof(hints));
@@ -88,17 +90,18 @@ bool			TcpServer::Setup()
 		return(false);
 	}
 	
+	// Store the ListenFd
 	this->m_ListenFd = sockfd;
+	SUCCESS_LOG("Listening on port: " + ss.str());
 	return (true);
 }
 
-int		TcpServer::GetPort() const
+int	TcpServer::GetPort() const
 {
 	return (this->m_Port);
 }
 
-int		TcpServer::GetListenFd() const
+int	TcpServer::GetListenFd() const
 {
 	return (this->m_ListenFd);
 }
-
