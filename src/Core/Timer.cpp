@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 19:34:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/19 15:49:49 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/22 20:03:56 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,6 +60,6 @@ std::string	Timer::GetLogTime()
 	struct tm tm = *gmtime(&now); // Use gmtime for UTC or localtime for system time
 	
 	// Full format [%d/%b/%Y:%H:%M:%S +0000]
-	strftime(buf, sizeof(buf), "[%b-%d %H:%M:%S]", &tm);
+	strftime(buf, sizeof(buf), "[%d/%b/%Y:%H:%M:%S +0000]", &tm);
 	return std::string(buf);
 }

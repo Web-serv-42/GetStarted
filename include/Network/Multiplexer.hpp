@@ -6,17 +6,27 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:26 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/19 15:40:58 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/23 18:45:57 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include <sys/epoll.h>
+
+#define MAX_QUEUE_EVENTS_LENGTH 1024
+
 class Multiplexer
 {
-private:
-	/* data */
-public:
-	Multiplexer(/* args */);
-	~Multiplexer();
+	private:
+		int					m_EpollFd;
+		struct epoll_event	m_Events[MAX_QUEUE_EVENTS_LENGTH];
+	public:
+		Multiplexer();
+		~Multiplexer();
+
+		bool	Init();
+		void	AddConnection(int fd, uint32_t events);
+		void	RemoveConnection(int fd);
+		void	WaitEvents();
 };
