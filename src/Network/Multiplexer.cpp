@@ -11,9 +11,6 @@
 /* ************************************************************************** */
 
 #include "Network/Multiplexer.hpp"
-#include "Core/Log.hpp"
-
-#include <unistd.h>
 
 // The struct epoll_event is defined as:
 
@@ -49,7 +46,7 @@ bool	Multiplexer::Init()
 	return (true);
 }
 
-void	Multiplexer::AddConnection(int fd, uint32_t events)
+bool	Multiplexer::AddConnection(int fd, uint32_t events)
 {
 	struct epoll_event	event;
 	int					status;
@@ -60,29 +57,30 @@ void	Multiplexer::AddConnection(int fd, uint32_t events)
 	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_ADD, fd, &event)) == -1)
 	{
 		ERROR_LOG("Failed to add entry to the interest list of the epoll fd");
+		return (false);
 	}
+	return (true);
 }
 
-void	Multiplexer::RemoveConnection(int fd)
+bool	Multiplexer::RemoveConnection(int fd)
 {
 	int	status;
 
-	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_ADD, fd, NULL)) == -1)
+	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_DEL, fd, NULL)) == -1)
 	{
 		ERROR_LOG("Failed to remove entry from the interest list of the epoll fd");
+		return (false);
 	}
+	return (true);
 }
 
-void	Multiplexer::WaitEvents()
+int	Multiplexer::WaitEvents()
 {
-	int	status;
+	int	numEvents;
 
-	while (true)
+	if ((numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, -1)) == -1)
 	{
-		if ((status = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, -1)) == -1)
-		{
-			ERROR_LOG("Failed to waits for events on the epoll instance");
-		}
+		ERROR_LOG("Failed to waits for events on the epoll instance");
 	}
-	
+	return (numEvents);
 }

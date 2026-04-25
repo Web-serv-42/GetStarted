@@ -12,6 +12,9 @@
 
 #pragma once
 
+#include "Core/Log.hpp"
+
+#include <unistd.h>
 #include <sys/epoll.h>
 
 #define MAX_QUEUE_EVENTS_LENGTH 1024
@@ -26,7 +29,7 @@ class Multiplexer
 		~Multiplexer();
 
 		bool	Init();
-		void	AddConnection(int fd, uint32_t events);
-		void	RemoveConnection(int fd);
-		void	WaitEvents();
+		bool	AddConnection(int fd, uint32_t events);
+		bool	RemoveConnection(int fd);
+		int		WaitEvents();
 };
