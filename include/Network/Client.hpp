@@ -1,29 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/20 15:27:20 by abnsila          ###   ########.fr       */
+/*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
+/*   Updated: 2026/04/25 18:29:22 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Core/Log.hpp"
-#include "Core/Timer.hpp"
-#include "Server/Webserv.hpp"
+#pragma once
 
-int main(int argc, char const *argv[])
+class Client
 {
-	(void)argc;
-	(void)argv;
+	private:
+		int	m_SocketFd;
+	public:
+		Client();
+		Client(int clientFd);
+		~Client();
 
-	Webserv	engine;
+		int	GetClientFd() const;
+};
 
-	engine.Init();
-	engine.Run();
-	engine.Shutdown();
-
-	return 0;
-}

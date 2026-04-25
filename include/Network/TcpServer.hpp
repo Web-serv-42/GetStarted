@@ -1,29 +1,43 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   TcpServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/20 15:27:20 by abnsila          ###   ########.fr       */
+/*   Created: 2026/04/19 16:50:03 by abnsila           #+#    #+#             */
+/*   Updated: 2026/04/25 17:58:31 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#pragma once
+
 #include "Core/Log.hpp"
-#include "Core/Timer.hpp"
-#include "Server/Webserv.hpp"
+#include "Network/Client.hpp"
 
-int main(int argc, char const *argv[])
+#include <sstream>
+#include <unistd.h>
+#include <cstring>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <fcntl.h>
+
+class TcpServer
 {
-	(void)argc;
-	(void)argv;
+	private:
+		int	m_Port;
+		int	m_ListenFd;
 
-	Webserv	engine;
+	public:
+		TcpServer();
+		TcpServer(int port);
+		~TcpServer();
 
-	engine.Init();
-	engine.Run();
-	engine.Shutdown();
-
-	return 0;
-}
+		bool	Setup();
+		Client*	AcceptNewConnection();
+		int		GetPort() const;
+		int		GetListenFd() const;
+		
+};

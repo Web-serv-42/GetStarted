@@ -1,29 +1,31 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
+/*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/20 15:27:20 by abnsila          ###   ########.fr       */
+/*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
+/*   Updated: 2026/04/25 18:29:36 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Core/Log.hpp"
-#include "Core/Timer.hpp"
-#include "Server/Webserv.hpp"
+#include "Network/Client.hpp"
 
-int main(int argc, char const *argv[])
+Client::Client()
 {
-	(void)argc;
-	(void)argv;
-
-	Webserv	engine;
-
-	engine.Init();
-	engine.Run();
-	engine.Shutdown();
-
-	return 0;
 }
+
+Client::Client(int clientFd) : m_SocketFd(clientFd)
+{
+}
+
+Client::~Client()
+{
+}
+
+int	Client::GetClientFd() const
+{
+	return (this->m_SocketFd);
+}
+
