@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 16:59:28 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 18:12:12 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,8 @@ class Webserv
 		void	Run();
 		void	Shutdown();
 
-		bool	IsServerFd(int fd);
-		void	AcceptNewConnection(int fd);
-		void	HandleClientData(int fd);
+		bool		IsServerFd(int serverFd);
+		TcpServer*	GetServerByFd(int serverFd);
+		void		AcceptNewConnection(int serverFd);
+		// void		HandleClientData(int fd);
 };
