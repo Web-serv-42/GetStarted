@@ -6,21 +6,11 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/23 15:50:51 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 17:10:57 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Server/TcpServer.hpp"
-#include "Core/Log.hpp"
-
-#include <sstream>
-
-#include <unistd.h>
-#include <cstring>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
+#include "Network/TcpServer.hpp"
 
 TcpServer::TcpServer()
 {
@@ -94,6 +84,11 @@ bool	TcpServer::Setup()
 	this->m_ListenFd = sockfd;
 	SUCCESS_LOG("Listening on port: " + ss.str());
 	return (true);
+}
+
+void	TcpServer::AcceptNewConnection(int fd)
+{
+	// accept syscall
 }
 
 int	TcpServer::GetPort() const
