@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:48:38 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 19:00:28 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ Webserv::~Webserv()
 bool	Webserv::Init()
 {
 	TRACE_LOG("Initializing Webserv Engine...");
+	Timer::Init();
 	this->m_Polling.Init();
 	// Parse config file
 	// std::vector<int>	ports = this->m_Parser.getPorts();	// Real usage
@@ -46,7 +47,6 @@ bool	Webserv::Init()
 
 void	Webserv::Run()
 {
-	Timer::Init();
 	int	numEvents = 0;
 	this->m_IsRunning = true;
 	INFO_LOG("Start listening for events...");
