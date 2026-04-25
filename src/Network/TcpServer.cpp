@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 17:10:57 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 18:12:50 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,9 +86,20 @@ bool	TcpServer::Setup()
 	return (true);
 }
 
-void	TcpServer::AcceptNewConnection(int fd)
+Client*	TcpServer::AcceptNewConnection()
 {
-	// accept syscall
+	int						clientFd;
+	struct sockaddr_storage	clientAddr;
+	socklen_t				addrLen = sizeof(clientAddr);
+
+	if ((clientFd = accept(this->m_ListenFd, (struct sockaddr*)&clientAddr, &addrLen)) == -1)
+	{
+		ERROR_LOG("Failed to accept client connection");
+		return (NULL);
+	}
+	// What is this ???
+	fcntl(clientFd, F_SETFL, O_NONBLOCK);
+	return (new Client(clientFd));
 }
 
 int	TcpServer::GetPort() const

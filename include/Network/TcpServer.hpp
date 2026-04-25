@@ -6,13 +6,14 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 17:03:54 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 17:58:31 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "Core/Log.hpp"
+#include "Network/Client.hpp"
 
 #include <sstream>
 #include <unistd.h>
@@ -21,6 +22,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <fcntl.h>
 
 class TcpServer
 {
@@ -34,7 +36,7 @@ class TcpServer
 		~TcpServer();
 
 		bool	Setup();
-		void	AcceptNewConnection(int fd);
+		Client*	AcceptNewConnection();
 		int		GetPort() const;
 		int		GetListenFd() const;
 		

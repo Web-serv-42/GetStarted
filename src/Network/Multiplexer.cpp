@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:24 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/23 18:47:56 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 18:33:08 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ bool	Multiplexer::AddConnection(int fd, uint32_t events)
 
 bool	Multiplexer::RemoveConnection(int fd)
 {
-	int	status;
+	int	status = 0;
 
 	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_DEL, fd, NULL)) == -1)
 	{
@@ -76,11 +76,22 @@ bool	Multiplexer::RemoveConnection(int fd)
 
 int	Multiplexer::WaitEvents()
 {
-	int	numEvents;
+	int	numEvents = 0;
 
 	if ((numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, -1)) == -1)
 	{
 		ERROR_LOG("Failed to waits for events on the epoll instance");
 	}
 	return (numEvents);
+}
+
+
+int	Multiplexer::GetEventFd(int index) const
+{
+	return (this->m_Events[index].data.fd);
+}
+
+uint32_t	Multiplexer::GetEventFlags(int index) const
+{
+	return (this->m_Events[index].events);
 }
