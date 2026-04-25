@@ -27,20 +27,3 @@ int main(int argc, char const *argv[])
 
 	return 0;
 }
-
-
-
-// now i understand that my Webserv.Init():
-// create and setup servers and attached to their ports, and start listening (queue pending)
-
-// thanks to TcpServer.Setup() that target the single server and setup it, and i store them inside my Webserv, so i can move to Webser.Run() (main loop):
-// the core here understanding the epoll (epoll_create, epoll_ctl,
-// epoll_wait), accept, now the servers wait in the listen queue right ??
-// what s next what is the role of epoll ??
-// i know this is belongs to Multiplixer class
-// it containe :
-// setup epoll (but what is epoll)
-// add socket to epoll ??
-// setup events
-// loop and wait for new connection, data recived, data to be sended
-// chuncked data ?
