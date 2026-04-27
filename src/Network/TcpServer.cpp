@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:12:50 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 19:25:57 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,6 +86,7 @@ bool	TcpServer::Setup()
 	return (true);
 }
 
+
 Client*	TcpServer::AcceptNewConnection()
 {
 	int						clientFd;
@@ -99,7 +100,7 @@ Client*	TcpServer::AcceptNewConnection()
 	}
 	// What is this ???
 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
-	return (new Client(clientFd));
+	return (new Client(clientFd, clientAddr));
 }
 
 int	TcpServer::GetPort() const
