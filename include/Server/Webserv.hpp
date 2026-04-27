@@ -37,8 +37,9 @@ class Webserv
 		void	Run();
 		void	Shutdown();
 
+		void		AcceptNewConnection(int serverFd);
+		void		HandleClientData(int clientFd, int eventIndex);
+
 		bool		IsServerFd(int serverFd);
 		TcpServer*	GetServerByFd(int serverFd);
-		void		AcceptNewConnection(int serverFd);
-		// void		HandleClientData(int fd);
 };
