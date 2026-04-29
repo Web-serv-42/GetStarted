@@ -12,6 +12,8 @@
 
 #include "Network/Client.hpp"
 
+#define BUFFER_SIZE 4096
+
 Client::Client()
 {
 }
@@ -24,16 +26,78 @@ Client::Client(int clientFd, struct sockaddr_storage clientAddr)
 
 Client::~Client()
 {
+	close(this->m_SocketFd);
 }
 
 bool	Client::ReadData()
 {
-	return (true);
+	ssize_t	receivedBytes;
+	char	buffer[BUFFER_SIZE];
+
+	memset((void*)&buffer, 0, sizeof(buffer));
+	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, sizeof(buffer), 0);
+	if (receivedBytes == 0)
+	{
+		ERROR_LOG("Client closed the connection.");
+		return (false);
+	}
+	else if (receivedBytes < 0)
+	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return (true);
+		ERROR_LOG("An error occurred when recv() data");
+		return (false);
+	}
+	else
+	{
+		std::string receivedStr(buffer, receivedBytes);
+		SUCCESS_LOG("Server received: " + receivedStr);
+		this->m_ReadBuffer.append(buffer, receivedBytes); // Safe append!
+		return (true);
+	}
 }
 
 bool	Client::SendData()
 {
+	ssize_t	bytesSent;
+
+	if (this->m_WriteBuffer.empty())
+		return(true) ;
+	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
+	if (bytesSent < 0)
+	{
+		if (errno == EAGAIN || errno == EWOULDBLOCK)
+			return (true);
+		ERROR_LOG("An error occurred when send() data");
+		return (false);
+	}
+	this->m_WriteBuffer.erase(0, bytesSent);
 	return (true);
+}
+
+void	Client::BuildResponse()
+{
+	// A standard HTTP 200 OK response with some basic HTML
+    std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
+    
+    this->m_WriteBuffer = "HTTP/1.1 200 OK\r\n";
+    this->m_WriteBuffer += "Content-Type: text/html\r\n";
+    this->m_WriteBuffer += "Content-Length: 61\r\n"; // Length of the html string
+    this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
+    this->m_WriteBuffer += html;
+    
+    // Clear the read buffer so we are ready for the next request (Keep-Alive)
+    this->m_ReadBuffer.clear();
+}
+
+bool	Client::IsRequestComplete()
+{
+	return (this->m_ReadBuffer.find("\r\n\r\n") != std::string::npos);
+}
+
+bool	Client::IsResponseSent()
+{
+	return (this->m_WriteBuffer.empty());
 }
 
 int	Client::GetClientFd() const

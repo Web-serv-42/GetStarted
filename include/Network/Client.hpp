@@ -14,9 +14,14 @@
 
 #include "Core/Log.hpp"
 
+#include <unistd.h>
+#include <cstring>
+#include <cerrno>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+
 
 class Client
 {
@@ -37,8 +42,10 @@ class Client
 
 		bool	ReadData();
 		bool	SendData();
+		bool	IsRequestComplete();
+		bool	IsResponseSent();
 		// Later I will add methods like:
-   		// void BuildResponse();
+   		void	BuildResponse();
 
 		void	DisplayClientInfo() const;
 		int		GetClientFd() const;
