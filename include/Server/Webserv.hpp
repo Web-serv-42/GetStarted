@@ -18,8 +18,8 @@
 #include "Network/Client.hpp" 
 #include "Network/Multiplexer.hpp"
 
-#include "vector"
-#include "map"
+#include <vector>
+#include <map>
 
 class Webserv
 {
@@ -37,8 +37,9 @@ class Webserv
 		void	Run();
 		void	Shutdown();
 
-		void		AcceptNewConnection(int serverFd);
+		void		AcceptNewClient(int serverFd);
 		void		HandleClientData(int clientFd, int eventIndex);
+		void		DisconnectClient(int clientFd);
 
 		bool		IsServerFd(int serverFd);
 		TcpServer*	GetServerByFd(int serverFd);

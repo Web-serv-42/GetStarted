@@ -58,14 +58,13 @@ void	Webserv::Run()
 		for (int eventIndex = 0; eventIndex < numEvents; eventIndex++)
 		{
 			// Can be either client/server Fd
-			int			triggeredFd = this->m_Polling.GetEventFd(eventIndex);
+			int	triggeredFd = this->m_Polling.GetEventFd(eventIndex);
 			if (this->IsServerFd(triggeredFd))
 			{
-				this->AcceptNewConnection(triggeredFd);
+				this->AcceptNewClient(triggeredFd);
 			}
 			else
 			{
-				TRACE_LOG("Manage Client Request/Response");
 				this->HandleClientData(triggeredFd, eventIndex);
 			}
 		}
@@ -82,15 +81,15 @@ void	Webserv::Shutdown()
 	// Clean recources
 }
 
-void	Webserv::AcceptNewConnection(int serverFd)
+void	Webserv::AcceptNewClient(int serverFd)
 {
 	bool	isAdded;
 
 	// 1. Find which server was triggered
 	TcpServer*	server = this->GetServerByFd(serverFd);
 	// 2. Tell the server to accept the connection
-	Client*		newClient = server->AcceptNewConnection();
-	
+	Client*		newClient = server->AcceptNewClient();
+
 	// 3. Store the client in our Engine's memory
 	this->m_Clients[newClient->GetClientFd()] = newClient;
 	// 4. Tell the Multiplexer to watch this new client for incoming data
@@ -107,13 +106,48 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 	// --- 1. CLIENT SENT US DATA ---
 	if (this->m_Polling.IsReadReady(eventIndex))
 	{
-
+		// TRACE_LOG("Manage Client Request");
+		if (client->ReadData() == false)
+		{
+			this->DisconnectClient(clientFd);
+			return;
+		}
+		if (client->IsRequestComplete())
+		{
+			// Build Response here
+			client->BuildResponse();
+			this->m_Polling.ModifyConnection(clientFd, EPOLLOUT);
+		}
 	}
-	// --- 2. WE CAN SEND DATA TO CLIENT ---
-	else if (this->m_Polling.IsWriteReady(eventIndex))
+	// --- 2. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
+	if (this->m_Polling.IsWriteReady(eventIndex))
 	{
+		// TRACE_LOG("Manage Client Response");
+		if (client->SendData() == false)
+		{
+			this->DisconnectClient(clientFd);
+			return;
+		}
+		if (client->IsResponseSent())
+		{
+			this->m_Polling.ModifyConnection(clientFd, EPOLLIN);
+		}
 
 	}
+}
+
+void	Webserv::DisconnectClient(int clientFd)
+{
+	bool	isRemoved;
+
+	isRemoved = this->m_Polling.RemoveConnection(clientFd);
+	if (!isRemoved)
+		return;
+	// Free the memory (this also calls close(m_SocketFd) form the destructor)
+	delete this->m_Clients[clientFd];
+	// Remove the dangling pointer from the map
+	this->m_Clients.erase(clientFd);
+	TRACE_LOG("Client Disconnected");
 }
 
 bool	Webserv::IsServerFd(int serverFd)
