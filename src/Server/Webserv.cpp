@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:48:38 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/27 16:56:25 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,6 +29,7 @@ Webserv::~Webserv()
 bool	Webserv::Init()
 {
 	TRACE_LOG("Initializing Webserv Engine...");
+	Timer::Init();
 	this->m_Polling.Init();
 	// Parse config file
 	// std::vector<int>	ports = this->m_Parser.getPorts();	// Real usage
@@ -46,7 +47,6 @@ bool	Webserv::Init()
 
 void	Webserv::Run()
 {
-	Timer::Init();
 	int	numEvents = 0;
 	this->m_IsRunning = true;
 	INFO_LOG("Start listening for events...");
@@ -55,21 +55,23 @@ void	Webserv::Run()
 	while (this->m_IsRunning)
 	{
 		numEvents = this->m_Polling.WaitEvents();
-		for (int i = 0; i < numEvents; i++)
+		for (int eventIndex = 0; eventIndex < numEvents; eventIndex++)
 		{
-			// Check for new connection, data ..
-			// is new client [add him]
-			int	triggeredFd = this->m_Polling.GetEventFd(i);
+			// Can be either client/server Fd
+			int	triggeredFd = this->m_Polling.GetEventFd(eventIndex);
 			if (this->IsServerFd(triggeredFd))
 			{
-				this->AcceptNewConnection(triggeredFd);
+				this->AcceptNewClient(triggeredFd);
 			}
-			// existing client [handle data]
+			else
+			{
+				this->HandleClientData(triggeredFd, eventIndex);
+			}
 		}
-		if (Timer::GetServerUptime() > 10.0)
-			break ;
+		// Shutdown Webserv after 10s
+		// if (Timer::GetServerUptime() > 10.0)
+		// 	break ;
 	}
-	
 }
 
 void	Webserv::Shutdown()
@@ -77,6 +79,75 @@ void	Webserv::Shutdown()
 	INFO_LOG("Shutting down Webserv Engine...");
     this->m_IsRunning = false;
 	// Clean recources
+}
+
+void	Webserv::AcceptNewClient(int serverFd)
+{
+	bool	isAdded;
+
+	// 1. Find which server was triggered
+	TcpServer*	server = this->GetServerByFd(serverFd);
+	// 2. Tell the server to accept the connection
+	Client*		newClient = server->AcceptNewClient();
+
+	// 3. Store the client in our Engine's memory
+	this->m_Clients[newClient->GetClientFd()] = newClient;
+	// 4. Tell the Multiplexer to watch this new client for incoming data
+	isAdded = this->m_Polling.AddConnection(newClient->GetClientFd(), EPOLLIN);
+	if (!isAdded)
+		return;
+	SUCCESS_LOG("New client connected");
+}
+
+void	Webserv::HandleClientData(int clientFd, int eventIndex)
+{
+	Client*	client = this->m_Clients[clientFd];
+	(void)client;
+	// --- 1. CLIENT SENT US DATA ---
+	if (this->m_Polling.IsReadReady(eventIndex))
+	{
+		// TRACE_LOG("Manage Client Request");
+		if (client->ReadData() == false)
+		{
+			this->DisconnectClient(clientFd);
+			return;
+		}
+		if (client->IsRequestComplete())
+		{
+			// Build Response here
+			client->BuildResponse();
+			this->m_Polling.ModifyConnection(clientFd, EPOLLOUT);
+		}
+	}
+	// --- 2. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
+	if (this->m_Polling.IsWriteReady(eventIndex))
+	{
+		// TRACE_LOG("Manage Client Response");
+		if (client->SendData() == false)
+		{
+			this->DisconnectClient(clientFd);
+			return;
+		}
+		if (client->IsResponseSent())
+		{
+			this->m_Polling.ModifyConnection(clientFd, EPOLLIN);
+		}
+
+	}
+}
+
+void	Webserv::DisconnectClient(int clientFd)
+{
+	bool	isRemoved;
+
+	isRemoved = this->m_Polling.RemoveConnection(clientFd);
+	if (!isRemoved)
+		return;
+	// Free the memory (this also calls close(m_SocketFd) form the destructor)
+	delete this->m_Clients[clientFd];
+	// Remove the dangling pointer from the map
+	this->m_Clients.erase(clientFd);
+	TRACE_LOG("Client Disconnected");
 }
 
 bool	Webserv::IsServerFd(int serverFd)
@@ -98,26 +169,3 @@ TcpServer*	Webserv::GetServerByFd(int serverFd)
 	}
 	return (NULL);
 }
-
-void	Webserv::AcceptNewConnection(int serverFd)
-{
-	bool	isAdded;
-
-	// 1. Find which server was triggered
-	TcpServer*	server = this->GetServerByFd(serverFd);
-	// 2. Tell the server to accept the connection
-	Client*		newClient = server->AcceptNewConnection();
-	
-	// 3. Store the client in our Engine's memory
-	this->m_Clients[newClient->GetClientFd()] = newClient;
-	// 4. Tell the Multiplexer to watch this new client for incoming data
-	isAdded = this->m_Polling.AddConnection(newClient->GetClientFd(), EPOLLIN);
-	if (!isAdded)
-		return;
-	INFO_LOG("New client connected");
-}
-
-// void	Webserv::HandleClientData(int fd)
-// {
-
-// }

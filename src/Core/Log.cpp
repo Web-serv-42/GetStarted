@@ -34,11 +34,14 @@ void	Log::Output(LogLevel level, const std::string& file, int line, const std::s
 		case SUCCESS: color = GRN; label = "[SUCCESS]"; break;
 	}
 
+	(void)file;
+	(void)line;
 	// 3. Print the formatted line
 	// Format: [Timestamp] [LEVEL] [File:Line] Message
 	*os << WHT << timestamp << " " << RST
 		<< color << label << " " << RST
 		<< msg
-		<< I_BLU  << "[" << file << ":" << line << "] " << RST
+		// << I_BLU  << "[" << file << ":" << line << "] " << RST
+		<< RST
 		<< std::endl;
 }

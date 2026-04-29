@@ -30,9 +30,13 @@ class Multiplexer
 
 		bool	Init();
 		bool	AddConnection(int fd, uint32_t events);
+		bool	ModifyConnection(int fd, uint32_t events);
 		bool	RemoveConnection(int fd);
 		int		WaitEvents();
 
-		int			GetEventFd(int index) const;
-		uint32_t	GetEventFlags(int index) const;
+		int			GetEventFd(int eventIndex) const;
+		uint32_t	GetEventFlags(int eventIndex) const;
+
+		bool	IsReadReady(int eventIndex) const;
+		bool	IsWriteReady(int eventIndex) const;
 };

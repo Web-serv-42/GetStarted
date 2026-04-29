@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 17:58:31 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/04/25 19:25:50 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <fcntl.h>
+#include <arpa/inet.h>
 
 class TcpServer
 {
@@ -36,8 +37,8 @@ class TcpServer
 		~TcpServer();
 
 		bool	Setup();
-		Client*	AcceptNewConnection();
+		Client*	AcceptNewClient();
+	
 		int		GetPort() const;
-		int		GetListenFd() const;
-		
+		int		GetListenFd() const;		
 };

@@ -62,6 +62,22 @@ bool	Multiplexer::AddConnection(int fd, uint32_t events)
 	return (true);
 }
 
+bool	Multiplexer::ModifyConnection(int fd, uint32_t events)
+{
+	struct epoll_event	event;
+	int					status;
+
+	event.data.fd = fd;
+	event.events = events;
+
+	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_MOD, fd, &event)) == -1)
+	{
+		ERROR_LOG("Failed to modify entry to the interest list of the epoll fd");
+		return (false);
+	}
+	return (true);
+}
+
 bool	Multiplexer::RemoveConnection(int fd)
 {
 	int	status = 0;
@@ -85,13 +101,26 @@ int	Multiplexer::WaitEvents()
 	return (numEvents);
 }
 
-
-int	Multiplexer::GetEventFd(int index) const
+int	Multiplexer::GetEventFd(int eventIndex) const
 {
-	return (this->m_Events[index].data.fd);
+	return (this->m_Events[eventIndex].data.fd);
 }
 
-uint32_t	Multiplexer::GetEventFlags(int index) const
+uint32_t	Multiplexer::GetEventFlags(int eventIndex) const
 {
-	return (this->m_Events[index].events);
+	return (this->m_Events[eventIndex].events);
+}
+
+bool	Multiplexer::IsReadReady(int eventIndex) const
+{
+	if ((this->m_Events[eventIndex].events & EPOLLIN) == EPOLLIN)
+		return (true);
+	return (false);
+}
+
+bool	Multiplexer::IsWriteReady(int eventIndex) const
+{
+	if ((this->m_Events[eventIndex].events & EPOLLOUT) == EPOLLOUT)
+		return (true);
+	return (false);
 }
