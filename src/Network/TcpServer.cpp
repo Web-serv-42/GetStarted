@@ -86,8 +86,7 @@ bool	TcpServer::Setup()
 	return (true);
 }
 
-
-Client*	TcpServer::AcceptNewConnection()
+Client*	TcpServer::AcceptNewClient()
 {
 	int						clientFd;
 	struct sockaddr_storage	clientAddr;
@@ -98,7 +97,7 @@ Client*	TcpServer::AcceptNewConnection()
 		ERROR_LOG("Failed to accept client connection");
 		return (NULL);
 	}
-	// What is this ???
+	// By default, sockets are Blocking. This is the "Wait for me" mode.
 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
 	return (new Client(clientFd, clientAddr));
 }

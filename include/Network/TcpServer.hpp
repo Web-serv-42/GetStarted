@@ -37,7 +37,7 @@ class TcpServer
 		~TcpServer();
 
 		bool	Setup();
-		Client*	AcceptNewConnection();
+		Client*	AcceptNewClient();
 	
 		int		GetPort() const;
 		int		GetListenFd() const;		
