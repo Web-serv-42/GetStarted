@@ -79,10 +79,10 @@ bool	TcpServer::Setup()
 		ERROR_LOG("Failed to listening / queue is full");
 		return(false);
 	}
-	
+
 	// Store the ListenFd
 	this->m_ListenFd = sockfd;
-	SUCCESS_LOG("Listening on port: " + ss.str());
+	SUCCESS_LOG("Listening on : http://127.0.0.1:" + ss.str());
 	return (true);
 }
 
