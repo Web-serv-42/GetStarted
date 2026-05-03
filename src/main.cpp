@@ -6,12 +6,10 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/20 15:27:20 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/02 22:36:31 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Core/Log.hpp"
-#include "Core/Timer.hpp"
 #include "Server/Webserv.hpp"
 
 int main(int argc, char const *argv[])
