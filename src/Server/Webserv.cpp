@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/02 21:43:00 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/03 22:24:55 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -102,7 +102,7 @@ void	Webserv::AcceptNewClient(int serverFd)
 void	Webserv::HandleClientData(int clientFd, int eventIndex)
 {
 	Client*	client = this->m_Clients[clientFd];
-	(void)client;
+
 	// --- 1. CLIENT SENT US DATA ---
 	if (this->m_Polling.IsReadReady(eventIndex))
 	{

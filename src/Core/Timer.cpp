@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 19:34:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/22 20:03:56 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/03 22:51:12 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,10 @@
 // Initialize the static member
 struct timeval	Timer::s_ServerStart;
 
-Timer::Timer() {}
+Timer::Timer()
+{
+	this->Reset();
+}
 
 Timer::~Timer() {}
 
@@ -63,3 +66,7 @@ std::string	Timer::GetLogTime()
 	strftime(buf, sizeof(buf), "[%d/%b/%Y:%H:%M:%S +0000]", &tm);
 	return std::string(buf);
 }
+
+TimerBenchmark::TimerBenchmark() : Timer() {};
+
+TimerBenchmark::~TimerBenchmark() {};

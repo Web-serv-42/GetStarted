@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 19:36:29 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/18 10:17:05 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/03 22:51:25 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,6 @@ class Timer
 class TimerBenchmark : public Timer
 {
 	public:
-		TimerBenchmark() : Timer() {};
+		TimerBenchmark();
 		~TimerBenchmark();
 };
