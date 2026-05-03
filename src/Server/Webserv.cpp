@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/27 16:56:25 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/02 21:43:00 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,8 +114,13 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 		}
 		if (client->IsRequestComplete())
 		{
-			// Build Response here
+			// Member 2: HttpRequest Parser
+			// Member 3: The Router (Logic Bridge)
+			// Member 2: HttpResponse Builder
+			
+			// Build static Response here
 			client->BuildResponse();
+			// epoll switches to EPOLLOUT
 			this->m_Polling.ModifyConnection(clientFd, EPOLLOUT);
 		}
 	}
@@ -132,7 +137,6 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 		{
 			this->m_Polling.ModifyConnection(clientFd, EPOLLIN);
 		}
-
 	}
 }
 

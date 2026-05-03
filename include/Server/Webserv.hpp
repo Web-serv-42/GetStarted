@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:12:12 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/02 23:02:07 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@ class Webserv
 {
 	private:
 		bool					m_IsRunning;
+		// Vector is bad
 		std::vector<TcpServer*>	m_Servers;
 		std::map<int, Client*>	m_Clients;
 		Multiplexer				m_Polling;
