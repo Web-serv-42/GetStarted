@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 19:23:52 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/02 23:00:57 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ Client::~Client()
 
 bool	Client::ReadData()
 {
+	// Check Client Timeout
 	ssize_t	receivedBytes;
 	char	buffer[BUFFER_SIZE];
 
@@ -43,6 +44,7 @@ bool	Client::ReadData()
 	}
 	else if (receivedBytes < 0)
 	{
+		// Forbidden
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return (true);
 		ERROR_LOG("An error occurred when recv() data");
@@ -66,6 +68,7 @@ bool	Client::SendData()
 	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
 	if (bytesSent < 0)
 	{
+		// Forbidden
 		if (errno == EAGAIN || errno == EWOULDBLOCK)
 			return (true);
 		ERROR_LOG("An error occurred when send() data");
@@ -80,7 +83,7 @@ void	Client::BuildResponse()
 	// A standard HTTP 200 OK response with some basic HTML
     std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
     
-    this->m_WriteBuffer = "HTTP/1.1 200 OK\r\n";
+    this->m_WriteBuffer = "HTTP/1.0 200 OK\r\n";
     this->m_WriteBuffer += "Content-Type: text/html\r\n";
     this->m_WriteBuffer += "Content-Length: 61\r\n"; // Length of the html string
     this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body

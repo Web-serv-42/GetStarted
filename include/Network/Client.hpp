@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 19:23:16 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/02 23:04:16 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,12 +22,12 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-
 class Client
 {
 	private:
 		int						m_SocketFd;
 		struct sockaddr_storage	m_ClientAddr;
+		// Own CGI object
 
 		// Request  m_Request;   <-- Later: HTTP Request Parser
     	// Response m_Response;  <-- Later: HTTP Response Builder
