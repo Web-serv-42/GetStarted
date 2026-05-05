@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:26 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:31:58 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/04 14:14:44 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,9 +29,11 @@ class Multiplexer
 		~Multiplexer();
 
 		bool	Init();
+		// ---------------- These can be static later ----------------
 		bool	AddConnection(int fd, uint32_t events);
 		bool	ModifyConnection(int fd, uint32_t events);
 		bool	RemoveConnection(int fd);
+		// ----------------------------------------------------------
 		int		WaitEvents();
 
 		int			GetEventFd(int eventIndex) const;

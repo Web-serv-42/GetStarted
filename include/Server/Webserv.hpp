@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/02 23:02:07 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/05 11:39:37 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,8 @@ class Webserv
 
 		void		AcceptNewClient(int serverFd);
 		void		HandleClientData(int clientFd, int eventIndex);
+		void		HandleRequest(Client* client);
+		void		HandleResponse(Client* client);
 		void		DisconnectClient(int clientFd);
 
 		bool		IsServerFd(int serverFd);

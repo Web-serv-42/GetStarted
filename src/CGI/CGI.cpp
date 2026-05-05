@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/03 22:50:14 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/04 14:18:12 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,8 @@ CGI::CGI(std::string path) : m_ScriptPath(path)
 void	CGI::Run()
 {
 	TimerBenchmark	timer = TimerBenchmark();
+
+	// 
 }
 
 CGI::~CGI()

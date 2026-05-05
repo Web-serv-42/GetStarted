@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/03 22:24:55 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/05 11:40:23 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,17 +112,7 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 			this->DisconnectClient(clientFd);
 			return;
 		}
-		if (client->IsRequestComplete())
-		{
-			// Member 2: HttpRequest Parser
-			// Member 3: The Router (Logic Bridge)
-			// Member 2: HttpResponse Builder
-			
-			// Build static Response here
-			client->BuildResponse();
-			// epoll switches to EPOLLOUT
-			this->m_Polling.ModifyConnection(clientFd, EPOLLOUT);
-		}
+		this->HandleRequest(client);
 	}
 	// --- 2. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
 	if (this->m_Polling.IsWriteReady(eventIndex))
@@ -133,10 +123,30 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 			this->DisconnectClient(clientFd);
 			return;
 		}
-		if (client->IsResponseSent())
-		{
-			this->m_Polling.ModifyConnection(clientFd, EPOLLIN);
-		}
+		this->HandleResponse(client);
+	}
+}
+
+void	Webserv::HandleRequest(Client*	client)
+{
+	if (client->IsRequestComplete())
+	{
+		// Member 2: HttpRequest Parser
+		// Member 3: The Router (Logic Bridge)
+		// Member 2: HttpResponse Builder
+		
+		// Build static Response here
+		client->BuildResponse();
+		// epoll switches to EPOLLOUT
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+	}
+}
+
+void	Webserv::HandleResponse(Client*	client)
+{
+	if (client->IsResponseSent())
+	{
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
 	}
 }
 
