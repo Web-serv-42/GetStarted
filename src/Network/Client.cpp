@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/02 23:00:57 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/07 16:19:08 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ Client::Client(int clientFd, struct sockaddr_storage clientAddr)
 Client::~Client()
 {
 	close(this->m_SocketFd);
+	delete	this->m_CGI;
 }
 
 bool	Client::ReadData()
@@ -106,6 +107,16 @@ bool	Client::IsResponseSent()
 int	Client::GetClientFd() const
 {
 	return (this->m_SocketFd);
+}
+
+CGI*	Client::GetCGI() const
+{
+	return (this->m_CGI);
+}
+
+void	Client::SetCGI(CGI* cgi)
+{
+	this->m_CGI = cgi;
 }
 
 void	Client::DisplayClientInfo() const
