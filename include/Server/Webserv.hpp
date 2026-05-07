@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/05 11:39:37 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/07 16:26:19 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include "Network/TcpServer.hpp"
 #include "Network/Client.hpp" 
 #include "Network/Multiplexer.hpp"
+#include "CGI/CGI.hpp"
 
 #include <vector>
 #include <map>
@@ -28,6 +29,7 @@ class Webserv
 		// Vector is bad
 		std::vector<TcpServer*>	m_Servers;
 		std::map<int, Client*>	m_Clients;
+		std::map<int, Client*>	m_CgiFdToClient;
 		Multiplexer				m_Polling;
 
 	public:
@@ -44,6 +46,11 @@ class Webserv
 		void		HandleResponse(Client* client);
 		void		DisconnectClient(int clientFd);
 
-		bool		IsServerFd(int serverFd);
+		void		HandleNewCGI(Client* client);
+		void		HandleExistingCGI(int pipeFd, int eventIndex);
+		void		CleanupCGI(CGI* cgi);
+
+		bool		IsServerFd(int triggeredFd);
+		bool		IsCGIPipe(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);
 };

@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/05 11:40:23 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/07 16:27:19 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,10 @@ void	Webserv::Run()
 			{
 				this->AcceptNewClient(triggeredFd);
 			}
+			else if (this->IsCGIPipe(triggeredFd))
+			{
+				this->HandleExistingCGI(triggeredFd, eventIndex);
+			}
 			else
 			{
 				this->HandleClientData(triggeredFd, eventIndex);
@@ -77,7 +81,7 @@ void	Webserv::Run()
 void	Webserv::Shutdown()
 {
 	INFO_LOG("Shutting down Webserv Engine...");
-    this->m_IsRunning = false;
+	this->m_IsRunning = false;
 	// Clean recources
 }
 
@@ -127,12 +131,13 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 	}
 }
 
-void	Webserv::HandleRequest(Client*	client)
+void	Webserv::HandleRequest(Client* client)
 {
 	if (client->IsRequestComplete())
 	{
 		// Member 2: HttpRequest Parser
 		// Member 3: The Router (Logic Bridge)
+		// this->HandleNewCGI(client); // Router: CGI Case
 		// Member 2: HttpResponse Builder
 		
 		// Build static Response here
@@ -142,13 +147,88 @@ void	Webserv::HandleRequest(Client*	client)
 	}
 }
 
-void	Webserv::HandleResponse(Client*	client)
+void	Webserv::HandleResponse(Client* client)
 {
 	if (client->IsResponseSent())
 	{
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
 	}
 }
+
+void	Webserv::HandleNewCGI(Client* client)
+{
+	// --- FAKE ROUTER START ---
+	// In the future, this comes from Member 3's logic.
+	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
+	std::string scriptPath = "/var/www/html/script.py";
+	std::string requestBody = "user=ali&age=25";
+
+	std::vector<std::string> envVars;
+	envVars.push_back("REQUEST_METHOD=POST");
+	envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
+	envVars.push_back("CONTENT_LENGTH=15"); // Length of requestBody
+	envVars.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
+	envVars.push_back("SCRIPT_FILENAME=" + scriptPath);
+	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
+	// --- FAKE ROUTER END ---
+
+	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, requestBody);
+
+	if (cgi->Run() == true)
+	{
+		client->SetCGI(cgi);
+		
+		int	pipeInFd = cgi->GetPipeInFd();
+		int	pipeOutFd = cgi->GetPipeInFd();
+
+		this->m_Polling.AddConnection(pipeInFd, EPOLLOUT);
+		this->m_Polling.AddConnection(pipeOutFd, EPOLLIN);
+
+		this->m_CgiFdToClient[pipeInFd] = client;
+		this->m_CgiFdToClient[pipeOutFd] = client;
+	}
+}
+
+void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
+{
+	Client*	client = this->m_CgiFdToClient[pipeFd];
+	CGI*	cgi = client->GetCGI();
+
+	if (this->m_Polling.IsReadReady(eventIndex))
+	{
+		// Send request body to the CGI script via write()
+		cgi->SendBodyToScript();
+	}
+	else if (this->m_Polling.IsWriteReady(eventIndex))
+	{
+		// Read output from the CGI script via read()
+		if (cgi->ReadOutputFromScript())
+		{
+			// It's Better not to call waitpid here inside the abstract engine
+			// Pass the CGI output to Member 2's Response Builder
+			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+			// Clean up maps and delete the CGI object
+			this->CleanupCGI(cgi);
+		}
+	}
+}
+
+void		Webserv::CleanupCGI(CGI* cgi)
+{
+	int	pipeInFd = cgi->GetPipeInFd();
+	int	pipeOutFd = cgi->GetPipeOutFd();
+
+	this->m_Polling.RemoveConnection(pipeInFd);
+	this->m_Polling.RemoveConnection(pipeOutFd);
+	// Free the memory
+	delete this->m_CgiFdToClient[pipeInFd];
+	delete this->m_CgiFdToClient[pipeOutFd];
+	// Remove the dangling pointer from the map
+	this->m_CgiFdToClient.erase(pipeInFd);
+	this->m_CgiFdToClient.erase(pipeOutFd);
+	TRACE_LOG("CGI Terminated");
+}
+
 
 void	Webserv::DisconnectClient(int clientFd)
 {
@@ -164,13 +244,20 @@ void	Webserv::DisconnectClient(int clientFd)
 	TRACE_LOG("Client Disconnected");
 }
 
-bool	Webserv::IsServerFd(int serverFd)
+bool	Webserv::IsServerFd(int triggeredFd)
 {
 	for (size_t i = 0; i < this->m_Servers.size(); i++)
 	{
-		if (serverFd == this->m_Servers[i]->GetListenFd())
+		if (triggeredFd == this->m_Servers[i]->GetListenFd())
 			return (true);
 	}
+	return (false);
+}
+
+bool	Webserv::IsCGIPipe(int triggeredFd)
+{
+	if (this->m_CgiFdToClient.find(triggeredFd) != this->m_CgiFdToClient.end())
+		return (true);
 	return (false);
 }
 
