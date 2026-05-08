@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/07 16:27:19 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/08 17:58:14 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,9 +177,9 @@ void	Webserv::HandleNewCGI(Client* client)
 	if (cgi->Run() == true)
 	{
 		client->SetCGI(cgi);
-		
+
 		int	pipeInFd = cgi->GetPipeInFd();
-		int	pipeOutFd = cgi->GetPipeInFd();
+		int	pipeOutFd = cgi->GetPipeOutFd();
 
 		this->m_Polling.AddConnection(pipeInFd, EPOLLOUT);
 		this->m_Polling.AddConnection(pipeOutFd, EPOLLIN);
@@ -194,18 +194,21 @@ void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 	Client*	client = this->m_CgiFdToClient[pipeFd];
 	CGI*	cgi = client->GetCGI();
 
-	if (this->m_Polling.IsReadReady(eventIndex))
+	if (this->m_Polling.IsWriteReady(eventIndex))
 	{
 		// Send request body to the CGI script via write()
-		cgi->SendBodyToScript();
+		if (cgi->SendBodyToScript())
+		{
+		}
 	}
-	else if (this->m_Polling.IsWriteReady(eventIndex))
+	else if (this->m_Polling.IsReadReady(eventIndex))
 	{
 		// Read output from the CGI script via read()
 		if (cgi->ReadOutputFromScript())
 		{
 			// It's Better not to call waitpid here inside the abstract engine
 			// Pass the CGI output to Member 2's Response Builder
+
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 			// Clean up maps and delete the CGI object
 			this->CleanupCGI(cgi);
@@ -220,15 +223,11 @@ void		Webserv::CleanupCGI(CGI* cgi)
 
 	this->m_Polling.RemoveConnection(pipeInFd);
 	this->m_Polling.RemoveConnection(pipeOutFd);
-	// Free the memory
-	delete this->m_CgiFdToClient[pipeInFd];
-	delete this->m_CgiFdToClient[pipeOutFd];
 	// Remove the dangling pointer from the map
 	this->m_CgiFdToClient.erase(pipeInFd);
 	this->m_CgiFdToClient.erase(pipeOutFd);
 	TRACE_LOG("CGI Terminated");
 }
-
 
 void	Webserv::DisconnectClient(int clientFd)
 {

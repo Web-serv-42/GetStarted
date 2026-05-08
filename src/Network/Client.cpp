@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/07 16:19:08 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/08 17:58:59 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,8 @@ bool	Client::ReadData()
 	ssize_t	receivedBytes;
 	char	buffer[BUFFER_SIZE];
 
-	memset((void*)&buffer, 0, sizeof(buffer));
-	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, sizeof(buffer), 0);
+	memset((void*)&buffer, 0, BUFFER_SIZE);
+	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, BUFFER_SIZE, 0);
 	if (receivedBytes == 0)
 	{
 		ERROR_LOG("Client closed the connection.");
