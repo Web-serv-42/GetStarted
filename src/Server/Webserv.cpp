@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/08 17:58:14 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/09 21:19:03 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@ Webserv::~Webserv()
 {
 	for (size_t i = 0; i < this->m_Clients.size(); i++)
 	{
-		delete this->m_Clients[i];
+		this->DisconnectClient(this->m_Clients[i]->GetClientFd()) ;
 	}
 	for (size_t i = 0; i < this->m_Servers.size(); i++)
 	{
@@ -57,7 +57,10 @@ void	Webserv::Run()
 		numEvents = this->m_Polling.WaitEvents();
 		for (int eventIndex = 0; eventIndex < numEvents; eventIndex++)
 		{
-			// Can be either client/server Fd
+			// Shutdown Webserv after 10s
+			if (Timer::GetServerUptime() > 10.0)
+				break ;
+			// Can be either server/client/cgiPipe Fd
 			int	triggeredFd = this->m_Polling.GetEventFd(eventIndex);
 			if (this->IsServerFd(triggeredFd))
 			{
@@ -72,9 +75,6 @@ void	Webserv::Run()
 				this->HandleClientData(triggeredFd, eventIndex);
 			}
 		}
-		// Shutdown Webserv after 10s
-		// if (Timer::GetServerUptime() > 10.0)
-		// 	break ;
 	}
 }
 
@@ -137,13 +137,19 @@ void	Webserv::HandleRequest(Client* client)
 	{
 		// Member 2: HttpRequest Parser
 		// Member 3: The Router (Logic Bridge)
-		// this->HandleNewCGI(client); // Router: CGI Case
 		// Member 2: HttpResponse Builder
-		
-		// Build static Response here
-		client->BuildResponse();
-		// epoll switches to EPOLLOUT
-		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+		if (/* condition to check if it's a CGI request */ true) 
+        {
+            this->HandleNewCGI(client);
+            // STOP HERE. Do not switch the client to EPOLLOUT yet.
+            // Let epoll handle the pipes in the background.
+        }
+        else
+        {
+            // It's a static file request (e.g., index.html)
+            client->BuildResponse();
+            this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+        }
 	}
 }
 
@@ -160,8 +166,8 @@ void	Webserv::HandleNewCGI(Client* client)
 	// --- FAKE ROUTER START ---
 	// In the future, this comes from Member 3's logic.
 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	std::string scriptPath = "/var/www/html/script.py";
-	std::string requestBody = "user=ali&age=25";
+	std::string scriptPath = "./ect/script.py";
+	std::string requestBody = "user=Abdellah";
 
 	std::vector<std::string> envVars;
 	envVars.push_back("REQUEST_METHOD=POST");
@@ -191,6 +197,7 @@ void	Webserv::HandleNewCGI(Client* client)
 
 void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 {
+	// TODO: Timer
 	Client*	client = this->m_CgiFdToClient[pipeFd];
 	CGI*	cgi = client->GetCGI();
 
@@ -199,6 +206,10 @@ void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 		// Send request body to the CGI script via write()
 		if (cgi->SendBodyToScript())
 		{
+			// Stop watching the write pipe so it doesn't trigger anymore
+			this->m_Polling.RemoveConnection(pipeFd);
+			this->m_CgiFdToClient.erase(pipeFd);
+			close(pipeFd);
 		}
 	}
 	else if (this->m_Polling.IsReadReady(eventIndex))
@@ -209,38 +220,45 @@ void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 			// It's Better not to call waitpid here inside the abstract engine
 			// Pass the CGI output to Member 2's Response Builder
 
-			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 			// Clean up maps and delete the CGI object
-			this->CleanupCGI(cgi);
+			this->m_Polling.RemoveConnection(pipeFd);
+			this->m_CgiFdToClient.erase(pipeFd);
+			close(pipeFd);
+			INFO_LOG("CGI Terminated and Response Ready");
 		}
 	}
 }
 
-void		Webserv::CleanupCGI(CGI* cgi)
+void	Webserv::CleanupCGI(CGI* cgi)
 {
 	int	pipeInFd = cgi->GetPipeInFd();
 	int	pipeOutFd = cgi->GetPipeOutFd();
-
+	
 	this->m_Polling.RemoveConnection(pipeInFd);
 	this->m_Polling.RemoveConnection(pipeOutFd);
-	// Remove the dangling pointer from the map
+	
 	this->m_CgiFdToClient.erase(pipeInFd);
 	this->m_CgiFdToClient.erase(pipeOutFd);
-	TRACE_LOG("CGI Terminated");
 }
 
 void	Webserv::DisconnectClient(int clientFd)
 {
-	bool	isRemoved;
+	//TODO: CGI output not displayed ??????????
+	Client* client = this->m_Clients[clientFd];
+	CGI*	cgi = client->GetCGI();
 
-	isRemoved = this->m_Polling.RemoveConnection(clientFd);
-	if (!isRemoved)
-		return;
+	// Safety: If the client was running a CGI, kill it and remove its pipes
+	if (cgi)
+	{
+		DEBUG_LOG("CGI Activated");
+		this->CleanupCGI(cgi);
+	}
+	this->m_Polling.RemoveConnection(clientFd);
 	// Free the memory (this also calls close(m_SocketFd) form the destructor)
 	delete this->m_Clients[clientFd];
 	// Remove the dangling pointer from the map
 	this->m_Clients.erase(clientFd);
-	TRACE_LOG("Client Disconnected");
+	INFO_LOG("Client Disconnected Succefuly");
 }
 
 bool	Webserv::IsServerFd(int triggeredFd)
