@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/08 17:58:59 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/09 21:16:07 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@ Client::Client()
 Client::Client(int clientFd, struct sockaddr_storage clientAddr)
 	: m_SocketFd(clientFd), m_ClientAddr(clientAddr)
 {
+	this->m_CGI = NULL;
 	this->DisplayClientInfo();
 }
 
@@ -40,14 +41,11 @@ bool	Client::ReadData()
 	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, BUFFER_SIZE, 0);
 	if (receivedBytes == 0)
 	{
-		ERROR_LOG("Client closed the connection.");
+		TRACE_LOG("Client closed the connection.");
 		return (false);
 	}
 	else if (receivedBytes < 0)
 	{
-		// Forbidden
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return (true);
 		ERROR_LOG("An error occurred when recv() data");
 		return (false);
 	}
@@ -69,9 +67,6 @@ bool	Client::SendData()
 	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
 	if (bytesSent < 0)
 	{
-		// Forbidden
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return (true);
 		ERROR_LOG("An error occurred when send() data");
 		return (false);
 	}
