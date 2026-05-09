@@ -1,3 +1,5 @@
 - [] Manage clients effeciently
 - [] HttpRequest
 - [] HttpResponse
+- Remove forbidden errno check
+- Two pipes for CGI [In, Out], each pipe both parent and child take one entry [Read, Write]
