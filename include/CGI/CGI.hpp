@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/08 18:20:23 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/09 21:20:29 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,9 @@
 #include <string>
 #include <vector>
 
-#include <unistd.h>
+#include <cstring>
+#include <cstdlib>
+
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -30,6 +32,9 @@ class CGI
 
 		char**						m_Envp;
 		char**						m_Argv;
+		// Temp var
+		std::vector<char*>			m_EnvpStrings;
+		std::vector<char*>			m_ArgvStrings;
 
 		pid_t						m_Pid;
 		int							m_PipeInFd[2];
