@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/09 21:16:07 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/10 15:46:23 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,6 +112,16 @@ CGI*	Client::GetCGI() const
 void	Client::SetCGI(CGI* cgi)
 {
 	this->m_CGI = cgi;
+}
+
+ClientState	Client::GetState() const
+{
+	return (this->m_State);
+}
+
+void	Client::SetState(ClientState state)
+{
+	this->m_State = state;
 }
 
 void	Client::DisplayClientInfo() const

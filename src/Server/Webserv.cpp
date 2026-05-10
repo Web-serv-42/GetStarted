@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/09 21:19:03 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/10 16:11:07 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,7 +108,8 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 	Client*	client = this->m_Clients[clientFd];
 
 	// --- 1. CLIENT SENT US DATA ---
-	if (this->m_Polling.IsReadReady(eventIndex))
+	if (this->m_Polling.IsReadReady(eventIndex) 
+		&& client->GetState() == STATE_READING_REQUEST)
 	{
 		// TRACE_LOG("Manage Client Request");
 		if (client->ReadData() == false)
@@ -116,10 +117,15 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 			this->DisconnectClient(clientFd);
 			return;
 		}
-		this->HandleRequest(client);
+		if (client->IsRequestComplete())
+		{
+			client->SetState(STATE_PROCESSING);
+			this->HandleRequest(client);
+		}
 	}
 	// --- 2. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
-	if (this->m_Polling.IsWriteReady(eventIndex))
+	if (this->m_Polling.IsWriteReady(eventIndex)
+		&& client->GetState() == STATE_READY_TO_SEND)
 	{
 		// TRACE_LOG("Manage Client Response");
 		if (client->SendData() == false)
@@ -127,38 +133,38 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 			this->DisconnectClient(clientFd);
 			return;
 		}
-		this->HandleResponse(client);
+		if (client->IsResponseSent())
+		{
+			client->SetState(STATE_READING_REQUEST);
+			this->HandleResponse(client);
+		}
 	}
 }
 
 void	Webserv::HandleRequest(Client* client)
 {
-	if (client->IsRequestComplete())
+	// Member 2: HttpRequest Parser
+	// Member 3: The Router (Logic Bridge)
+	// Member 2: HttpResponse Builder
+	if (/* condition to check if it's a CGI request */ true) 
 	{
-		// Member 2: HttpRequest Parser
-		// Member 3: The Router (Logic Bridge)
-		// Member 2: HttpResponse Builder
-		if (/* condition to check if it's a CGI request */ true) 
-        {
-            this->HandleNewCGI(client);
-            // STOP HERE. Do not switch the client to EPOLLOUT yet.
-            // Let epoll handle the pipes in the background.
-        }
-        else
-        {
-            // It's a static file request (e.g., index.html)
-            client->BuildResponse();
-            this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-        }
+		client->SetState(STATE_WAITING_CGI);
+		this->HandleNewCGI(client);
+		// STOP HERE. Do not switch the client to EPOLLOUT yet.
+		// Let epoll handle the pipes in the background.
+	}
+	else
+	{
+		// It's a static file request (e.g., index.html)
+		client->BuildResponse();
+		client->SetState(STATE_READING_REQUEST);
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
 
 void	Webserv::HandleResponse(Client* client)
 {
-	if (client->IsResponseSent())
-	{
-		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
-	}
+	this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
 }
 
 void	Webserv::HandleNewCGI(Client* client)
@@ -224,6 +230,9 @@ void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 			this->m_Polling.RemoveConnection(pipeFd);
 			this->m_CgiFdToClient.erase(pipeFd);
 			close(pipeFd);
+			client->SetState(STATE_READING_REQUEST);
+			// 4. Wake the client socket back up in epoll to send the data
+            this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 			INFO_LOG("CGI Terminated and Response Ready");
 		}
 	}
