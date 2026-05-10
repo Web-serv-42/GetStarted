@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/09 21:20:29 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/11 00:45:44 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,4 +55,7 @@ class CGI
 
 		int		GetPipeInFd();
 		int		GetPipeOutFd();
+		void	ClosePipeIn();
+		void	ClosePipeOut();
+
 };

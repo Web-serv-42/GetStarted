@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/07 16:26:19 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/11 00:17:49 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,15 +40,17 @@ class Webserv
 		void	Run();
 		void	Shutdown();
 
-		void		AcceptNewClient(int serverFd);
-		void		HandleClientData(int clientFd, int eventIndex);
+		void		ConnectClient(int serverFd);
+		void		HandleClient(int clientFd, int eventIndex);
+		void		DisconnectClient(Client* client);
+
 		void		HandleRequest(Client* client);
 		void		HandleResponse(Client* client);
-		void		DisconnectClient(int clientFd);
 
-		void		HandleNewCGI(Client* client);
-		void		HandleExistingCGI(int pipeFd, int eventIndex);
-		void		CleanupCGI(CGI* cgi);
+		void		AttachCGI(Client* client);
+		void		HandleCGI(int pipeFd, int eventIndex);
+		void		DetachPipe(int pipeFd);
+		void		DetachCGI(CGI* cgi);
 
 		bool		IsServerFd(int triggeredFd);
 		bool		IsCGIPipe(int triggeredFd);

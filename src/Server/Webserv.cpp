@@ -6,19 +6,23 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/10 16:11:07 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/11 00:50:50 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server/Webserv.hpp"
 
+// ======================= Engine =======================
 Webserv::Webserv() : m_IsRunning(false) {}
 
 Webserv::~Webserv()
 {
-	for (size_t i = 0; i < this->m_Clients.size(); i++)
+	std::map<int, Client*>::iterator	it;
+	for (it = this->m_Clients.begin(); it != this->m_Clients.end();)
 	{
-		this->DisconnectClient(this->m_Clients[i]->GetClientFd()) ;
+		Client*	client = it->second;
+		it++;
+		this->DisconnectClient(client);
 	}
 	for (size_t i = 0; i < this->m_Servers.size(); i++)
 	{
@@ -31,7 +35,7 @@ bool	Webserv::Init()
 	TRACE_LOG("Initializing Webserv Engine...");
 	Timer::Init();
 	this->m_Polling.Init();
-	// Parse config file
+	//TODO Memeber 3: Parse config file
 	// std::vector<int>	ports = this->m_Parser.getPorts();	// Real usage
 	std::vector<int>	ports; ports.push_back(8080);		// For testing
 	for (size_t i = 0; i < ports.size(); i++)
@@ -57,23 +61,27 @@ void	Webserv::Run()
 		numEvents = this->m_Polling.WaitEvents();
 		for (int eventIndex = 0; eventIndex < numEvents; eventIndex++)
 		{
-			// Shutdown Webserv after 10s
-			if (Timer::GetServerUptime() > 10.0)
-				break ;
 			// Can be either server/client/cgiPipe Fd
 			int	triggeredFd = this->m_Polling.GetEventFd(eventIndex);
 			if (this->IsServerFd(triggeredFd))
 			{
-				this->AcceptNewClient(triggeredFd);
+				this->ConnectClient(triggeredFd);
 			}
 			else if (this->IsCGIPipe(triggeredFd))
 			{
-				this->HandleExistingCGI(triggeredFd, eventIndex);
+				this->HandleCGI(triggeredFd, eventIndex);
 			}
 			else
 			{
-				this->HandleClientData(triggeredFd, eventIndex);
+				this->HandleClient(triggeredFd, eventIndex);
 			}
+		}
+		DEBUG_LOG("Running ...");
+		// Shutdown Webserv after 10s
+		if (Timer::GetServerUptime() > 10.0)
+		{
+			INFO_LOG("Stoping Webserv ...");
+			break ;
 		}
 	}
 }
@@ -85,7 +93,9 @@ void	Webserv::Shutdown()
 	// Clean recources
 }
 
-void	Webserv::AcceptNewClient(int serverFd)
+
+// ======================= Client =======================
+void	Webserv::ConnectClient(int serverFd)
 {
 	bool	isAdded;
 
@@ -103,7 +113,7 @@ void	Webserv::AcceptNewClient(int serverFd)
 	SUCCESS_LOG("New client connected");
 }
 
-void	Webserv::HandleClientData(int clientFd, int eventIndex)
+void	Webserv::HandleClient(int clientFd, int eventIndex)
 {
 	Client*	client = this->m_Clients[clientFd];
 
@@ -114,7 +124,7 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 		// TRACE_LOG("Manage Client Request");
 		if (client->ReadData() == false)
 		{
-			this->DisconnectClient(clientFd);
+			this->DisconnectClient(client);
 			return;
 		}
 		if (client->IsRequestComplete())
@@ -130,7 +140,7 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 		// TRACE_LOG("Manage Client Response");
 		if (client->SendData() == false)
 		{
-			this->DisconnectClient(clientFd);
+			this->DisconnectClient(client);
 			return;
 		}
 		if (client->IsResponseSent())
@@ -141,15 +151,38 @@ void	Webserv::HandleClientData(int clientFd, int eventIndex)
 	}
 }
 
+void	Webserv::DisconnectClient(Client* client)
+{
+	// if (client != NULL) //? Extra safety check for NULL pointers
+	// {
+	//     this->m_Clients.erase(it);
+	//     return;
+	// }
+	CGI*	cgi = client->GetCGI();
+	// Safety: If the client was running a CGI, kill it and remove its pipes
+	if (cgi && client->GetState() == STATE_WAITING_CGI)
+	{
+		DEBUG_LOG("CGI Activated");
+		this->DetachCGI(cgi);
+	}
+	int	clientFd = client->GetClientFd();
+	this->m_Polling.RemoveConnection(clientFd);
+	// Clean up memory and map using the iterator)
+	delete client;
+	this->m_Clients.erase(clientFd);
+	INFO_LOG("Client Disconnected Successfully");
+}
+
+
+// ======================= Request/Response =======================
 void	Webserv::HandleRequest(Client* client)
 {
-	// Member 2: HttpRequest Parser
-	// Member 3: The Router (Logic Bridge)
-	// Member 2: HttpResponse Builder
+	//TODO Member 2: HttpRequest Parser
+	//TODO Member 3: The Router (Logic Bridge)
 	if (/* condition to check if it's a CGI request */ true) 
 	{
 		client->SetState(STATE_WAITING_CGI);
-		this->HandleNewCGI(client);
+		this->AttachCGI(client);
 		// STOP HERE. Do not switch the client to EPOLLOUT yet.
 		// Let epoll handle the pipes in the background.
 	}
@@ -157,17 +190,20 @@ void	Webserv::HandleRequest(Client* client)
 	{
 		// It's a static file request (e.g., index.html)
 		client->BuildResponse();
-		client->SetState(STATE_READING_REQUEST);
+		client->SetState(STATE_READY_TO_SEND);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
 
 void	Webserv::HandleResponse(Client* client)
 {
+	//TODO Member 2: HttpResponse Builder
 	this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
 }
 
-void	Webserv::HandleNewCGI(Client* client)
+
+// ======================= CGI =======================
+void	Webserv::AttachCGI(Client* client)
 {
 	// --- FAKE ROUTER START ---
 	// In the future, this comes from Member 3's logic.
@@ -189,6 +225,7 @@ void	Webserv::HandleNewCGI(Client* client)
 	if (cgi->Run() == true)
 	{
 		client->SetCGI(cgi);
+		client->SetState(STATE_WAITING_CGI);
 
 		int	pipeInFd = cgi->GetPipeInFd();
 		int	pipeOutFd = cgi->GetPipeOutFd();
@@ -199,11 +236,21 @@ void	Webserv::HandleNewCGI(Client* client)
 		this->m_CgiFdToClient[pipeInFd] = client;
 		this->m_CgiFdToClient[pipeOutFd] = client;
 	}
+	else
+	{
+		ERROR_LOG("Failed to execute CGI");
+		delete	cgi;
+		client->SetCGI(NULL);
+		// Switch state so we can send an error immediately
+        client->SetState(STATE_READY_TO_SEND);
+        // client->BuildErrorResponse(500); // You will need to implement this
+        this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+	}
 }
 
-void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
+void	Webserv::HandleCGI(int pipeFd, int eventIndex)
 {
-	// TODO: Timer
+	//TODO Memeber 1: Timeout Timer
 	Client*	client = this->m_CgiFdToClient[pipeFd];
 	CGI*	cgi = client->GetCGI();
 
@@ -213,9 +260,8 @@ void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 		if (cgi->SendBodyToScript())
 		{
 			// Stop watching the write pipe so it doesn't trigger anymore
-			this->m_Polling.RemoveConnection(pipeFd);
-			this->m_CgiFdToClient.erase(pipeFd);
-			close(pipeFd);
+			this->DetachPipe(pipeFd);
+			cgi->ClosePipeIn(); // Safely close and set to -1
 		}
 	}
 	else if (this->m_Polling.IsReadReady(eventIndex))
@@ -223,53 +269,44 @@ void	Webserv::HandleExistingCGI(int pipeFd, int eventIndex)
 		// Read output from the CGI script via read()
 		if (cgi->ReadOutputFromScript())
 		{
-			// It's Better not to call waitpid here inside the abstract engine
-			// Pass the CGI output to Member 2's Response Builder
+			//TODO Member 2: HttpResponse Builder For CGI
 
-			// Clean up maps and delete the CGI object
-			this->m_Polling.RemoveConnection(pipeFd);
-			this->m_CgiFdToClient.erase(pipeFd);
-			close(pipeFd);
-			client->SetState(STATE_READING_REQUEST);
+			// Stop watching the read pipe so it doesn't trigger anymore
+			this->DetachPipe(pipeFd);
+			cgi->ClosePipeOut(); // Safely close and set to -1
+			client->SetState(STATE_READY_TO_SEND);
 			// 4. Wake the client socket back up in epoll to send the data
-            this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 			INFO_LOG("CGI Terminated and Response Ready");
 		}
 	}
 }
 
-void	Webserv::CleanupCGI(CGI* cgi)
+void	Webserv::DetachPipe(int pipeFd)
+{
+	this->m_Polling.RemoveConnection(pipeFd);
+	this->m_CgiFdToClient.erase(pipeFd);
+}
+
+void	Webserv::DetachCGI(CGI* cgi)
 {
 	int	pipeInFd = cgi->GetPipeInFd();
 	int	pipeOutFd = cgi->GetPipeOutFd();
-	
-	this->m_Polling.RemoveConnection(pipeInFd);
-	this->m_Polling.RemoveConnection(pipeOutFd);
-	
-	this->m_CgiFdToClient.erase(pipeInFd);
-	this->m_CgiFdToClient.erase(pipeOutFd);
-}
 
-void	Webserv::DisconnectClient(int clientFd)
-{
-	//TODO: CGI output not displayed ??????????
-	Client* client = this->m_Clients[clientFd];
-	CGI*	cgi = client->GetCGI();
-
-	// Safety: If the client was running a CGI, kill it and remove its pipes
-	if (cgi)
+	if (pipeInFd != -1)
 	{
-		DEBUG_LOG("CGI Activated");
-		this->CleanupCGI(cgi);
+		this->DetachPipe(pipeInFd);
+		cgi->ClosePipeIn();
 	}
-	this->m_Polling.RemoveConnection(clientFd);
-	// Free the memory (this also calls close(m_SocketFd) form the destructor)
-	delete this->m_Clients[clientFd];
-	// Remove the dangling pointer from the map
-	this->m_Clients.erase(clientFd);
-	INFO_LOG("Client Disconnected Succefuly");
+	if (pipeOutFd != -1)
+	{
+		this->DetachPipe(pipeOutFd);
+		cgi->ClosePipeOut();
+	}
 }
 
+
+// ======================= Helpers =======================
 bool	Webserv::IsServerFd(int triggeredFd)
 {
 	for (size_t i = 0; i < this->m_Servers.size(); i++)

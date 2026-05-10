@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/09 21:24:46 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/11 00:46:09 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,12 @@ CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::strin
 	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_EnvVars(envVars),
 	m_RequestBody(body)
 {
+	this->m_Pid = -1;
+	this->m_Pid = -1;
+    this->m_PipeInFd[0] = -1;
+	this->m_PipeInFd[1] = -1;
+    this->m_PipeOutFd[0] = -1;
+	this->m_PipeOutFd[1] = -1;
 	this->m_Envp = NULL;
 	this->m_Argv = NULL;
 	this->m_BodyBytesSent = 0;
@@ -31,8 +37,13 @@ CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::strin
 
 CGI::~CGI()
 {
-	kill(this->m_Pid, SIGKILL);
-	waitpid(this->m_Pid, NULL, WNOHANG);
+	if (this->m_Pid > 0) // Add this safety check
+    {
+		kill(this->m_Pid, SIGKILL);
+		waitpid(this->m_Pid, NULL, WNOHANG);
+	}
+	this->ClosePipeIn();
+    this->ClosePipeOut();
 }
 
 bool	CGI::Run()
@@ -187,4 +198,23 @@ int		CGI::GetPipeInFd()
 int		CGI::GetPipeOutFd()
 {
 	return (this->m_PipeOutFd[0]); // Read end
+}
+
+// Add these safe closer methods
+void	CGI::ClosePipeIn()
+{
+    if (this->m_PipeInFd[1] != -1)
+	{
+        close(this->m_PipeInFd[1]);
+        this->m_PipeInFd[1] = -1; // Prevent double-close
+    }
+}
+
+void	CGI::ClosePipeOut()
+{
+    if (this->m_PipeOutFd[0] != -1)
+	{
+        close(this->m_PipeOutFd[0]);
+        this->m_PipeOutFd[0] = -1; // Prevent double-close
+    }
 }
