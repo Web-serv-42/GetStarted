@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/10 15:45:15 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/11 15:50:16 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,8 +53,8 @@ class Client
 		bool	IsRequestComplete();
 		bool	IsResponseSent();
 		// Later I will add methods like:
-		bool	HandleCGI();
    		void	BuildResponse();
+   		void	BuildErrorResponse();
 
 		int			GetClientFd() const;
 		CGI*		GetCGI() const;

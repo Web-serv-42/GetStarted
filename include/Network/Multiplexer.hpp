@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:26 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/04 14:14:44 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/13 16:35:15 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <fcntl.h>
 
 #define MAX_QUEUE_EVENTS_LENGTH 1024
 

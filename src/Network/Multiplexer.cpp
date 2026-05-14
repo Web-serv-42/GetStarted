@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:24 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:33:08 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/13 16:41:08 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,13 +26,16 @@
 //                epoll_data_t data;      /* User data variable */
 //            };
 
-Multiplexer::Multiplexer()
+Multiplexer::Multiplexer() : m_EpollFd(-1)
 {
 }
 
 Multiplexer::~Multiplexer()
 {
-	close(this->m_EpollFd);
+	if (this->m_EpollFd != -1)
+	{	
+		close(this->m_EpollFd);
+	}
 }
 
 bool	Multiplexer::Init()
@@ -43,6 +46,7 @@ bool	Multiplexer::Init()
 		ERROR_LOG("Failed to create an epoll instance");
 		return (false);
 	}
+	fcntl(this->m_EpollFd, F_SETFD, FD_CLOEXEC);
 	return (true);
 }
 

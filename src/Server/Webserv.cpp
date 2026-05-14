@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/11 00:50:50 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/14 16:13:15 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,7 +76,6 @@ void	Webserv::Run()
 				this->HandleClient(triggeredFd, eventIndex);
 			}
 		}
-		DEBUG_LOG("Running ...");
 		// Shutdown Webserv after 10s
 		if (Timer::GetServerUptime() > 10.0)
 		{
@@ -118,7 +117,7 @@ void	Webserv::HandleClient(int clientFd, int eventIndex)
 	Client*	client = this->m_Clients[clientFd];
 
 	// --- 1. CLIENT SENT US DATA ---
-	if (this->m_Polling.IsReadReady(eventIndex) 
+	if (this->m_Polling.IsReadReady(eventIndex)
 		&& client->GetState() == STATE_READING_REQUEST)
 	{
 		// TRACE_LOG("Manage Client Request");
@@ -162,7 +161,7 @@ void	Webserv::DisconnectClient(Client* client)
 	// Safety: If the client was running a CGI, kill it and remove its pipes
 	if (cgi && client->GetState() == STATE_WAITING_CGI)
 	{
-		DEBUG_LOG("CGI Activated");
+		DEBUG_LOG("Deatach Activated CGI");
 		this->DetachCGI(cgi);
 	}
 	int	clientFd = client->GetClientFd();
@@ -178,10 +177,11 @@ void	Webserv::DisconnectClient(Client* client)
 void	Webserv::HandleRequest(Client* client)
 {
 	//TODO Member 2: HttpRequest Parser
-	//TODO Member 3: The Router (Logic Bridge)
-	if (/* condition to check if it's a CGI request */ true) 
+	//TODO Member 2: The Router (Logic Bridge)
+	if (/* condition to check if it's a CGI request */ true)
 	{
 		client->SetState(STATE_WAITING_CGI);
+		//TODO Member 2: CGI parametres input
 		this->AttachCGI(client);
 		// STOP HERE. Do not switch the client to EPOLLOUT yet.
 		// Let epoll handle the pipes in the background.
@@ -198,6 +198,7 @@ void	Webserv::HandleRequest(Client* client)
 void	Webserv::HandleResponse(Client* client)
 {
 	//TODO Member 2: HttpResponse Builder
+	//TODO Member 2: Bad HttpResponse Builder
 	this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
 }
 
@@ -210,6 +211,7 @@ void	Webserv::AttachCGI(Client* client)
 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
 	std::string scriptPath = "./ect/script.py";
 	std::string requestBody = "user=Abdellah";
+	std::pair<int, std::string>	tmpFileBody = std::make_pair(true, "/tmp/response_1.tmp");
 
 	std::vector<std::string> envVars;
 	envVars.push_back("REQUEST_METHOD=POST");
@@ -243,7 +245,8 @@ void	Webserv::AttachCGI(Client* client)
 		client->SetCGI(NULL);
 		// Switch state so we can send an error immediately
         client->SetState(STATE_READY_TO_SEND);
-        // client->BuildErrorResponse(500); // You will need to implement this
+        //TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
+		client->BuildErrorResponse();
         this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }

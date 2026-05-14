@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 19:25:57 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/13 16:53:24 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,11 +20,11 @@ TcpServer::TcpServer(int port) : m_Port(port), m_ListenFd(-1)
 {
 }
 
-TcpServer::~TcpServer()
-{
-	if (this->m_ListenFd != -1)
-		close(this->m_ListenFd);
-}
+	TcpServer::~TcpServer()
+	{
+		if (this->m_ListenFd != -1)
+			close(this->m_ListenFd);
+	}
 
 bool	TcpServer::Setup()
 {
