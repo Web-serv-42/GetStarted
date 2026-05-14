@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:09:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/19 15:56:29 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/13 18:11:59 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,7 @@ void	Log::Output(LogLevel level, const std::string& file, int line, const std::s
 
 	switch (level)
 	{
-		case DEBUG: color = WHT; label = "[DEBUG]"; break;
+		case DEBUG: color = MAG; label = "[DEBUG]"; break;
 		case TRACE: color = ORG; label = "[TRACE]"; break;
 		case INFO: color = CYN; label = "[INFO]"; break;
 		case WARNING: color = YEL; label = "[WARNING]"; break;

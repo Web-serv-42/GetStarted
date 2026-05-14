@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 18:12:12 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/11 00:17:49 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include "Network/TcpServer.hpp"
 #include "Network/Client.hpp" 
 #include "Network/Multiplexer.hpp"
+#include "CGI/CGI.hpp"
 
 #include <vector>
 #include <map>
@@ -25,8 +26,10 @@ class Webserv
 {
 	private:
 		bool					m_IsRunning;
+		// Vector is bad
 		std::vector<TcpServer*>	m_Servers;
 		std::map<int, Client*>	m_Clients;
+		std::map<int, Client*>	m_CgiFdToClient;
 		Multiplexer				m_Polling;
 
 	public:
@@ -37,10 +40,19 @@ class Webserv
 		void	Run();
 		void	Shutdown();
 
-		void		AcceptNewClient(int serverFd);
-		void		HandleClientData(int clientFd, int eventIndex);
-		void		DisconnectClient(int clientFd);
+		void		ConnectClient(int serverFd);
+		void		HandleClient(int clientFd, int eventIndex);
+		void		DisconnectClient(Client* client);
 
-		bool		IsServerFd(int serverFd);
+		void		HandleRequest(Client* client);
+		void		HandleResponse(Client* client);
+
+		void		AttachCGI(Client* client);
+		void		HandleCGI(int pipeFd, int eventIndex);
+		void		DetachPipe(int pipeFd);
+		void		DetachCGI(CGI* cgi);
+
+		bool		IsServerFd(int triggeredFd);
+		bool		IsCGIPipe(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);
 };

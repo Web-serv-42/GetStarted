@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/04/25 19:23:52 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/13 21:11:19 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,32 +19,35 @@ Client::Client()
 }
 
 Client::Client(int clientFd, struct sockaddr_storage clientAddr)
-	: m_SocketFd(clientFd), m_ClientAddr(clientAddr)
+	: m_SocketFd(clientFd), m_ClientAddr(clientAddr), m_CGI(NULL), m_State(STATE_READING_REQUEST)
 {
 	this->DisplayClientInfo();
 }
 
 Client::~Client()
 {
-	close(this->m_SocketFd);
+	if (this->m_SocketFd != -1)
+	{	
+		close(this->m_SocketFd);
+	}
+	delete	this->m_CGI;
 }
 
 bool	Client::ReadData()
 {
+	// Check Client Timeout
 	ssize_t	receivedBytes;
 	char	buffer[BUFFER_SIZE];
 
-	memset((void*)&buffer, 0, sizeof(buffer));
-	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, sizeof(buffer), 0);
+	//TODO Member 1: Max Body Size check
+	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, BUFFER_SIZE, 0);
 	if (receivedBytes == 0)
 	{
-		ERROR_LOG("Client closed the connection.");
+		TRACE_LOG("Client closed the connection.");
 		return (false);
 	}
 	else if (receivedBytes < 0)
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return (true);
 		ERROR_LOG("An error occurred when recv() data");
 		return (false);
 	}
@@ -66,8 +69,6 @@ bool	Client::SendData()
 	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
 	if (bytesSent < 0)
 	{
-		if (errno == EAGAIN || errno == EWOULDBLOCK)
-			return (true);
 		ERROR_LOG("An error occurred when send() data");
 		return (false);
 	}
@@ -78,16 +79,31 @@ bool	Client::SendData()
 void	Client::BuildResponse()
 {
 	// A standard HTTP 200 OK response with some basic HTML
-    std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
-    
-    this->m_WriteBuffer = "HTTP/1.1 200 OK\r\n";
-    this->m_WriteBuffer += "Content-Type: text/html\r\n";
-    this->m_WriteBuffer += "Content-Length: 61\r\n"; // Length of the html string
-    this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
-    this->m_WriteBuffer += html;
-    
-    // Clear the read buffer so we are ready for the next request (Keep-Alive)
-    this->m_ReadBuffer.clear();
+	std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
+	
+	this->m_WriteBuffer = "HTTP/1.0 200 OK\r\n";
+	this->m_WriteBuffer += "Content-Type: text/html\r\n";
+	this->m_WriteBuffer += "Content-Length: 61\r\n"; // Length of the html string
+	this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
+	this->m_WriteBuffer += html;
+	
+	// Clear the read buffer so we are ready for the next request (Keep-Alive)
+	this->m_ReadBuffer.clear();
+}
+
+void	Client::BuildErrorResponse()
+{
+	// A standard HTTP 200 OK response with some basic HTML
+	std::string html = "<html><body><h1>Error</h1></body></html>";
+	
+	this->m_WriteBuffer = "HTTP/1.0 500 KO\r\n";
+	this->m_WriteBuffer += "Content-Type: text/html\r\n";
+	this->m_WriteBuffer += "Content-Length: 40\r\n"; // Length of the html string
+	this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
+	this->m_WriteBuffer += html;
+	
+	// Clear the read buffer so we are ready for the next request (Keep-Alive)
+	this->m_ReadBuffer.clear();
 }
 
 bool	Client::IsRequestComplete()
@@ -103,6 +119,26 @@ bool	Client::IsResponseSent()
 int	Client::GetClientFd() const
 {
 	return (this->m_SocketFd);
+}
+
+CGI*	Client::GetCGI() const
+{
+	return (this->m_CGI);
+}
+
+void	Client::SetCGI(CGI* cgi)
+{
+	this->m_CGI = cgi;
+}
+
+ClientState	Client::GetState() const
+{
+	return (this->m_State);
+}
+
+void	Client::SetState(ClientState state)
+{
+	this->m_State = state;
 }
 
 void	Client::DisplayClientInfo() const
