@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:24 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/13 16:41:08 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/15 15:21:38 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,6 +125,13 @@ bool	Multiplexer::IsReadReady(int eventIndex) const
 bool	Multiplexer::IsWriteReady(int eventIndex) const
 {
 	if ((this->m_Events[eventIndex].events & EPOLLOUT) == EPOLLOUT)
+		return (true);
+	return (false);
+}
+
+bool	Multiplexer::IsErrorFired(int eventIndex) const
+{
+	if ((this->m_Events[eventIndex].events & (EPOLLERR | EPOLLHUP)) == (EPOLLERR | EPOLLHUP))
 		return (true);
 	return (false);
 }

@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/11 15:50:16 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/16 17:56:51 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,8 +25,16 @@
 
 enum ClientState {
 	STATE_READING_REQUEST,  // Waiting for EPOLLIN
+	STATE_READING_HEADERS,
+	STATE_ROUTING_INTERCEPTION,
+	STATE_REQUEST_COMPLETE,
+	STATE_READING_BODY,
+	STATE_BODY_COMPLETE,
+	STATE_REQUEST_ERROR,
 	STATE_PROCESSING,	   // Parsing request (No epoll interaction)
 	STATE_WAITING_CGI,	  // Waiting for Python script (Webserv handles pipes)
+	STATE_ROUTER_ERROR,
+	STATE_CGI_ERROR,
 	STATE_READY_TO_SEND,	// Needs EPOLLOUT to send response
 	STATE_DISCONNECTED	  // Needs to be cleaned up
 };
@@ -50,6 +58,11 @@ class Client
 
 		bool	ReadData();
 		bool	SendData();
+
+		bool	ProcessHeaders();
+		bool	ProcessBody();
+		bool	ValidateRequestWithRouter();
+		
 		bool	IsRequestComplete();
 		bool	IsResponseSent();
 		// Later I will add methods like:

@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/14 16:11:04 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/15 15:49:07 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,14 +23,22 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+enum BodyStorage
+{
+	BODY_IN_STRING,
+	BODY_IN_FILE
+};
+
 class CGI
 {
 	private:
 		std::string					m_Interpreter;
 		std::string					m_ScriptPath;
 		std::vector<std::string>	m_EnvVars;
+
+		BodyStorage					m_BodyStorage;
 		std::string					m_RequestBody;
-		std::pair<int, std::string>	m_TmpFileBody;
+		std::string					m_TmpFileBody;
 
 		char**						m_Envp;
 		char**						m_Argv;
@@ -46,19 +54,23 @@ class CGI
 		std::string					m_OutputBuffer;
 	public:
 		CGI();
-		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, std::string body);
+		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, std::string bodyOrFile, BodyStorage mode);
+		CGI&	operator=(const CGI& copy);
 		~CGI();
 
 		bool	Run();
 		void	ClearInheritedFds(int pipeIn, int pipeOut);
 		void	InitEnvpAndArgv();
-
+		
 		bool	SendBodyToScript();
 		bool	ReadOutputFromScript();
-
+		
+		bool	SetupPipes();
 		int		GetPipeInFd();
 		int		GetPipeOutFd();
 		void	ClosePipeIn();
 		void	ClosePipeOut();
+
+		BodyStorage	GetBodyStorage() const;
 
 };

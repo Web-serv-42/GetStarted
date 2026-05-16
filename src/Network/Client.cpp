@@ -6,13 +6,14 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/13 21:11:19 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/16 17:57:07 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Network/Client.hpp"
 
-#define BUFFER_SIZE 4096
+// #define BUFFER_SIZE 4096
+#define BUFFER_SIZE 2
 
 Client::Client()
 {
@@ -104,6 +105,21 @@ void	Client::BuildErrorResponse()
 	
 	// Clear the read buffer so we are ready for the next request (Keep-Alive)
 	this->m_ReadBuffer.clear();
+}
+
+bool	Client::ProcessHeaders()
+{
+	
+}
+
+bool	Client::ProcessBody()
+{
+	
+}
+
+bool	Client::ValidateRequestWithRouter()
+{
+	
 }
 
 bool	Client::IsRequestComplete()

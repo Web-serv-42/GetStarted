@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/14 13:06:44 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/15 15:48:54 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,9 +20,8 @@ CGI::CGI()
 {
 }
 
-CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, std::string body)
-	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_EnvVars(envVars),
-	m_RequestBody(body)
+CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, std::string bodyOrFile, BodyStorage mode)
+	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_EnvVars(envVars), m_BodyStorage(mode)
 {
 	this->m_Pid = -1;
 	this->m_PipeInFd[0] = -1;
@@ -32,6 +31,17 @@ CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::strin
 	this->m_Envp = NULL;
 	this->m_Argv = NULL;
 	this->m_BodyBytesSent = 0;
+	if (this->m_BodyStorage == BODY_IN_STRING)
+		this->m_RequestBody = bodyOrFile;
+	else if (this->m_BodyStorage == BODY_IN_FILE)
+		this->m_TmpFileBody = bodyOrFile;
+}
+
+CGI&	CGI::operator=(const CGI& copy)
+{
+	// Later
+	(void)copy;
+	return (*this);
 }
 
 CGI::~CGI()
@@ -51,34 +61,39 @@ bool	CGI::Run()
 	this->InitEnvpAndArgv();
 
 	// Setup pipes
-	if ((pipe(this->m_PipeInFd) == -1) || (pipe(this->m_PipeOutFd) == -1))
+	this->SetupPipes();
+
+	int	inputFd = this->m_BodyStorage == BODY_IN_STRING ? 
+					this->m_PipeInFd[0] 
+					: open(this->m_TmpFileBody.c_str(), O_RDONLY);
+	if (inputFd == -1)
 	{
+		// Close Pipes
 		return (false);
 	}
-
 	// Fork new process [Start timer ?]
-
 	this->m_Pid = fork();
 	if (this->m_Pid == -1)
 	{
-		// Close pipes	
+		// Close pipes
 		return (false);
 	}
 	// --- CHILD PROCESS (The Script) ---
 	if (this->m_Pid == 0)
 	{
-		this->ClearInheritedFds(this->m_PipeInFd[0], this->m_PipeOutFd[1]);
+		this->ClearInheritedFds(inputFd, this->m_PipeOutFd[1]);
 		// Close the ends of the pipes the child doesn't need
-		close(this->m_PipeInFd[1]);
+		if (this->m_BodyStorage == BODY_IN_STRING)
+			close(this->m_PipeInFd[1]);
 		close(this->m_PipeOutFd[0]);
 
 		// Redirect from stdin to pipeIn [RequestBody]
-		if (dup2(this->m_PipeInFd[0], STDIN_FILENO) == -1)
+		if (dup2(inputFd, STDIN_FILENO) == -1)
 		{
 			ERROR_LOG("dup2 failed!");
 			std::exit(EXIT_FAILURE);
 		}
-		close(this->m_PipeInFd[0]);
+		close(inputFd);
 		// Redirect from stdout to pipeOut [CgiResponse]
 		if (dup2(this->m_PipeOutFd[1], STDOUT_FILENO) == -1)
 		{
@@ -99,41 +114,19 @@ bool	CGI::Run()
 		// --- PARENT PROCESS (Webserv Engine) ---
 
 		// Make pipes non blobking [Add them to epoll]
-		fcntl(this->m_PipeInFd[1], F_SETFL, O_NONBLOCK);
+		if (this->m_BodyStorage == BODY_IN_STRING)
+			fcntl(this->m_PipeInFd[1], F_SETFL, O_NONBLOCK);
 		fcntl(this->m_PipeOutFd[0], F_SETFL, O_NONBLOCK);
 		
 		// Close the ends of the pipes the parent doesn't need
-		close(this->m_PipeInFd[0]);
+		close(inputFd);
 		close(this->m_PipeOutFd[1]);
+		if (this->m_BodyStorage == BODY_IN_FILE)
+			unlink(this->m_TmpFileBody.c_str());
 		// Stop after getting response or timeout
 		return (true);
 	}
 	return (true);
-}
-
-void	CGI::ClearInheritedFds(int pipeIn, int pipeOut)
-{
-	std::vector<int>	fdsToClose;
-	DIR*				dir = opendir("/proc/self/fd");
-	struct  dirent*		entry;
-	int					fd;	
-	
-	if (!dir)
-		return;
-	while ((entry = readdir(dir)) != NULL)
-	{
-		fd = std::atoi(entry->d_name);
-		if (fd > 2 && fd != pipeIn && fd != pipeOut)
-		{
-			DEBUG_LOG(entry->d_name);
-			fdsToClose.push_back(fd);
-		}
-	}
-	closedir(dir);
-	for (size_t i = 0; i < fdsToClose.size(); i++)
-	{
-		close(fdsToClose[i]);
-	}
 }
 
 void	CGI::InitEnvpAndArgv()
@@ -158,6 +151,7 @@ void	CGI::InitEnvpAndArgv()
 	this->m_Argv = &this->m_ArgvStrings[0];
 }
 
+// ======================= write() && read() =======================
 bool	CGI::SendBodyToScript()
 {
 	// write()
@@ -213,6 +207,52 @@ bool	CGI::ReadOutputFromScript()
 	}
 }
 
+
+// ======================= Pipes && Fds =======================
+void	CGI::ClearInheritedFds(int pipeIn, int pipeOut)
+{
+	std::vector<int>	fdsToClose;
+	DIR*				dir = opendir("/proc/self/fd");
+	struct  dirent*		entry;
+	int					fd;	
+	
+	if (!dir)
+		return;
+	while ((entry = readdir(dir)) != NULL)
+	{
+		fd = std::atoi(entry->d_name);
+		if (fd > 2 && fd != pipeIn && fd != pipeOut)
+		{
+			DEBUG_LOG(entry->d_name);
+			fdsToClose.push_back(fd);
+		}
+	}
+	closedir(dir);
+	for (size_t i = 0; i < fdsToClose.size(); i++)
+	{
+		close(fdsToClose[i]);
+	}
+}
+
+bool	CGI::SetupPipes()
+{
+	if (this->m_BodyStorage == BODY_IN_STRING)
+	{
+		if ((pipe(this->m_PipeInFd) == -1) || (pipe(this->m_PipeOutFd) == -1))
+		{
+			return (false);
+		}
+	}
+	else if (this->m_BodyStorage == BODY_IN_FILE)
+	{
+		if ((pipe(this->m_PipeOutFd) == -1))
+		{
+			return (false);
+		}
+	}
+	return (true);
+}
+
 int		CGI::GetPipeInFd()
 {
 	return (this->m_PipeInFd[1]); // Write end
@@ -241,3 +281,9 @@ void	CGI::ClosePipeOut()
 		this->m_PipeOutFd[0] = -1; // Prevent double-close
 	}
 }
+
+BodyStorage	CGI::GetBodyStorage() const
+{
+	return (this->m_BodyStorage);
+}
+
