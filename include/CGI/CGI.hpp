@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/15 15:49:07 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/18 00:15:49 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,8 @@ class CGI
 
 		BodyStorage					m_BodyStorage;
 		std::string					m_RequestBody;
-		std::string					m_TmpFileBody;
+		std::string					m_TmpBodyFile;
+		std::string					m_TmpOutputFile;
 
 		char**						m_Envp;
 		char**						m_Argv;

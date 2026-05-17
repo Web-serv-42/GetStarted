@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/16 17:56:51 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/18 00:13:18 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,9 +59,10 @@ class Client
 		bool	ReadData();
 		bool	SendData();
 
-		bool	ProcessHeaders();
-		bool	ProcessBody();
-		bool	ValidateRequestWithRouter();
+		int	ProcessHeaders();
+		int	ProcessBody();
+		int	ValidateRequestWithRouter();
+		int	ParseAndFinalizeCgiResponse();
 		
 		bool	IsRequestComplete();
 		bool	IsResponseSent();

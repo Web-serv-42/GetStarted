@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/15 15:48:54 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/18 00:18:57 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,7 +34,7 @@ CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::strin
 	if (this->m_BodyStorage == BODY_IN_STRING)
 		this->m_RequestBody = bodyOrFile;
 	else if (this->m_BodyStorage == BODY_IN_FILE)
-		this->m_TmpFileBody = bodyOrFile;
+		this->m_TmpBodyFile = bodyOrFile;
 }
 
 CGI&	CGI::operator=(const CGI& copy)
@@ -51,6 +51,12 @@ CGI::~CGI()
 		kill(this->m_Pid, SIGKILL);
 		waitpid(this->m_Pid, NULL, WNOHANG);
 	}
+	//TODO: uncomment this after request part is done
+	// if (this->m_BodyStorage == BODY_IN_FILE)
+	// {
+	// 	unlink(this->m_TmpBodyFile.c_str());
+	// }
+	// Tmp_File FD ?
 	this->ClosePipeIn();
 	this->ClosePipeOut();
 }
@@ -65,7 +71,7 @@ bool	CGI::Run()
 
 	int	inputFd = this->m_BodyStorage == BODY_IN_STRING ? 
 					this->m_PipeInFd[0] 
-					: open(this->m_TmpFileBody.c_str(), O_RDONLY);
+					: open(this->m_TmpBodyFile.c_str(), O_RDONLY);
 	if (inputFd == -1)
 	{
 		// Close Pipes
@@ -121,8 +127,6 @@ bool	CGI::Run()
 		// Close the ends of the pipes the parent doesn't need
 		close(inputFd);
 		close(this->m_PipeOutFd[1]);
-		if (this->m_BodyStorage == BODY_IN_FILE)
-			unlink(this->m_TmpFileBody.c_str());
 		// Stop after getting response or timeout
 		return (true);
 	}
@@ -188,6 +192,7 @@ bool	CGI::ReadOutputFromScript()
 	if (bytesRead > 0)
 	{
 		// Keep reading
+		//TODO" Memeber 1/2: open a new tmp file append bytes 
 		std::string outputedStr(buffer, bytesRead);
 		this->m_OutputBuffer.append(buffer, bytesRead);
 		SUCCESS_LOG("CGI Outputed: " + outputedStr);

@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/16 19:26:53 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/17 23:57:36 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -154,8 +154,9 @@ void	Webserv::ServeClient(int clientFd, int eventIndex)
 		}
 		if (client->IsResponseSent())
 		{
+			//TODO: Not mandatory but it can be a keep-alive request [just reset the client for new request]
 			client->SetState(STATE_READING_HEADERS);
-			this->BuildResponse(client);
+			this->DisconnectClient(client);
 		}
 	}
 }
@@ -170,45 +171,49 @@ int	Webserv::Routing(Client* client)
 
 int	Webserv::ProcessRequest(Client* client)
 {
-	// Start consuming Headers first
+	int	statusCode;
+
+	// Parsing Headers first
 	if (client->GetState() == STATE_READING_HEADERS)
 	{
 		//TODO Member 2: HttpRequest Hearders Parser
-		int	statusCode = client->ProcessHeaders();
-		if (statusCode == false)
+		statusCode = client->ProcessHeaders();
+		if (statusCode != 200)
 		{
 			return (statusCode);
 		}
+		// Routing logic
 		//TODO Member 1: Change State to STATE_ROUTING_INTERCEPTION
 		if (client->GetState() == STATE_ROUTING_INTERCEPTION)
 		{
-			int	statusCode = this->Routing(client);
+			statusCode = this->Routing(client);
 			if (statusCode != 200)
 			{
 				return (statusCode);
 			}
-			//TODO Member 1: Change State to STATE_REQUEST_COMPLETE if no body found
+			//TODO Member 1: Change State to STATE_PROCESSING Directly if no body found
 			//TODO Member 1: Change State to STATE_READING_BODY if body found
-			if (client->GetState() == STATE_REQUEST_COMPLETE)
-			{
-				// Static file or CGI without body
-				this->ExecuteRequest(client);
-			}
 		}
 	}
-	// Route logic
-	else if (client->GetState() == STATE_READING_BODY)
+	// Body Parsing
+	if (client->GetState() == STATE_READING_BODY)
 	{
-		//TODO Member 2: HttpRequest Body Parser
-		client->ProcessBody();
+		//TODO Member 2: HttpRequest Body Parser [The routing is already checked]
+		statusCode = client->ProcessBody();
+		if (statusCode != 200)
+		{
+			return (statusCode);
+		}
 		//TODO Member 1: Change State to STATE_PROCESSING
 	}
+	// Executing Request
 	if (client->GetState() == STATE_PROCESSING)
 	{
-		// Static file or CGI with body
+		// Static file or CGI
 		this->ExecuteRequest(client);
+		//TODO Member 1: Change State to STATE_READY_TO_SEND
 	}
-	return (true); // No error accured, even still more to consume from request or is it aleady handled
+	return (200); // No error accured, even still more to consume from request or is it aleady handled
 }
 
 void	Webserv::DisconnectClient(Client* client)
@@ -316,14 +321,14 @@ void	Webserv::AttachCGI(Client* client)
 	// --- FAKE ROUTER START ---
 	// In the future, this comes from Member 3's logic.
 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	std::string scriptPath = "./ect/script.py";
-	std::string	tmpFileBody = "/tmp/response_1.tmp";
+	std::string scriptPath = "./ect/generateParagraph.py";
+	std::string	tmpFileBody = "./ect/response_1.tmp";
 
 	std::vector<std::string> envVars;
 	envVars.push_back("REQUEST_METHOD=POST");
 	envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-	envVars.push_back("CONTENT_LENGTH=15"); // Length of requestBody
-	envVars.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
+	envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
+	envVars.push_back("CONTENT_TYPE=plain/text");
 	envVars.push_back("SCRIPT_FILENAME=" + scriptPath);
 	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
 	// --- FAKE ROUTER END ---
@@ -351,10 +356,10 @@ void	Webserv::AttachCGI(Client* client)
 		ERROR_LOG("Failed to execute CGI");
 		delete	cgi;
 		client->SetCGI(NULL);
-		// Switch state so we can send an error immediately
-		client->SetState(STATE_READY_TO_SEND);
 		//TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
 		client->BuildErrorResponse();
+		// Switch state so we can send an error immediately
+		client->SetState(STATE_READY_TO_SEND);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }

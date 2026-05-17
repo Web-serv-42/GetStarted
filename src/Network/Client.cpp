@@ -6,21 +6,20 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/16 17:57:07 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/18 00:16:53 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Network/Client.hpp"
 
-// #define BUFFER_SIZE 4096
-#define BUFFER_SIZE 2
+#define BUFFER_SIZE 4096
 
 Client::Client()
 {
 }
 
 Client::Client(int clientFd, struct sockaddr_storage clientAddr)
-	: m_SocketFd(clientFd), m_ClientAddr(clientAddr), m_CGI(NULL), m_State(STATE_READING_REQUEST)
+	: m_SocketFd(clientFd), m_ClientAddr(clientAddr), m_CGI(NULL), m_State(STATE_READING_HEADERS)
 {
 	this->DisplayClientInfo();
 }
@@ -107,19 +106,27 @@ void	Client::BuildErrorResponse()
 	this->m_ReadBuffer.clear();
 }
 
-bool	Client::ProcessHeaders()
+int	Client::ProcessHeaders()
 {
-	
+	this->m_State = STATE_ROUTING_INTERCEPTION;
+	return (200);
 }
 
-bool	Client::ProcessBody()
+int	Client::ProcessBody()
 {
-	
+	this->m_State = STATE_PROCESSING;
+	return (200);
 }
 
-bool	Client::ValidateRequestWithRouter()
+int	Client::ValidateRequestWithRouter()
 {
-	
+	this->m_State = STATE_READING_BODY;
+	return (200);
+}
+
+int	Client::ParseAndFinalizeCgiResponse()
+{
+	return (200);
 }
 
 bool	Client::IsRequestComplete()
