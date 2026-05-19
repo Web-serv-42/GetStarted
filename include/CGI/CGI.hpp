@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/18 00:15:49 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/19 16:06:30 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,12 +23,6 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-enum BodyStorage
-{
-	BODY_IN_STRING,
-	BODY_IN_FILE
-};
-
 class CGI
 {
 	private:
@@ -36,8 +30,7 @@ class CGI
 		std::string					m_ScriptPath;
 		std::vector<std::string>	m_EnvVars;
 
-		BodyStorage					m_BodyStorage;
-		std::string					m_RequestBody;
+		bool						m_HasBody;
 		std::string					m_TmpBodyFile;
 		std::string					m_TmpOutputFile;
 
@@ -48,30 +41,25 @@ class CGI
 		std::vector<char*>			m_ArgvStrings;
 
 		pid_t						m_Pid;
-		int							m_PipeInFd[2];
+		int							m_TmpFileFd;
 		int							m_PipeOutFd[2];
 
 		size_t						m_BodyBytesSent;
 		std::string					m_OutputBuffer;
 	public:
 		CGI();
-		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, std::string bodyOrFile, BodyStorage mode);
+		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile);
 		CGI&	operator=(const CGI& copy);
 		~CGI();
 
 		bool	Run();
-		void	ClearInheritedFds(int pipeIn, int pipeOut);
+		void	ClearInheritedFds(int pipeOut);
 		void	InitEnvpAndArgv();
 		
-		bool	SendBodyToScript();
+		// bool	SendBodyToScript();
 		bool	ReadOutputFromScript();
 		
-		bool	SetupPipes();
-		int		GetPipeInFd();
+		void	RedirectIO();
 		int		GetPipeOutFd();
-		void	ClosePipeIn();
 		void	ClosePipeOut();
-
-		BodyStorage	GetBodyStorage() const;
-
 };

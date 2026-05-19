@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:09:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/13 18:11:59 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/19 16:08:07 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,7 +41,7 @@ void	Log::Output(LogLevel level, const std::string& file, int line, const std::s
 	*os << WHT << timestamp << " " << RST
 		<< color << label << " " << RST
 		<< msg
-		// << I_BLU  << "[" << file << ":" << line << "] " << RST
-		<< RST
+		<< I_BLU  << " [" << file << ":" << line << "] " << RST
+		// << RST
 		<< std::endl;
 }
