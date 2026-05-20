@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/19 18:04:38 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/19 18:07:55 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,6 +77,7 @@ bool	Client::SendData()
 	this->m_WriteBuffer.erase(0, bytesSent);
 	std::stringstream	ss;
 	ss << bytesSent;
+	//TODO Data sent, need static file and CGI logic, need parsing cheks
 	DEBUG_LOG("Sent now: " + ss.str());
 	return (true);
 }
