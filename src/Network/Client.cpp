@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/13 21:11:19 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/21 17:01:09 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ Client::Client()
 }
 
 Client::Client(int clientFd, struct sockaddr_storage clientAddr)
-	: m_SocketFd(clientFd), m_ClientAddr(clientAddr), m_CGI(NULL), m_State(STATE_READING_REQUEST)
+	: m_SocketFd(clientFd), m_ClientAddr(clientAddr), m_CGI(NULL), m_State(STATE_READING_HEADERS)
 {
 	this->DisplayClientInfo();
 }
@@ -39,7 +39,7 @@ bool	Client::ReadData()
 	ssize_t	receivedBytes;
 	char	buffer[BUFFER_SIZE];
 
-	//TODO Member 1: Max Body Size check
+	//TODO Member 2: Max Body Size check
 	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, BUFFER_SIZE, 0);
 	if (receivedBytes == 0)
 	{
@@ -64,6 +64,8 @@ bool	Client::SendData()
 {
 	ssize_t	bytesSent;
 
+	
+	// The response can be stored into a file
 	if (this->m_WriteBuffer.empty())
 		return(true) ;
 	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
@@ -73,6 +75,9 @@ bool	Client::SendData()
 		return (false);
 	}
 	this->m_WriteBuffer.erase(0, bytesSent);
+	std::stringstream	ss;
+	ss << bytesSent;
+	//TODO Data sent, need static file and CGI logic, need parsing cheks
 	return (true);
 }
 
@@ -106,14 +111,107 @@ void	Client::BuildErrorResponse()
 	this->m_ReadBuffer.clear();
 }
 
-bool	Client::IsRequestComplete()
+int	Client::ProcessHeaders()
 {
-	return (this->m_ReadBuffer.find("\r\n\r\n") != std::string::npos);
+	this->m_State = STATE_ROUTING_INTERCEPTION;
+	return (200);
 }
 
-bool	Client::IsResponseSent()
+int	Client::ProcessBody()
 {
-	return (this->m_WriteBuffer.empty());
+	this->m_State = STATE_PROCESSING;
+	return (200);
+}
+
+int	Client::ValidateRequestWithRouter()
+{
+	this->m_State = STATE_READING_BODY;
+	return (200);
+}
+
+int	Client::ParseAndFinalizeCgiResponse()
+{
+	return (200);
+}
+
+// Returns: -1 on error, 0 on EOF, or positive bytes read
+int Client::ReadFileContent()
+{
+	char    buffer[BUFFER_SIZE];
+	int     bytesRead;
+
+	bytesRead = read(this->m_ContentFileFd, buffer, BUFFER_SIZE);
+	if (bytesRead < 0)
+	{
+		ERROR_LOG("Failed to read from static file fd");
+		return (-1);
+	}
+	if (bytesRead == 0)
+	{
+		return (0); 
+	}
+	
+	// SAFE: Appends exactly bytesRead from the raw char array
+	this->m_WriteBuffer.append(buffer, bytesRead);
+	return (bytesRead);
+}
+
+int Client::PrepareWriteBuffer()
+{
+	//TODO Get tmp file or fd from response builder, so i can work with both static or CGI
+	// Just for testing static file request
+	// thism_FileContentPath = "./ect/body_4096_byte.tmp";
+	struct stat 		fileInfo;
+	std::stringstream	headerStream;
+
+	this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
+	// 1. Initial trigger point from ExecuteRequest
+	if (this->m_State == STATE_SENDING_HEADERS)
+	{
+		// Dynamically measure the exact file footprint on disk
+		if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
+		{
+			ERROR_LOG("Could not find mock body file to measure size");
+			return (500);
+		}
+
+		headerStream << "HTTP/1.0 200 OK\r\n"
+		<< "Content-Type: text/html\r\n"
+		<< "Content-Length: " << fileInfo.st_size << "\r\n" // Exact dynamic size!
+		<< "\r\n";
+		this->m_WriteBuffer = headerStream.str();
+		
+		//TODO Member 2: check if the output file containe headers
+		this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
+		if (this->m_ContentFileFd == -1)
+		{
+			ERROR_LOG("Could not open mock body file");
+			return (500);
+		}
+		this->m_State = STATE_SENDING_BODY;
+	}
+	// 2. Subsequent loop iterations stream chunks smoothly
+	else if (this->m_State == STATE_SENDING_BODY)
+	{
+		// Only read more from disk if our socket write buffer has cleared out.
+		// This prevents loading a massive file into RAM all at once.
+		if (this->m_WriteBuffer.empty())
+		{
+			int res = this->ReadFileContent();
+			if (res == -1)
+			{
+				close(this->m_ContentFileFd);	
+				return (500);
+			}
+			
+			if (res == 0) // EOF reached and buffer is confirmed empty
+			{
+				close(this->m_ContentFileFd);
+				this->m_State = STATE_RESPONSE_SENT;
+			}
+		}
+	}
+	return (200);
 }
 
 int	Client::GetClientFd() const
@@ -166,3 +264,4 @@ void	Client::DisplayClientInfo() const
 	if (ptr) 
 		INFO_LOG("Connection from client: " + std::string(str));
 }
+;

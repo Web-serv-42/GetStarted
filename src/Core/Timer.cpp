@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 19:34:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/05 11:48:50 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/20 13:00:09 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,6 +55,14 @@ double Timer::ElapsedMillis() const
 	return (this->Elapsed() * 1000.0);
 }
 
+struct tm	Timer::GetTime()
+{
+	time_t now = time(0);
+	struct tm tm = *std::gmtime(&now); 
+	return	(tm);
+}
+
+
 // Nginx-style timestamp: [day/month/year:hour:minute:second]
 std::string	Timer::GetLogTime()
 {
@@ -63,7 +71,7 @@ std::string	Timer::GetLogTime()
 	struct tm tm = *std::gmtime(&now); // Use gmtime for UTC or localtime for system time
 	
 	// Full format [%d/%b/%Y:%H:%M:%S +0000]
-	std::strftime(buf, sizeof(buf), "[%d/%b/%Y:%H:%M:%S +0000]", &tm);
+	std::strftime(buf, sizeof(buf), "[%s:%d/%b/%Y:%H:%M:%S +0000]", &tm);
 	return std::string(buf);
 }
 

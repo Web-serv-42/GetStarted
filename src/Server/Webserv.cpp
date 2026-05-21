@@ -6,11 +6,12 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/14 16:13:15 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/21 17:12:11 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server/Webserv.hpp"
+#include "Utils/utils.hpp"
 
 // ======================= Engine =======================
 Webserv::Webserv() : m_IsRunning(false) {}
@@ -32,7 +33,7 @@ Webserv::~Webserv()
 
 bool	Webserv::Init()
 {
-	TRACE_LOG("Initializing Webserv Engine...");
+	INFO_LOG("Initializing Webserv Engine...");
 	Timer::Init();
 	this->m_Polling.Init();
 	//TODO Memeber 3: Parse config file
@@ -73,7 +74,7 @@ void	Webserv::Run()
 			}
 			else
 			{
-				this->HandleClient(triggeredFd, eventIndex);
+				this->ServeClient(triggeredFd, eventIndex);
 			}
 		}
 		// Shutdown Webserv after 10s
@@ -108,46 +109,113 @@ void	Webserv::ConnectClient(int serverFd)
 	// 4. Tell the Multiplexer to watch this new client for incoming data
 	isAdded = this->m_Polling.AddConnection(newClient->GetClientFd(), EPOLLIN);
 	if (!isAdded)
+	{
+		this->m_Clients.erase(newClient->GetClientFd());
+		delete	newClient;
+		ERROR_LOG("Failed to connect to client");
 		return;
+	}
 	SUCCESS_LOG("New client connected");
 }
 
-void	Webserv::HandleClient(int clientFd, int eventIndex)
+void	Webserv::ServeClient(int clientFd, int eventIndex)
 {
 	Client*	client = this->m_Clients[clientFd];
 
-	// --- 1. CLIENT SENT US DATA ---
-	if (this->m_Polling.IsReadReady(eventIndex)
-		&& client->GetState() == STATE_READING_REQUEST)
+	// --- 1. CLIENT DROPS CONNECTION ---
+	if (this->m_Polling.IsErrorFired(eventIndex))
 	{
-		// TRACE_LOG("Manage Client Request");
+		this->DisconnectClient(client);
+		return;
+	}
+	// --- 2. CLIENT SENT US DATA ---
+	if (this->m_Polling.IsReadReady(eventIndex))
+	{
+		// Read BUFFER_SIZE of coming request
 		if (client->ReadData() == false)
 		{
 			this->DisconnectClient(client);
 			return;
 		}
-		if (client->IsRequestComplete())
+		if (this->ProcessRequest(client) != 200)
 		{
-			client->SetState(STATE_PROCESSING);
-			this->HandleRequest(client);
+			client->BuildErrorResponse();
+			client->SetState(STATE_SENDING_HEADERS);
+			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
 	}
-	// --- 2. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
-	if (this->m_Polling.IsWriteReady(eventIndex)
-		&& client->GetState() == STATE_READY_TO_SEND)
+	// --- 3. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
+	if (this->m_Polling.IsWriteReady(eventIndex))
 	{
+		client->PrepareWriteBuffer();
 		// TRACE_LOG("Manage Client Response");
 		if (client->SendData() == false)
 		{
 			this->DisconnectClient(client);
 			return;
 		}
-		if (client->IsResponseSent())
+		if (client->GetState() == STATE_RESPONSE_SENT)
 		{
-			client->SetState(STATE_READING_REQUEST);
-			this->HandleResponse(client);
+			//TODO: Not mandatory but it can be a keep-alive request [just reset the client for new request]
+			client->SetState(STATE_READING_HEADERS);
+			this->DisconnectClient(client);
 		}
 	}
+}
+
+int	Webserv::Routing(Client* client)
+{
+	//TODO Member 2: The Router (Logic Bridge)
+	// Simple for now
+	int	statusCode = client->ValidateRequestWithRouter();
+	return (statusCode);
+}
+
+int	Webserv::ProcessRequest(Client* client)
+{
+	int	statusCode;
+
+	// Parsing Headers first
+	if (client->GetState() == STATE_READING_HEADERS)
+	{
+		//TODO Member 2: HttpRequest Hearders Parser
+		statusCode = client->ProcessHeaders();
+		if (statusCode != 200)
+		{
+			return (statusCode);
+		}
+		// Routing logic
+		//TODO Member 1: Change State to STATE_ROUTING_INTERCEPTION
+		if (client->GetState() == STATE_ROUTING_INTERCEPTION)
+		{
+			statusCode = this->Routing(client);
+			if (statusCode != 200)
+			{
+				return (statusCode);
+			}
+			//TODO Member 1: Change State to STATE_PROCESSING Directly if no body found
+			//TODO Member 1: Change State to STATE_READING_BODY if body found
+		}
+	}
+	// Body Parsing
+	if (client->GetState() == STATE_READING_BODY)
+	{
+		//TODO Member 2: HttpRequest Body Parser [The routing is already checked]
+		statusCode = client->ProcessBody();
+		if (statusCode != 200)
+		{
+			return (statusCode);
+		}
+		//TODO Member 1: Change State to STATE_PROCESSING
+		// Executing Request
+		if (client->GetState() == STATE_PROCESSING)
+		{
+			// Static file or CGI
+			this->ExecuteRequest(client);
+			//TODO Member 1: Change State to STATE_SENDING_HEADERS
+		}
+	}
+	return (200); // No error accured, even still more to consume from request or is it aleady handled
 }
 
 void	Webserv::DisconnectClient(Client* client)
@@ -174,10 +242,9 @@ void	Webserv::DisconnectClient(Client* client)
 
 
 // ======================= Request/Response =======================
-void	Webserv::HandleRequest(Client* client)
+void	Webserv::ExecuteRequest(Client* client)
 {
-	//TODO Member 2: HttpRequest Parser
-	//TODO Member 2: The Router (Logic Bridge)
+	// At this point the whole request is processed, time to execute it	
 	if (/* condition to check if it's a CGI request */ true)
 	{
 		client->SetState(STATE_WAITING_CGI);
@@ -189,13 +256,13 @@ void	Webserv::HandleRequest(Client* client)
 	else
 	{
 		// It's a static file request (e.g., index.html)
-		client->BuildResponse();
-		client->SetState(STATE_READY_TO_SEND);
+		// client->BuildResponse();
+		client->SetState(STATE_SENDING_HEADERS);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
 
-void	Webserv::HandleResponse(Client* client)
+void	Webserv::BuildResponse(Client* client)
 {
 	//TODO Member 2: HttpResponse Builder
 	//TODO Member 2: Bad HttpResponse Builder
@@ -209,33 +276,29 @@ void	Webserv::AttachCGI(Client* client)
 	// --- FAKE ROUTER START ---
 	// In the future, this comes from Member 3's logic.
 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	std::string scriptPath = "./ect/script.py";
-	std::string requestBody = "user=Abdellah";
-	std::pair<int, std::string>	tmpFileBody = std::make_pair(true, "/tmp/response_1.tmp");
+	std::string scriptPath = "./ect/generateHtmlPage.py";
+	std::string	tmpFileBody = "./ect/response_1.tmp";
+	std::string	tmpFileOutput = GenerateTmpFileName("cgi");
+	bool		hasBody = true;
 
 	std::vector<std::string> envVars;
 	envVars.push_back("REQUEST_METHOD=POST");
 	envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-	envVars.push_back("CONTENT_LENGTH=15"); // Length of requestBody
-	envVars.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
+	envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
+	envVars.push_back("CONTENT_TYPE=plain/text");
 	envVars.push_back("SCRIPT_FILENAME=" + scriptPath);
 	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
 	// --- FAKE ROUTER END ---
 
-	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, requestBody);
-
+	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, hasBody, tmpFileBody, tmpFileOutput);
+	//TODO Track tmp file or fd so you can work with both static or CGI
 	if (cgi->Run() == true)
 	{
 		client->SetCGI(cgi);
 		client->SetState(STATE_WAITING_CGI);
 
-		int	pipeInFd = cgi->GetPipeInFd();
 		int	pipeOutFd = cgi->GetPipeOutFd();
-
-		this->m_Polling.AddConnection(pipeInFd, EPOLLOUT);
 		this->m_Polling.AddConnection(pipeOutFd, EPOLLIN);
-
-		this->m_CgiFdToClient[pipeInFd] = client;
 		this->m_CgiFdToClient[pipeOutFd] = client;
 	}
 	else
@@ -243,11 +306,11 @@ void	Webserv::AttachCGI(Client* client)
 		ERROR_LOG("Failed to execute CGI");
 		delete	cgi;
 		client->SetCGI(NULL);
-		// Switch state so we can send an error immediately
-        client->SetState(STATE_READY_TO_SEND);
-        //TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
+		//TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
 		client->BuildErrorResponse();
-        this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+		// Switch state so we can send an error immediately
+		client->SetState(STATE_SENDING_HEADERS);
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
 
@@ -257,31 +320,30 @@ void	Webserv::HandleCGI(int pipeFd, int eventIndex)
 	Client*	client = this->m_CgiFdToClient[pipeFd];
 	CGI*	cgi = client->GetCGI();
 
-	if (this->m_Polling.IsWriteReady(eventIndex))
+	if (this->m_Polling.IsErrorFired(eventIndex))
 	{
-		// Send request body to the CGI script via write()
-		if (cgi->SendBodyToScript())
-		{
-			// Stop watching the write pipe so it doesn't trigger anymore
-			this->DetachPipe(pipeFd);
-			cgi->ClosePipeIn(); // Safely close and set to -1
-		}
+		this->DisconnectClient(client);
+		return;
 	}
-	else if (this->m_Polling.IsReadReady(eventIndex))
+	// if (this->m_Polling.IsReadReady(eventIndex))
+	// {
+		
+	// }
+	// else
+	// {
+	// 	DEBUG_LOG("Pipe is nt triggired [pipe is empty]");
+	// }
+	// Read output from the CGI script via read()
+	if (cgi->ReadOutputFromScript())
 	{
-		// Read output from the CGI script via read()
-		if (cgi->ReadOutputFromScript())
-		{
-			//TODO Member 2: HttpResponse Builder For CGI
-
-			// Stop watching the read pipe so it doesn't trigger anymore
-			this->DetachPipe(pipeFd);
-			cgi->ClosePipeOut(); // Safely close and set to -1
-			client->SetState(STATE_READY_TO_SEND);
-			// 4. Wake the client socket back up in epoll to send the data
-			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-			INFO_LOG("CGI Terminated and Response Ready");
-		}
+		//TODO Member 2: HttpResponse Builder For CGI
+		// Stop watching the read pipe so it doesn't trigger anymore
+		this->DetachPipe(pipeFd);
+		cgi->ClosePipeOut(); // Safely close and set to -1
+		client->SetState(STATE_SENDING_HEADERS);
+		// 4. Wake the client socket back up in epoll to send the data
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+		INFO_LOG("CGI Terminated and Response Ready");
 	}
 }
 
@@ -293,14 +355,8 @@ void	Webserv::DetachPipe(int pipeFd)
 
 void	Webserv::DetachCGI(CGI* cgi)
 {
-	int	pipeInFd = cgi->GetPipeInFd();
 	int	pipeOutFd = cgi->GetPipeOutFd();
 
-	if (pipeInFd != -1)
-	{
-		this->DetachPipe(pipeInFd);
-		cgi->ClosePipeIn();
-	}
 	if (pipeOutFd != -1)
 	{
 		this->DetachPipe(pipeOutFd);
