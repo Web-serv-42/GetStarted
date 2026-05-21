@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/19 18:07:55 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/21 17:01:09 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -78,7 +78,6 @@ bool	Client::SendData()
 	std::stringstream	ss;
 	ss << bytesSent;
 	//TODO Data sent, need static file and CGI logic, need parsing cheks
-	DEBUG_LOG("Sent now: " + ss.str());
 	return (true);
 }
 
@@ -159,28 +158,31 @@ int Client::ReadFileContent()
 
 int Client::PrepareWriteBuffer()
 {
-	const char*			filePath = "./ect/body_4096_byte.tmp";
+	//TODO Get tmp file or fd from response builder, so i can work with both static or CGI
+	// Just for testing static file request
+	// thism_FileContentPath = "./ect/body_4096_byte.tmp";
 	struct stat 		fileInfo;
 	std::stringstream	headerStream;
 
-
+	this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
 	// 1. Initial trigger point from ExecuteRequest
 	if (this->m_State == STATE_SENDING_HEADERS)
 	{
 		// Dynamically measure the exact file footprint on disk
-		if (stat(filePath, &fileInfo) != 0)
+		if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
 		{
 			ERROR_LOG("Could not find mock body file to measure size");
 			return (500);
 		}
 
 		headerStream << "HTTP/1.0 200 OK\r\n"
-					 << "Content-Type: text/html\r\n"
-					 << "Content-Length: " << fileInfo.st_size << "\r\n" // Exact dynamic size!
-					 << "\r\n";
+		<< "Content-Type: text/html\r\n"
+		<< "Content-Length: " << fileInfo.st_size << "\r\n" // Exact dynamic size!
+		<< "\r\n";
 		this->m_WriteBuffer = headerStream.str();
-
-		this->m_ContentFileFd = open(filePath, O_RDONLY);
+		
+		//TODO Member 2: check if the output file containe headers
+		this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
 		if (this->m_ContentFileFd == -1)
 		{
 			ERROR_LOG("Could not open mock body file");
@@ -262,3 +264,4 @@ void	Client::DisplayClientInfo() const
 	if (ptr) 
 		INFO_LOG("Connection from client: " + std::string(str));
 }
+;

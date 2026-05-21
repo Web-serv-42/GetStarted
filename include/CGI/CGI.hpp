@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/19 16:06:30 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/20 15:06:26 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,7 +59,8 @@ class CGI
 		// bool	SendBodyToScript();
 		bool	ReadOutputFromScript();
 		
-		void	RedirectIO();
-		int		GetPipeOutFd();
-		void	ClosePipeOut();
+		void			RedirectIO();
+		std::string		GetTmpOutputFile() const;
+		int				GetPipeOutFd();
+		void			ClosePipeOut();
 };

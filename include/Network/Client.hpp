@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/19 17:52:40 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/21 16:52:34 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,8 @@ class Client
 		// Flags to trigger send()
 		// bool					m_HeaderSent;
 		// bool					m_BodySent;
-		// Content to send (static file/CGI tmpFile output)
+		// Content to send (static file/CGI tmpFile output).
+		std::string				m_FileContentPath;
 		int						m_ContentFileFd;
 
 	public:

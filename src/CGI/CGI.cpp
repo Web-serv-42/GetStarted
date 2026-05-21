@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/19 16:05:56 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/21 17:11:42 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,12 +47,20 @@ CGI::~CGI()
 		waitpid(this->m_Pid, NULL, WNOHANG);
 	}
 	//TODO: uncomment this after request part is done
-	// if (this->m_BodyStorage == BODY_IN_FILE)
+	// Tmp_File FD ?
+	// if (!this->m_TmpBodyFile.empty()
 	// {
 	// 	unlink(this->m_TmpBodyFile.c_str());
 	// }
-	// Tmp_File FD ?
 	this->ClosePipeOut();
+	if (this->m_TmpFileFd != -1)
+	{
+		close(this->m_TmpFileFd);
+	}
+	if (!this->m_TmpOutputFile.empty())
+	{
+		unlink(this->m_TmpOutputFile.c_str());
+	}
 }
 
 bool	CGI::Run()
@@ -125,31 +133,6 @@ void	CGI::InitEnvpAndArgv()
 }
 
 // ======================= write() && read() =======================
-// bool	CGI::SendBodyToScript()
-// {
-// 	// write()
-// 	int	bytesSent = 0;
-
-// 	if (this->m_BodyBytesSent >= this->m_RequestBody.length())
-//         return (true);
-// 	//TODO Member 1: Max Body Size check
-// 	bytesSent = write(this->m_PipeInFd[1],
-// 						this->m_RequestBody.c_str() + this->m_BodyBytesSent,
-// 						this->m_RequestBody.length() - this->m_BodyBytesSent);
-// 	if (bytesSent > 0)
-// 	{
-// 		this->m_BodyBytesSent += bytesSent;
-// 	}
-// 	else if (bytesSent == -1)
-// 	{
-// 		// Error [Bug ? Timeout]
-// 		ERROR_LOG("Error while writing to CGI input");
-// 		return (true);
-// 	}
-// 	// If true: Finished, otherwise: still more to send
-// 	return (this->m_BodyBytesSent >= this->m_RequestBody.length());
-// }
-
 bool	CGI::ReadOutputFromScript()
 {
 	// read() + waitpid
@@ -159,18 +142,19 @@ bool	CGI::ReadOutputFromScript()
 
 	bytesRead = read(this->m_PipeOutFd[0], buffer, BUFFER_SIZE);
 	if (bytesRead > 0)
-	{
+	{		
 		// Open the response tmp file in append mode
-		int outFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_WRONLY | O_APPEND, 0644);
+		int outFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_RDWR | O_APPEND, 0666);
 		if (outFd != -1)
 		{
 			write(outFd, buffer, bytesRead);
-			close(outFd);
 		}
+		close(outFd);
 		return (false); // Not done yet, more data coming from CGI script
 	}
 	else if (bytesRead == 0)
 	{
+		DEBUG_LOG("CGI Output ready");
 		// Finished reading (EOF)
 		waitpid(this->m_Pid, &status, WNOHANG);
 		return (true);
@@ -199,7 +183,6 @@ void	CGI::ClearInheritedFds(int pipeOut)
 		fd = std::atoi(entry->d_name);
 		if (fd > 2 && fd != pipeOut)
 		{
-			DEBUG_LOG(entry->d_name);
 			fdsToClose.push_back(fd);
 		}
 	}
@@ -252,6 +235,11 @@ void	CGI::RedirectIO()
 		std::exit(EXIT_FAILURE);
 	}
 	close(this->m_PipeOutFd[1]);
+}
+
+std::string		CGI::GetTmpOutputFile() const
+{
+	return (this->m_TmpOutputFile);
 }
 
 int		CGI::GetPipeOutFd()

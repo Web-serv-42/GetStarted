@@ -14,17 +14,17 @@ data = sys.stdin.buffer.read(content_length)
 text = data.decode("utf-8", errors="replace")
 
 # Escape HTML to prevent injection
-safe_text = html.escape(text)
+# safe_text = html.escape(text)
 
 # Build HTML response
 response = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Echo</title>
+    <title>CGI HTML Generated Page</title>
 </head>
 <body>
-    <p>{safe_text}</p>
+    <p>{text}</p>
 </body>
 </html>
 """
@@ -32,9 +32,9 @@ response = f"""<!DOCTYPE html>
 response_bytes = response.encode("utf-8")
 
 # Send headers
-sys.stdout.buffer.write(b"Content-Type: text/html; charset=utf-8\r\n")
-sys.stdout.buffer.write(f"Content-Length: {len(response_bytes)}\r\n".encode())
-sys.stdout.buffer.write(b"\r\n")
+# sys.stdout.buffer.write(b"Content-Type: text/html; charset=utf-8\r\n")
+# sys.stdout.buffer.write(f"Content-Length: {len(response_bytes)}\r\n".encode())
+# sys.stdout.buffer.write(b"\r\n")
 
 # Send body
 sys.stdout.buffer.write(response_bytes)

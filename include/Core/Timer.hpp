@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 19:36:29 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/03 22:51:25 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/20 12:56:09 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,8 @@ class Timer
 		static void	Init();
 		static std::string	GetLogTime();
 		static double		GetServerUptime();
-		
+		static struct tm	GetTime();
+
 		void			Reset();
 		double			Elapsed() const;
 		double			ElapsedMillis() const;

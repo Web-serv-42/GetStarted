@@ -6,11 +6,12 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/19 16:56:12 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/21 17:12:11 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server/Webserv.hpp"
+#include "Utils/utils.hpp"
 
 // ======================= Engine =======================
 Webserv::Webserv() : m_IsRunning(false) {}
@@ -77,11 +78,11 @@ void	Webserv::Run()
 			}
 		}
 		// Shutdown Webserv after 10s
-		// if (Timer::GetServerUptime() > 10.0)
-		// {
-		// 	INFO_LOG("Stoping Webserv ...");
-		// 	break ;
-		// }
+		if (Timer::GetServerUptime() > 10.0)
+		{
+			INFO_LOG("Stoping Webserv ...");
+			break ;
+		}
 	}
 }
 
@@ -244,7 +245,7 @@ void	Webserv::DisconnectClient(Client* client)
 void	Webserv::ExecuteRequest(Client* client)
 {
 	// At this point the whole request is processed, time to execute it	
-	if (/* condition to check if it's a CGI request */ false)
+	if (/* condition to check if it's a CGI request */ true)
 	{
 		client->SetState(STATE_WAITING_CGI);
 		//TODO Member 2: CGI parametres input
@@ -270,59 +271,14 @@ void	Webserv::BuildResponse(Client* client)
 
 
 // ======================= CGI =======================
-// void	Webserv::AttachCGI(Client* client)
-// {
-// 	// --- FAKE ROUTER START ---
-// 	// In the future, this comes from Member 3's logic.
-// 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-// 	std::string scriptPath = "./ect/script.py";
-// 	std::string requestBody = "user=Abdellah";
-
-// 	std::vector<std::string> envVars;
-// 	envVars.push_back("REQUEST_METHOD=POST");
-// 	envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-// 	envVars.push_back("CONTENT_LENGTH=15"); // Length of requestBody
-// 	envVars.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
-// 	envVars.push_back("SCRIPT_FILENAME=" + scriptPath);
-// 	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
-// 	// --- FAKE ROUTER END ---
-
-	// CGI*	cgi = new CGI(interpreter, scriptPath, envVars, requestBody, BODY_IN_STRING);
-
-// 	if (cgi->Run() == true)
-// 	{
-// 		client->SetCGI(cgi);
-// 		client->SetState(STATE_WAITING_CGI);
-
-// 		int	pipeInFd = cgi->GetPipeInFd();
-// 		int	pipeOutFd = cgi->GetPipeOutFd();
-
-// 		this->m_Polling.AddConnection(pipeInFd, EPOLLOUT);
-// 		this->m_Polling.AddConnection(pipeOutFd, EPOLLIN);
-
-// 		this->m_CgiFdToClient[pipeInFd] = client;
-// 		this->m_CgiFdToClient[pipeOutFd] = client;
-// 	}
-// 	else
-// 	{
-// 		ERROR_LOG("Failed to execute CGI");
-// 		delete	cgi;
-// 		client->SetCGI(NULL);
-// 		// Switch state so we can send an error immediately
-//         client->SetState(STATE_SENDING_HEADERS);
-//         //TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
-// 		client->BuildErrorResponse();
-//         this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-// 	}
-// }
-
 void	Webserv::AttachCGI(Client* client)
 {
 	// --- FAKE ROUTER START ---
 	// In the future, this comes from Member 3's logic.
 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	std::string scriptPath = "./ect/generateParagraph.py";
+	std::string scriptPath = "./ect/generateHtmlPage.py";
 	std::string	tmpFileBody = "./ect/response_1.tmp";
+	std::string	tmpFileOutput = GenerateTmpFileName("cgi");
 	bool		hasBody = true;
 
 	std::vector<std::string> envVars;
@@ -334,8 +290,8 @@ void	Webserv::AttachCGI(Client* client)
 	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
 	// --- FAKE ROUTER END ---
 
-	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, hasBody, tmpFileBody, "./ect/output.tmp");
-
+	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, hasBody, tmpFileBody, tmpFileOutput);
+	//TODO Track tmp file or fd so you can work with both static or CGI
 	if (cgi->Run() == true)
 	{
 		client->SetCGI(cgi);
@@ -369,31 +325,25 @@ void	Webserv::HandleCGI(int pipeFd, int eventIndex)
 		this->DisconnectClient(client);
 		return;
 	}
-	// if (this->m_Polling.IsWriteReady(eventIndex))
+	// if (this->m_Polling.IsReadReady(eventIndex))
 	// {
-	// 	// Send request body to the CGI script via write()
-	// 	if (cgi->SendBodyToScript())
-	// 	{
-	// 		// Stop watching the write pipe so it doesn't trigger anymore
-	// 		this->DetachPipe(pipeFd);
-	// 		cgi->ClosePipeIn(); // Safely close and set to -1
-	// 	}
+		
 	// }
-	if (this->m_Polling.IsReadReady(eventIndex))
+	// else
+	// {
+	// 	DEBUG_LOG("Pipe is nt triggired [pipe is empty]");
+	// }
+	// Read output from the CGI script via read()
+	if (cgi->ReadOutputFromScript())
 	{
-		// Read output from the CGI script via read()
-		if (cgi->ReadOutputFromScript())
-		{
-			//TODO Member 2: HttpResponse Builder For CGI
-
-			// Stop watching the read pipe so it doesn't trigger anymore
-			this->DetachPipe(pipeFd);
-			cgi->ClosePipeOut(); // Safely close and set to -1
-			client->SetState(STATE_SENDING_HEADERS);
-			// 4. Wake the client socket back up in epoll to send the data
-			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-			INFO_LOG("CGI Terminated and Response Ready");
-		}
+		//TODO Member 2: HttpResponse Builder For CGI
+		// Stop watching the read pipe so it doesn't trigger anymore
+		this->DetachPipe(pipeFd);
+		cgi->ClosePipeOut(); // Safely close and set to -1
+		client->SetState(STATE_SENDING_HEADERS);
+		// 4. Wake the client socket back up in epoll to send the data
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+		INFO_LOG("CGI Terminated and Response Ready");
 	}
 }
 
