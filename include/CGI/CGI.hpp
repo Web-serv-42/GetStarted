@@ -6,11 +6,13 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:23:42 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/20 15:06:26 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/23 12:14:13 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
+
+#include "Core/Timer.hpp"
 
 #include <string>
 #include <vector>
@@ -46,6 +48,8 @@ class CGI
 
 		size_t						m_BodyBytesSent;
 		std::string					m_OutputBuffer;
+
+		TimerBenchmark				m_Timer;
 	public:
 		CGI();
 		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile);
@@ -61,6 +65,7 @@ class CGI
 		
 		void			RedirectIO();
 		std::string		GetTmpOutputFile() const;
+		TimerBenchmark	GetTimer() const;
 		int				GetPipeOutFd();
 		void			ClosePipeOut();
 };

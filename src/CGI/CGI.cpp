@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/21 17:11:42 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/23 11:48:12 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,7 @@ CGI::~CGI()
 
 bool	CGI::Run()
 {
+	this->m_Timer.Reset();
 	// Build this->m_Envp and this->m_Argv
 	this->InitEnvpAndArgv();
 
@@ -240,6 +241,11 @@ void	CGI::RedirectIO()
 std::string		CGI::GetTmpOutputFile() const
 {
 	return (this->m_TmpOutputFile);
+}
+
+TimerBenchmark	CGI::GetTimer() const
+{
+	return (this->m_Timer);
 }
 
 int		CGI::GetPipeOutFd()
