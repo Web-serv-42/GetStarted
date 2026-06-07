@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/21 16:52:34 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/07 19:41:44 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,6 +36,7 @@ enum ClientState {
 	STATE_WAITING_CGI,	  // Waiting for Python script (Webserv handles pipes)
 	//* Send Phase
 	STATE_READY_TO_SEND,	// Needs EPOLLOUT to send response
+	STATE_SENDING_ERROR_RESPONSE,
 	STATE_SENDING_HEADERS,
 	STATE_SENDING_BODY,
 	STATE_RESPONSE_SENT,
@@ -86,6 +87,7 @@ class Client
 		int			GetClientFd() const;
 		CGI*		GetCGI() const;
 		void		SetCGI(CGI* cgi);
+		void		DeleteCGI();
 		ClientState	GetState() const;
 		void		SetState(ClientState state);
 		void		DisplayClientInfo() const;

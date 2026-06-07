@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/23 12:20:36 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/07 19:42:58 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -79,11 +79,11 @@ void	Webserv::Run()
 		}
 		CheckCGITimeouts();
 		// Shutdown Webserv after 10s
-		if (Timer::GetServerUptime() > 10.0)
-		{
-			INFO_LOG("Stoping Webserv ...");
-			break ;
-		}
+		// if (Timer::GetServerUptime() > 10.0)
+		// {
+		// 	INFO_LOG("Stoping Webserv ...");
+		// 	break ;
+		// }
 	}
 }
 
@@ -310,13 +310,14 @@ void	Webserv::AttachCGI(Client* client)
 		//TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
 		client->BuildErrorResponse();
 		// Switch state so we can send an error immediately
-		client->SetState(STATE_SENDING_HEADERS);
+		client->SetState(STATE_SENDING_ERROR_RESPONSE);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
 
 void	Webserv::HandleCGI(int pipeFd, int eventIndex)
 {
+	std::cout << "CGI" << std::endl;
 	//TODO Memeber 1: Timeout Timer
 	Client*	client = this->m_CgiFdToClient[pipeFd];
 	CGI*	cgi = client->GetCGI();
@@ -358,23 +359,36 @@ void	Webserv::DetachCGI(CGI* cgi)
 
 void	Webserv::CheckCGITimeouts()
 {
+	INFO_LOG("Checking Timeouts ...");
 	// Iterate through all active clients/CGIs
     for (std::map<int, Client*>::iterator it = this->m_Clients.begin(); it != this->m_Clients.end(); ++it)
     {
 		Client*	client = it->second;
 		CGI*	cgi = client->GetCGI();
-		if (cgi)
+		if (cgi && client->GetState() == STATE_WAITING_CGI)
 		{
+			std::cout << cgi->GetTimer().Elapsed() << std::endl;
 			if (cgi->GetTimer().Elapsed() > TIMEOUT)
 			{
 				ERROR_LOG("CGI Timeout! Killing process");
-				// 2. Build a 504 Gateway Timeout response // Status code parametr
-                client->BuildErrorResponse();
-				this->DisconnectClient(client);
-				this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+				// 1. Delete the CGI and clean up the pipes safely
+                this->DetachCGI(cgi);
+                client->DeleteCGI();
+
+                // 2. Build a 504 Gateway Timeout response
+                // You will need to implement this so BuildErrorResponse takes an arg
+                client->BuildErrorResponse(/* 504 */); 
+
+                // 3. Switch the client state to send the error
+                client->SetState(STATE_SENDING_ERROR_RESPONSE);
+                this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+                
+                // Let the next iteration of the epoll loop handle sending 
+                // the data via ServeClient(). DO NOT disconnect here.
 			}
 		}
 	}
+	INFO_LOG("End Checking Timeouts ...");
 }
 
 

@@ -1,6 +1,6 @@
 NAME        = webserv
 CPP         = c++
-CPPFLAGS    = -Wall -Wextra -Werror -std=c++98 # -g
+CPPFLAGS    = -Wall -Wextra -Werror -std=c++98 -g
 RM          = rm -rf
 
 # ---------------- Dirs ----------------
@@ -13,7 +13,6 @@ OBJ_DIR     = build
 SRCS        = $(shell find $(SRC_DIR) -name "*.cpp")
 
 # 2. Transform src/Core/Timer.cpp -> build/Core/Timer.o
-# This is the magic fix! 
 OBJS        = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
 # Tracking all headers for recompilation
