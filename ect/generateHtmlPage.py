@@ -29,6 +29,10 @@ response = f"""<!DOCTYPE html>
 </html>
 """
 
+while True:
+    continue
+    
+
 response_bytes = response.encode("utf-8")
 
 # Send headers

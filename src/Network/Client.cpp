@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/21 17:01:09 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/07 19:42:06 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,7 +106,7 @@ void	Client::BuildErrorResponse()
 	this->m_WriteBuffer += "Content-Length: 40\r\n"; // Length of the html string
 	this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
 	this->m_WriteBuffer += html;
-	
+
 	// Clear the read buffer so we are ready for the next request (Keep-Alive)
 	this->m_ReadBuffer.clear();
 }
@@ -164,6 +164,12 @@ int Client::PrepareWriteBuffer()
 	struct stat 		fileInfo;
 	std::stringstream	headerStream;
 
+	// TODO:  Error responses are build separetly (:
+	if (this->m_State == STATE_SENDING_ERROR_RESPONSE && !this->m_WriteBuffer.empty())
+	{
+		this->m_State = STATE_RESPONSE_SENT;
+		return (200);
+	}
 	this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
 	// 1. Initial trigger point from ExecuteRequest
 	if (this->m_State == STATE_SENDING_HEADERS)
@@ -227,6 +233,12 @@ CGI*	Client::GetCGI() const
 void	Client::SetCGI(CGI* cgi)
 {
 	this->m_CGI = cgi;
+}
+
+void	Client::DeleteCGI()
+{
+	delete this->m_CGI;
+	this->m_CGI = NULL;
 }
 
 ClientState	Client::GetState() const

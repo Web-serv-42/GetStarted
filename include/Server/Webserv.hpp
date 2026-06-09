@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/16 18:20:08 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/05/23 12:10:11 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,8 @@
 
 #include <vector>
 #include <map>
+
+#define TIMEOUT 5.0
 
 class Webserv
 {
@@ -54,6 +56,8 @@ class Webserv
 		void		HandleCGI(int pipeFd, int eventIndex);
 		void		DetachPipe(int pipeFd);
 		void		DetachCGI(CGI* cgi);
+		void		CheckCGITimeouts();
+
 
 		bool		IsServerFd(int triggeredFd);
 		bool		IsCGIPipe(int triggeredFd);

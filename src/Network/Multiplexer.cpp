@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:24 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/15 15:21:38 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/07 19:10:00 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,7 +98,7 @@ int	Multiplexer::WaitEvents()
 {
 	int	numEvents = 0;
 
-	if ((numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, -1)) == -1)
+	if ((numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, 1000)) == -1)
 	{
 		ERROR_LOG("Failed to waits for events on the epoll instance");
 	}
