@@ -1,44 +1,41 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   TcpServer.hpp                                      :+:      :+:    :+:   */
+/*   CGIManager.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/04/19 16:50:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/09 19:02:44 by abnsila          ###   ########.fr       */
+/*   Created: 2026/06/09 18:37:29 by abnsila           #+#    #+#             */
+/*   Updated: 2026/06/10 18:33:10 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
-#include "Core/Log.hpp"
+
 #include "Client/Client.hpp"
+#include "Network/Multiplexer.hpp"
+#include "Utils/utils.hpp"
 
-#include <sstream>
-#include <unistd.h>
-#include <cstring>
+#include <map>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
+#define TIMEOUT 5.0
 
-class TcpServer
+class CGIManager
 {
 	private:
-		int	m_Port;
-		int	m_ListenFd;
-
+		std::map<int, Client*>	m_CgiFdToClient;
+		Multiplexer&			m_Polling;
 	public:
-		TcpServer();
-		TcpServer(int port);
-		~TcpServer();
+		CGIManager(Multiplexer& poller);
+		~CGIManager();
 
-		bool	Setup();
-		Client*	AcceptNewClient();
-	
-		int		GetPort() const;
-		int		GetListenFd() const;		
+		void		AttachCGI(Client* client);
+		void		HandleCGI(int pipeFd, int eventIndex);
+		void		DetachPipe(int pipeFd);
+		void		DetachCGI(CGI* cgi);
+		bool		IsCGIPipe(int triggeredFd);
+		void		CheckCGITimeouts();
+
 };
+

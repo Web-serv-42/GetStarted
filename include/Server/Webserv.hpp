@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/23 12:10:11 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/10 18:38:54 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,14 +15,15 @@
 #include "Core/Log.hpp"
 #include "Core/Timer.hpp"
 #include "Network/TcpServer.hpp"
-#include "Network/Client.hpp" 
 #include "Network/Multiplexer.hpp"
+#include "Client/Client.hpp" 
+#include "Client/ClientManager.hpp"
 #include "CGI/CGI.hpp"
+#include "CGI/CGIManager.hpp"
 
 #include <vector>
 #include <map>
 
-#define TIMEOUT 5.0
 
 class Webserv
 {
@@ -30,9 +31,9 @@ class Webserv
 		bool					m_IsRunning;
 		// Vector is bad
 		std::vector<TcpServer*>	m_Servers;
-		std::map<int, Client*>	m_Clients;
-		std::map<int, Client*>	m_CgiFdToClient;
 		Multiplexer				m_Polling;
+		CGIManager				m_CGIManager;
+		ClientManager			m_ClientManager;
 
 	public:
 		Webserv();
@@ -42,25 +43,14 @@ class Webserv
 		void	Run();
 		void	Shutdown();
 
-		void		ConnectClient(int serverFd);
-		void		ServeClient(int clientFd, int eventIndex);
-		void		DisconnectClient(Client* client);
-
 		int			ProcessRequest(Client* client);
 		int			Routing(Client* client);
 
 		void		ExecuteRequest(Client* client);
 		void		BuildResponse(Client* client);
 
-		void		AttachCGI(Client* client);
-		void		HandleCGI(int pipeFd, int eventIndex);
-		void		DetachPipe(int pipeFd);
-		void		DetachCGI(CGI* cgi);
-		void		CheckCGITimeouts();
-
 
 		bool		IsServerFd(int triggeredFd);
-		bool		IsCGIPipe(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);
 };
 

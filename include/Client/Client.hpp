@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/07 19:41:44 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:11:13 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,7 +32,7 @@ enum ClientState {
 	STATE_ROUTING_INTERCEPTION,
 	STATE_READING_BODY,
 	//* Execute Phase
-	STATE_PROCESSING,	   // Parsing request (No epoll interaction)
+	STATE_EXECUTING,	   // Parsing request (No epoll interaction)
 	STATE_WAITING_CGI,	  // Waiting for Python script (Webserv handles pipes)
 	//* Send Phase
 	STATE_READY_TO_SEND,	// Needs EPOLLOUT to send response
@@ -71,6 +71,8 @@ class Client
 		bool	ReadData();
 		bool	SendData();
 
+		// Entry point for processing request
+		int	ProcessRequest();
 		// Request Phase
 		int	ProcessHeaders();
 		int	ProcessBody();
