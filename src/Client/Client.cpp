@@ -6,11 +6,11 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/07 19:42:06 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:20:49 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Network/Client.hpp"
+#include "Client/Client.hpp"
 
 #define BUFFER_SIZE 4096
 
@@ -64,7 +64,6 @@ bool	Client::SendData()
 {
 	ssize_t	bytesSent;
 
-	
 	// The response can be stored into a file
 	if (this->m_WriteBuffer.empty())
 		return(true) ;
@@ -81,7 +80,7 @@ bool	Client::SendData()
 	return (true);
 }
 
-void	Client::BuildResponse()
+void	Client::BuildStaticResponse()
 {
 	// A standard HTTP 200 OK response with some basic HTML
 	std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
@@ -96,10 +95,9 @@ void	Client::BuildResponse()
 	this->m_ReadBuffer.clear();
 }
 
-void	Client::BuildErrorResponse()
+void	Client::BuildStaticErrorResponse()
 {
-	// A standard HTTP 200 OK response with some basic HTML
-	std::string html = "<html><body><h1>Error</h1></body></html>";
+	std::string html = "<html><body><h1>Fatal Error</h1></body></html>";
 	
 	this->m_WriteBuffer = "HTTP/1.0 500 KO\r\n";
 	this->m_WriteBuffer += "Content-Type: text/html\r\n";
@@ -119,7 +117,7 @@ int	Client::ProcessHeaders()
 
 int	Client::ProcessBody()
 {
-	this->m_State = STATE_PROCESSING;
+	this->m_State = STATE_EXECUTING;
 	return (200);
 }
 
@@ -132,6 +130,48 @@ int	Client::ValidateRequestWithRouter()
 int	Client::ParseAndFinalizeCgiResponse()
 {
 	return (200);
+}
+
+// Parsing the request headers == rules, routing then body : return status code
+int	Client::ProcessRequest()
+{
+	int	statusCode;
+
+	// Parsing Headers first
+	if (this->m_State == STATE_READING_HEADERS)
+	{
+		//TODO Member 2: HttpRequest Hearders Parser
+		statusCode = this->ProcessHeaders();
+		if (statusCode != 200)
+		{
+			return (statusCode);
+		}
+		// Routing logic
+		//TODO Member 1: Change State to STATE_ROUTING_INTERCEPTION
+		if (this->m_State == STATE_ROUTING_INTERCEPTION)
+		{
+			statusCode = this->ValidateRequestWithRouter();
+			if (statusCode != 200)
+			{
+				return (statusCode);
+			}
+			//TODO Member 1: Change State to STATE_EXECUTING Directly if no body found
+			//TODO Member 1: Change State to STATE_READING_BODY if body found
+		}
+	}
+	// Body Parsing
+	if (this->m_State == STATE_READING_BODY)
+	{
+		//TODO Member 2: HttpRequest Body Parser [The routing is already checked]
+		statusCode = this->ProcessBody();
+		if (statusCode != 200)
+		{
+			return (statusCode);
+		}
+		//TODO Member 1: Change State to STATE_EXECUTING
+		// Executing Request is done by ClientManager after parsing both Headers and Body
+	}
+	return (200); // No error accured, even still more to consume from request or is it aleady handled
 }
 
 // Returns: -1 on error, 0 on EOF, or positive bytes read
@@ -156,22 +196,23 @@ int Client::ReadFileContent()
 	return (bytesRead);
 }
 
+// From here I read the response and i sent it [request first then body]
+// or just the whole response if is it stored in memory : return status code
 int Client::PrepareWriteBuffer()
 {
-	//TODO Get tmp file or fd from response builder, so i can work with both static or CGI
-	// Just for testing static file request
-	// thism_FileContentPath = "./ect/body_4096_byte.tmp";
 	struct stat 		fileInfo;
 	std::stringstream	headerStream;
 
-	// TODO:  Error responses are build separetly (:
-	if (this->m_State == STATE_SENDING_ERROR_RESPONSE && !this->m_WriteBuffer.empty())
+	// 0. Small response stored direclty in memory => std::string this->m_WriteBuffer
+	if ((this->m_State == STATE_SENDING_ERROR_RESPONSE
+		|| this->m_State == STATE_SENDING_FULL_RESPONSE)
+		&& !this->m_WriteBuffer.empty())
 	{
 		this->m_State = STATE_RESPONSE_SENT;
 		return (200);
 	}
 	this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
-	// 1. Initial trigger point from ExecuteRequest
+	// 1. A base implementaion of building headers before body
 	if (this->m_State == STATE_SENDING_HEADERS)
 	{
 		// Dynamically measure the exact file footprint on disk
@@ -196,7 +237,7 @@ int Client::PrepareWriteBuffer()
 		}
 		this->m_State = STATE_SENDING_BODY;
 	}
-	// 2. Subsequent loop iterations stream chunks smoothly
+	// 2. Subsequent loop iterations stream chunks smoothly (sent body)
 	else if (this->m_State == STATE_SENDING_BODY)
 	{
 		// Only read more from disk if our socket write buffer has cleared out.

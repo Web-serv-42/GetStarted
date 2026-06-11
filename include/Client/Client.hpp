@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/07 19:41:44 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/10 19:11:13 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,15 +32,15 @@ enum ClientState {
 	STATE_ROUTING_INTERCEPTION,
 	STATE_READING_BODY,
 	//* Execute Phase
-	STATE_PROCESSING,	   // Parsing request (No epoll interaction)
-	STATE_WAITING_CGI,	  // Waiting for Python script (Webserv handles pipes)
+	STATE_EXECUTING,
+	STATE_WAITING_CGI,
 	//* Send Phase
-	STATE_READY_TO_SEND,	// Needs EPOLLOUT to send response
 	STATE_SENDING_ERROR_RESPONSE,
+	STATE_SENDING_FULL_RESPONSE,
 	STATE_SENDING_HEADERS,
 	STATE_SENDING_BODY,
 	STATE_RESPONSE_SENT,
-	STATE_DISCONNECTED	  // Needs to be cleaned up
+	STATE_DISCONNECTED
 };
 
 class Client
@@ -71,6 +71,8 @@ class Client
 		bool	ReadData();
 		bool	SendData();
 
+		// Entry point for processing request
+		int	ProcessRequest();
 		// Request Phase
 		int	ProcessHeaders();
 		int	ProcessBody();
@@ -81,8 +83,8 @@ class Client
 		int	ParseAndFinalizeCgiResponse();
 		
 		// Later I will add methods like:
-   		void	BuildResponse();
-   		void	BuildErrorResponse();
+   		void	BuildStaticResponse();
+   		void	BuildStaticErrorResponse();
 
 		int			GetClientFd() const;
 		CGI*		GetCGI() const;

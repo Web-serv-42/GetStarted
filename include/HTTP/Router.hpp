@@ -1,26 +1,22 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Request.cpp                                        :+:      :+:    :+:   */
+/*   Router.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/17 23:07:00 by abnsila          ###   ########.fr       */
+/*   Created: 2026/06/11 14:45:42 by abnsila           #+#    #+#             */
+/*   Updated: 2026/06/11 14:45:43 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTP/Request/Request.hpp"
+#pragma once
 
-// Request responsibilities:
-//     - HTTP parsing
-//     - body extraction
-//     - validation
-
-Request::Request(/* args */)
+class Router
 {
-}
-
-Request::~Request()
-{
-}
+private:
+	/* data */
+public:
+	Router(/* args */);
+	~Router();
+};

@@ -29,8 +29,8 @@ response = f"""<!DOCTYPE html>
 </html>
 """
 
-while True:
-    continue
+# while True:
+#     continue
     
 
 response_bytes = response.encode("utf-8")
