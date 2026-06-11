@@ -1,26 +1,26 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Request.cpp                                        :+:      :+:    :+:   */
+/*   Router.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/17 23:07:00 by abnsila          ###   ########.fr       */
+/*   Created: 2026/06/11 14:45:33 by abnsila           #+#    #+#             */
+/*   Updated: 2026/06/11 14:45:34 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "HTTP/Request/Request.hpp"
+#include "HTTP/Router.hpp"
 
-// Request responsibilities:
-//     - HTTP parsing
-//     - body extraction
-//     - validation
+// Router responsibilities:
+//     - location matching
+//     - method checks
+//     - config lookup
 
-Request::Request(/* args */)
+Router::Router(/* args */)
 {
 }
 
-Request::~Request()
+Router::~Router()
 {
 }

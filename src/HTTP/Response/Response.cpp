@@ -12,6 +12,11 @@
 
 #include "HTTP/Response/Response.hpp"
 
+// Response responsibilities:
+//     - HTTP formatting
+//     - status codes
+//     - headers
+
 Response::Response(/* args */)
 {
 }
