@@ -41,6 +41,8 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 	// 2. Tell the server to accept the connection
 	Client*		newClient = server->AcceptNewClient();
 
+	if (!newClient)
+		return;
 	// 3. Store the client in our Engine's memory
 	this->m_Clients[newClient->GetClientFd()] = newClient;
 	// 4. Tell the Multiplexer to watch this new client for incoming data
@@ -57,8 +59,14 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 
 void		ClientManager::ServeClient(int clientFd, int eventIndex)
 {
-	Client*	client = this->m_Clients[clientFd];
+	int		statusCode;
+	std::map<int, Client*>::iterator it = m_Clients.find(clientFd);
 
+	if (it == m_Clients.end())
+		return;
+	Client* client = it->second;
+
+	DEBUG_LOG("Serving Client ...");
 	// --- 1. CLIENT DROPS CONNECTION ---
 	if (this->m_Polling.IsErrorFired(eventIndex))
 	{
@@ -68,20 +76,22 @@ void		ClientManager::ServeClient(int clientFd, int eventIndex)
 	// --- 2. CLIENT SENT US DATA ---
 	if (this->m_Polling.IsReadReady(eventIndex))
 	{
+		DEBUG_LOG("Reading ...");
 		// Read BUFFER_SIZE of coming request
 		if (client->ReadData() == false)
 		{
 			this->DisconnectClient(client);
 			return;
 		}
-		if (client->ProcessRequest() == 200 && client->GetState() == STATE_EXECUTING)
+		statusCode = client->ProcessRequest();
+		if (statusCode == 200 && client->GetState() == STATE_EXECUTING)
 		{
 			//TODO: Execute request and track status code
 			this->ExecuteRequest(client);
 		}
-		else if (client->ProcessRequest() != 200)
+		else if (statusCode != 200)
 		{
-			client->BuildErrorResponse();
+			client->BuildStaticErrorResponse();
 			client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
@@ -89,6 +99,7 @@ void		ClientManager::ServeClient(int clientFd, int eventIndex)
 	// --- 3. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
 	if (this->m_Polling.IsWriteReady(eventIndex))
 	{
+		DEBUG_LOG("Sending ...");
 		client->PrepareWriteBuffer();
 		// TRACE_LOG("Manage Client Response");
 		if (client->SendData() == false)
@@ -119,8 +130,8 @@ void	ClientManager::ExecuteRequest(Client* client)
 	else
 	{
 		// It's a static file request (e.g., index.html)
-		// client->BuildResponse();
-		client->SetState(STATE_SENDING_HEADERS);
+		client->BuildStaticResponse();
+		client->SetState(STATE_SENDING_FULL_RESPONSE);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
@@ -136,7 +147,7 @@ void		ClientManager::DisconnectClient(Client* client)
 	// }
 	CGI*	cgi = client->GetCGI();
 	// Safety: If the client was running a CGI, kill it and remove its pipes
-	if (cgi && client->GetState() == STATE_WAITING_CGI)
+	if (cgi)
 	{
 		DEBUG_LOG("Deatach Activated CGI");
 		this->m_CGIManager.DetachCGI(cgi);

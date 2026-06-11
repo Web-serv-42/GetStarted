@@ -29,7 +29,7 @@ void		CGIManager::AttachCGI(Client* client)
 	// In the future, this comes from Member 3's logic.
 	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
 	std::string scriptPath = "./ect/generateHtmlPage.py";
-	std::string	tmpFileBody = "./ect/response_1.tmp";
+	std::string	tmpFileBody = "./ect/cgiBody_1.tmp";
 	std::string	tmpFileOutput = GenerateTmpFileName("cgi");
 	bool		hasBody = true;
 
@@ -58,8 +58,8 @@ void		CGIManager::AttachCGI(Client* client)
 		ERROR_LOG("Failed to execute CGI");
 		delete	cgi;
 		client->SetCGI(NULL);
-		//TODO Member 2 client->BuildErrorResponse(500); // You will need to implement this
-		client->BuildErrorResponse();
+		//TODO Member 2 client->BuildStaticErrorResponse(500); // You will need to implement this
+		client->BuildStaticErrorResponse();
 		// Switch state so we can send an error immediately
 		client->SetState(STATE_SENDING_ERROR_RESPONSE);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
@@ -68,14 +68,14 @@ void		CGIManager::AttachCGI(Client* client)
 
 void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 {
-	std::cout << "CGI" << std::endl;
+	DEBUG_LOG("Start handling CGI...");
 	//TODO Memeber 1: Timeout Timer
 	Client*	client = this->m_CgiFdToClient[pipeFd];
 	CGI*	cgi = client->GetCGI();
 
 	if (this->m_Polling.IsErrorFired(eventIndex))
 	{
-		client->BuildErrorResponse();
+		client->BuildStaticErrorResponse();
 		client->SetState(STATE_SENDING_ERROR_RESPONSE);
 		return;
 	}
@@ -87,6 +87,7 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 		this->DetachPipe(pipeFd);
 		cgi->ClosePipeOut(); // Safely close and set to -1
 		// 4. Wake the client socket back up in epoll to send the data
+		client->SetState(STATE_SENDING_HEADERS); ///////////
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		INFO_LOG("CGI Terminated and Response Ready");
 	}
@@ -120,7 +121,6 @@ bool	CGIManager::IsCGIPipe(int triggeredFd)
 
 void		CGIManager::CheckCGITimeouts()
 {
-	INFO_LOG("Checking Timeouts ...");
 	// Iterate through all active clients/CGIs
     for (std::map<int, Client*>::iterator it = this->m_CgiFdToClient.begin(); it != this->m_CgiFdToClient.end();)
     {
@@ -128,7 +128,6 @@ void		CGIManager::CheckCGITimeouts()
 		CGI*	cgi = client->GetCGI();
 		if (cgi && client->GetState() == STATE_WAITING_CGI)
 		{
-			std::cout << cgi->GetTimer().Elapsed() << std::endl;
 			if (cgi->GetTimer().Elapsed() > TIMEOUT)
 			{
 				std::map<int, Client*>::iterator next = it;
@@ -139,8 +138,8 @@ void		CGIManager::CheckCGITimeouts()
                 client->DeleteCGI();
 
                 // 2. Build a 504 Gateway Timeout response
-                // You will need to implement this so BuildErrorResponse takes an arg
-                client->BuildErrorResponse(/* 504 */); 
+                // You will need to implement this so BuildStaticErrorResponse takes an arg
+                client->BuildStaticErrorResponse(/* 504 */); 
 
                 // 3. Switch the client state to send the error
                 client->SetState(STATE_SENDING_ERROR_RESPONSE);
@@ -154,5 +153,4 @@ void		CGIManager::CheckCGITimeouts()
 		}
 		++it;
 	}
-	INFO_LOG("End Checking Timeouts ...");
 }
