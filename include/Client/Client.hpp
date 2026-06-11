@@ -32,15 +32,15 @@ enum ClientState {
 	STATE_ROUTING_INTERCEPTION,
 	STATE_READING_BODY,
 	//* Execute Phase
-	STATE_EXECUTING,	   // Parsing request (No epoll interaction)
-	STATE_WAITING_CGI,	  // Waiting for Python script (Webserv handles pipes)
+	STATE_EXECUTING,
+	STATE_WAITING_CGI,
 	//* Send Phase
-	STATE_READY_TO_SEND,	// Needs EPOLLOUT to send response
 	STATE_SENDING_ERROR_RESPONSE,
+	STATE_SENDING_FULL_RESPONSE,
 	STATE_SENDING_HEADERS,
 	STATE_SENDING_BODY,
 	STATE_RESPONSE_SENT,
-	STATE_DISCONNECTED	  // Needs to be cleaned up
+	STATE_DISCONNECTED
 };
 
 class Client
@@ -83,8 +83,8 @@ class Client
 		int	ParseAndFinalizeCgiResponse();
 		
 		// Later I will add methods like:
-   		void	BuildResponse();
-   		void	BuildErrorResponse();
+   		void	BuildStaticResponse();
+   		void	BuildStaticErrorResponse();
 
 		int			GetClientFd() const;
 		CGI*		GetCGI() const;
