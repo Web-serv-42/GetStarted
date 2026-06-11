@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 18:38:54 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/11 14:52:01 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,16 +39,9 @@ class Webserv
 		Webserv();
 		~Webserv();
 
-		bool	Init();
-		void	Run();
-		void	Shutdown();
-
-		int			ProcessRequest(Client* client);
-		int			Routing(Client* client);
-
-		void		ExecuteRequest(Client* client);
-		void		BuildResponse(Client* client);
-
+		bool		Init();
+		void		Run();
+		void		Shutdown();
 
 		bool		IsServerFd(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);

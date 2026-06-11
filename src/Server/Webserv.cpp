@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:22:22 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/06/11 14:51:33 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,19 +93,6 @@ void	Webserv::Shutdown()
 	INFO_LOG("Shutting down Webserv Engine...");
 	this->m_IsRunning = false;
 	// Clean recources
-}
-
-// ======================= Request/Response =======================
-// void	Webserv::ExecuteRequest(Client* client)
-// {
-
-// }
-
-void	Webserv::BuildResponse(Client* client)
-{
-	//TODO Member 2: HttpResponse Builder
-	//TODO Member 2: Bad HttpResponse Builder
-	this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLIN);
 }
 
 // ======================= Helpers =======================
