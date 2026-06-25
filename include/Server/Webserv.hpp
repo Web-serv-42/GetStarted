@@ -20,6 +20,7 @@
 #include "Client/ClientManager.hpp"
 #include "CGI/CGI.hpp"
 #include "CGI/CGIManager.hpp"
+#include "Parsing/Lexer.hpp"
 
 #include <vector>
 #include <map>

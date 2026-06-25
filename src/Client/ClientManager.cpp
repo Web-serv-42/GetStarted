@@ -56,64 +56,87 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 	}
 	SUCCESS_LOG("New client connected");
 }
-
-void		ClientManager::ServeClient(int clientFd, int eventIndex)
+void ClientManager::ServeClient(int clientFd, int eventIndex)
 {
-	int		statusCode;
-	std::map<int, Client*>::iterator it = m_Clients.find(clientFd);
+    int     statusCode;
+    std::map<int, Client*>::iterator it = m_Clients.find(clientFd);
 
-	if (it == m_Clients.end())
-		return;
-	Client* client = it->second;
+    if (it == m_Clients.end())
+        return;
+    Client* client = it->second;
 
-	DEBUG_LOG("Serving Client ...");
-	// --- 1. CLIENT DROPS CONNECTION ---
-	if (this->m_Polling.IsErrorFired(eventIndex))
-	{
-		this->DisconnectClient(client);
-		return;
-	}
-	// --- 2. CLIENT SENT US DATA ---
-	if (this->m_Polling.IsReadReady(eventIndex))
-	{
-		DEBUG_LOG("Reading ...");
-		// Read BUFFER_SIZE of coming request
-		if (client->ReadData() == false)
-		{
-			this->DisconnectClient(client);
-			return;
-		}
-		statusCode = client->ProcessRequest();
-		if (statusCode == 200 && client->GetState() == STATE_EXECUTING)
-		{
-			//TODO: Execute request and track status code
-			this->ExecuteRequest(client);
-		}
-		else if (statusCode != 200)
-		{
-			client->BuildStaticErrorResponse();
-			client->SetState(STATE_SENDING_ERROR_RESPONSE);
-			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-		}
-	}
-	// --- 3. WE CAN SEND DATA TO CLIENT --- (Also in the same time with Read, this is why i'm using if)
-	if (this->m_Polling.IsWriteReady(eventIndex))
-	{
-		DEBUG_LOG("Sending ...");
-		client->PrepareWriteBuffer();
-		// TRACE_LOG("Manage Client Response");
-		if (client->SendData() == false)
-		{
-			this->DisconnectClient(client);
-			return;
-		}
-		if (client->GetState() == STATE_RESPONSE_SENT)
-		{
-			//TODO: Not mandatory but it can be a keep-alive request [just reset the client for new request]
-			client->SetState(STATE_READING_HEADERS);
-			this->DisconnectClient(client);
-		}
-	}
+    DEBUG_LOG("Serving Client ...");
+    
+    // --- 1. CLIENT DROPS CONNECTION ---
+    if (this->m_Polling.IsErrorFired(eventIndex))
+    {
+        this->DisconnectClient(client);
+        return;
+    }
+    
+    // --- 2. CLIENT SENT US DATA ---
+    if (this->m_Polling.IsReadReady(eventIndex))
+    {
+        DEBUG_LOG("Reading ...");
+        
+        // Read BUFFER_SIZE of coming request
+        if (client->ReadData() == false)
+        {
+            this->DisconnectClient(client);
+            return;
+        }
+
+        // =========================================================================
+        // VISUALIZER BLOCK: Isolate and display the incoming request
+        // =========================================================================
+        // NOTE: Replace `GetRawRequestString()` with your actual getter method.
+        std::string rawRequest = client->GetRawRequestString(); 
+        
+        if (!rawRequest.empty()) 
+        {
+            std::cout << "\n\033[1;36m" << std::string(60, '=') << "\033[0m\n";
+            std::cout << "\033[1;32m[+] INCOMING HTTP REQUEST (FD: " << clientFd << ") [+]\033[0m\n";
+            std::cout << "\033[1;36m" << std::string(60, '-') << "\033[0m\n";
+            
+            std::cout << "\033[0;37m" << rawRequest << "\033[0m"; 
+            if (rawRequest[rawRequest.length() - 1] != '\n') std::cout << "\n";
+            
+            std::cout << "\033[1;36m" << std::string(60, '=') << "\033[0m\n\n";
+        }
+        // =========================================================================
+
+        statusCode = client->ProcessRequest();
+        if (statusCode == 200 && client->GetState() == STATE_EXECUTING)
+        {
+            //TODO: Execute request and track status code
+            this->ExecuteRequest(client);
+        }
+        else if (statusCode != 200)
+        {
+            client->BuildStaticErrorResponse();
+            client->SetState(STATE_SENDING_ERROR_RESPONSE);
+            this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+        }
+    }
+    
+    // --- 3. WE CAN SEND DATA TO CLIENT --- 
+    if (this->m_Polling.IsWriteReady(eventIndex))
+    {
+        DEBUG_LOG("Sending ...");
+        client->PrepareWriteBuffer();
+        
+        if (client->SendData() == false)
+        {
+            this->DisconnectClient(client);
+            return;
+        }
+        if (client->GetState() == STATE_RESPONSE_SENT)
+        {
+            //TODO: Not mandatory but it can be a keep-alive request [just reset the client for new request]
+            client->SetState(STATE_READING_HEADERS);
+            this->DisconnectClient(client);
+        }
+    }
 }
 
 void	ClientManager::ExecuteRequest(Client* client)

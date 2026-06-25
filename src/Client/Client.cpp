@@ -33,6 +33,11 @@ Client::~Client()
 	delete	this->m_CGI;
 }
 
+const std::string& Client::GetRawRequestString() const 
+{
+	return this->m_ReadBuffer;
+}
+
 bool	Client::ReadData()
 {
 	// Check Client Timeout

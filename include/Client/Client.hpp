@@ -93,4 +93,5 @@ class Client
 		ClientState	GetState() const;
 		void		SetState(ClientState state);
 		void		DisplayClientInfo() const;
+		const std::string &GetRawRequestString() const;
 };
