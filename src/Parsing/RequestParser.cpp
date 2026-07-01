@@ -41,7 +41,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line) {
         return;
     }
 
-    // 2. Strip Fragment
+    // 2. ignore what is comming after # edge case (Fragment identifier)
     size_t hashPos = rawUri.find('#');
     if (hashPos != std::string::npos) rawUri = rawUri.substr(0, hashPos);
 
@@ -93,11 +93,11 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
             size_t pos = rawBuffer.find("\r\n");
             if (pos == std::string::npos) return false;
 
-            // do we need to delete ? meanin erase ?
+            // do we need to delete ? yes so the next time we dont read the same line again
             std::string line = rawBuffer.substr(0, pos);
             rawBuffer.erase(0, pos + 2);
 
-            // need more work on this
+            // need more work on this 
             // do we just get what http 1.0 needed or ust parse every thing ??
             if (line.empty()) { // End of headers
                 std::string cl = req.GetHeader("content-length");
@@ -105,13 +105,14 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
                     req.SetContentLength(std::atoi(cl.c_str()));
                     req.SetState(PARSE_BODY);
                 } else {
-                    req.SetState(PARSE_COMPLETE); // No body
+                    req.SetState(PARSE_COMPLETE);
                 }
-                
-                // if (req.GetHeader("transfer-encoding") == "chunked") {
-                //     req.SetErrorCode(501); // Not Implemented
-                //     req.SetState(PARSE_ERROR);
-                // }
+                // we need this since we are not working with http 1.1 we 
+                // reject the "transfer-encoding" we use content-length
+                if (req.GetHeader("transfer-encoding") == "chunked") {
+                    req.SetErrorCode(501);
+                    req.SetState(PARSE_ERROR);
+                }
             } else {
                 ParseHeader(req, line);
             }
@@ -125,9 +126,9 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
                 rawBuffer.erase(0, expected);
                 req.SetState(PARSE_COMPLETE);
             } else {
-                return false; // Waiting for more data from epoll
+                return false; // waiting for more data from epoll
             }
         }
     }
-    return (req.GetState() == PARSE_COMPLETE);
+    return (req.GetState() == PARSE_COMPLETE); // return true parsing is done
 }

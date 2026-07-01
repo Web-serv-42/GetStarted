@@ -6,7 +6,7 @@
 /*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/30 15:22:50 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/01 15:23:49 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,33 +124,62 @@ void PrintParsedRequest(const Request& req)
     std::cout << "\033[1;35m" << std::string(60, '=') << "\033[0m\n\n";
 }
 
+#include "Server/Webserv.hpp"
 
-int main()
+
+int main(int argc, char const *argv[])
 {
-    std::string rawNetworkBuffer = 
-        "POST /api/v1/upload?user=bob&id=42#ignored HTTP/1.1\r\n"
-        "Host:   localhost:8080   \r\n"
-        "User-Agent: curl/7.68.0\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 13\r\n"
-        "\r\n"
-        "Hello Server!";
-
-    Request req;
-    
-    // Run the parser!
-    bool isComplete = RequestParser::Parse(req, rawNetworkBuffer);
-
-    if (isComplete) {
-        std::cout << "Parser returned TRUE! Request is fully assembled.\n";
-    } else {
-        std::cout << "Parser returned FALSE. We need to call recv() again.\n";
+	// (void)argc;
+	// (void)argv;
+    if (argc != 2) {
+        std::cerr << "Usage: ./webserve <path_to_config_file>" << std::endl;
+        return 1;
     }
 
-    // Visualize the final object
-    PrintParsedRequest(req);
-    return 0;
+	Webserv	engine;
+
+    std::string configContent = ReadFileToString(argv[1]);
+    if (configContent.empty()) {
+        return 1; // Exit if file is empty or unreadable
+    }
+    std::vector<std::string> tokens = Lexer::Tokenize(configContent);
+
+    ConfigParser parser(tokens);
+    ConfigTree config = parser.Parse();
+
+	engine.Init(config);
+	engine.Run();
+	engine.Shutdown();
+
+	return 0;
 }
+
+// int main()
+// {
+//     std::string rawNetworkBuffer = 
+//         "POST /api/v1/upload?user=bob&id=42#ignored HTTP/1.1\r\n"
+//         "Host:   localhost:8080   \r\n"
+//         "User-Agent: curl/7.68.0\r\n"
+//         "Content-Type: text/plain\r\n"
+//         "Content-Length: 13\r\n"
+//         "\r\n"
+//         "Hello Server!";
+
+//     Request req;
+    
+//     // Run the parser!
+//     bool isComplete = RequestParser::Parse(req, rawNetworkBuffer);
+
+//     if (isComplete) {
+//         std::cout << "Parser returned TRUE! Request is fully assembled.\n";
+//     } else {
+//         std::cout << "Parser returned FALSE. We need to call recv() again.\n";
+//     }
+
+//     // Visualize the final object
+//     PrintParsedRequest(req);
+//     return 0;
+// }
 
 // int main(int argc, char** argv) 
 // {

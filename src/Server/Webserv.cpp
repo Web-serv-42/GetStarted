@@ -3,15 +3,18 @@
 /*                                                        :::      ::::::::   */
 /*   Webserv.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/11 14:51:33 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/01 15:59:39 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server/Webserv.hpp"
+#include "../include/Parsing/ConfigParser.hpp"
 #include "Utils/utils.hpp"
+#include <vector>
+#include <set>
 
 // ======================= Engine =======================
 Webserv::Webserv() :
@@ -32,14 +35,46 @@ Webserv::~Webserv()
 	}
 }
 
-bool	Webserv::Init()
+bool	Webserv::Init(const ConfigTree& config)
 {
 	INFO_LOG("Initializing Webserv Engine...");
 	Timer::Init();
 	this->m_Polling.Init();
 	//TODO Memeber 3: Parse config file
-	// std::vector<int>	ports = this->m_Parser.getPorts();	// Real usage
-	std::vector<int>	ports; ports.push_back(8080);		// For testing
+	// for unique ports or we could use vector 
+	std::vector<int> ports;
+
+	for (size_t i = 0; i < config.servers.size(); ++i) 
+    {
+        std::map<std::string, std::string>::const_iterator it = config.servers[i].directives.find("listen");
+        
+        if (it != config.servers[i].directives.end()) 
+        {
+            std::string listenStr = it->second;
+            int port = 0;
+
+            // Handle the "IP:PORT" vs "PORT" rule (e.g., "127.0.0.1:8080" vs "8080")
+            size_t colonPos = listenStr.find(':');
+            if (colonPos != std::string::npos) {
+                port = std::atoi(listenStr.substr(colonPos + 1).c_str());
+            } else {
+                port = std::atoi(listenStr.c_str());
+            }
+
+            ports.insert(port);
+        }
+    }
+
+	// for (std::set<int>::iterator it = ports.begin(); it != ports.end(); ++it)
+    // {
+    //     int port = *it;
+    //     TcpServer* server = new TcpServer(port);
+        
+    //     server->Setup(); // This should call socket(), bind(), and listen()
+        
+    //     this->m_Servers.push_back(server);
+    //     this->m_Polling.AddConnection(server->GetListenFd(), EPOLLIN);
+    // }
 	for (size_t i = 0; i < ports.size(); i++)
 	{
 		TcpServer*	server = new TcpServer(ports[i]);

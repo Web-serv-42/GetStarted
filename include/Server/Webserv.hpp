@@ -3,16 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   Webserv.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/11 14:52:01 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/01 15:43:04 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "Core/Log.hpp"
+#include "../include/Parsing/ConfigParser.hpp"
 #include "Core/Timer.hpp"
 #include "Network/TcpServer.hpp"
 #include "Network/Multiplexer.hpp"
@@ -40,7 +41,7 @@ class Webserv
 		Webserv();
 		~Webserv();
 
-		bool		Init();
+		bool		Init(const ConfigTree& config);
 		void		Run();
 		void		Shutdown();
 
