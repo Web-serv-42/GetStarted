@@ -6,22 +6,23 @@
 /*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/01 15:59:39 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/02 17:08:45 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Server/Webserv.hpp"
-#include "../include/Parsing/ConfigParser.hpp"
 #include "Utils/utils.hpp"
-#include <vector>
-#include <set>
+#include "../../include/Parsing/ConfigParser.hpp"
+#include "../../include/Parsing/ConfigResolver.hpp"
+
+volatile bool Webserv::m_IsRunning = true;
 
 // ======================= Engine =======================
 Webserv::Webserv() :
-			m_IsRunning(false),
 			m_Polling(),
 			m_CGIManager(m_Polling),
-			m_ClientManager(m_Polling, m_CGIManager)
+			m_ClientManager(m_Polling, m_CGIManager),
+			m_Resolver(NULL)
 {
 	
 }
@@ -29,67 +30,62 @@ Webserv::Webserv() :
 Webserv::~Webserv()
 {
 	
+	delete m_Resolver;
 	for (size_t i = 0; i < this->m_Servers.size(); i++)
 	{
 		delete this->m_Servers[i];
 	}
 }
 
-bool	Webserv::Init(const ConfigTree& config)
+bool Webserv::Init(const ConfigTree& config)
 {
-	INFO_LOG("Initializing Webserv Engine...");
-	Timer::Init();
-	this->m_Polling.Init();
-	//TODO Memeber 3: Parse config file
-	// for unique ports or we could use vector 
-	std::vector<int> ports;
 
-	for (size_t i = 0; i < config.servers.size(); ++i) 
+	m_Resolver = new ConfigResolver(config);
+
+	const std::vector<ResolvedListen>& runtime = m_Resolver->GetRuntimeListens();
+	
+    INFO_LOG("Initializing Webserv Engine...");
+
+    Timer::Init();
+
+    this->SetupSignals();
+
+    this->m_Polling.Init();
+
+    for (size_t i = 0; i < runtime.size(); ++i)
     {
-        std::map<std::string, std::string>::const_iterator it = config.servers[i].directives.find("listen");
-        
-        if (it != config.servers[i].directives.end()) 
+        // TcpServer* server = new TcpServer(
+        //     listens[i].host,
+        //     listens[i].port
+        // );
+		TcpServer* server = new TcpServer(
+			runtime[i].listen.host,
+			runtime[i].listen.port
+		);
+		
+        if (!server->Setup())
         {
-            std::string listenStr = it->second;
-            int port = 0;
-
-            // Handle the "IP:PORT" vs "PORT" rule (e.g., "127.0.0.1:8080" vs "8080")
-            size_t colonPos = listenStr.find(':');
-            if (colonPos != std::string::npos) {
-                port = std::atoi(listenStr.substr(colonPos + 1).c_str());
-            } else {
-                port = std::atoi(listenStr.c_str());
-            }
-
-            ports.insert(port);
+            delete server;
+            continue;
         }
+
+        this->m_Servers.push_back(server);
+
+        this->m_Polling.AddConnection(
+            server->GetListenFd(),
+            EPOLLIN
+        );
     }
 
-	// for (std::set<int>::iterator it = ports.begin(); it != ports.end(); ++it)
-    // {
-    //     int port = *it;
-    //     TcpServer* server = new TcpServer(port);
-        
-    //     server->Setup(); // This should call socket(), bind(), and listen()
-        
-    //     this->m_Servers.push_back(server);
-    //     this->m_Polling.AddConnection(server->GetListenFd(), EPOLLIN);
-    // }
-	for (size_t i = 0; i < ports.size(); i++)
-	{
-		TcpServer*	server = new TcpServer(ports[i]);
-		server->Setup();
-		this->m_Servers.push_back(server);
-		this->m_Polling.AddConnection(server->GetListenFd(), EPOLLIN);
-	}
-	INFO_LOG("Webserv successfully initialized.");
-	return (true);
+    INFO_LOG("Webserv successfully initialized.");
+
+    return true;
 }
+
 
 void	Webserv::Run()
 {
 	int	numEvents = 0;
-	this->m_IsRunning = true;
 	INFO_LOG("Start listening for events...");
 
 	// Server Loop
@@ -149,4 +145,17 @@ TcpServer*	Webserv::GetServerByFd(int serverFd)
 			return (this->m_Servers[i]);
 	}
 	return (NULL);
+}
+
+void	Webserv::HandleSignals(int sigint)
+{
+	(void)sigint;
+	Webserv::m_IsRunning = false;
+	DEBUG_LOG("Ctrl + c pressed");
+}
+
+void	Webserv::SetupSignals()
+{
+	signal(SIGINT, this->HandleSignals);
+	signal(SIGTERM, this->HandleSignals);
 }

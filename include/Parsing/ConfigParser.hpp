@@ -12,11 +12,14 @@
 
 struct LocationConfig {
     std::string                         path;
-    std::map<std::string, std::string>  directives;
+    // std::map<std::string, std::string>  directives;
+    std::map<std::string, std::vector<std::string> > directives;
+
 };
 
 struct ServerConfig {
-    std::map<std::string, std::string>  directives;
+    // std::map<std::string, std::string>  directives;
+    std::map<std::string, std::vector<std::string> > directives;
     std::vector<LocationConfig>         locations;
 };
 
@@ -40,9 +43,16 @@ class ConfigParser {
         void                Expect(const std::string& expectedToken);
 
         // State Machine Functions
-        void                ParseDirective(std::map<std::string, std::string>& directivesMap);
+        // void                ParseDirective(std::map<std::string, std::string>& directivesMap);
+        void                 ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap);
         LocationConfig      ParseLocationBlock();
         ServerConfig        ParseServerBlock();
+        bool                IsDirective(const std::string& token);
+        void ValidateDirective(
+                                const std::string& key,
+                                const std::vector<std::string>& values,
+                                const std::map<std::string,
+                                std::vector<std::string> >& directivesMap);
 
     public:
         ConfigParser(const std::vector<std::string>& tokens);

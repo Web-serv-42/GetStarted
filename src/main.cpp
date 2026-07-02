@@ -6,10 +6,11 @@
 /*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/17 17:59:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/01 15:23:49 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/02 15:50:46 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <exception>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -35,37 +36,84 @@ std::string ReadFileToString(const char* filepath)
 // Helper function to visualize the parsed Abstract Syntax Tree (AST)
 void PrintParsedConfig(const ConfigTree& tree)
 {
-    std::cout << "\n\033[1;35m" << std::string(60, '=') << "\033[0m\n";
-    std::cout << "\033[1;33m[+] PARSER OUTPUT (" << tree.servers.size() << " Servers Found) [+]\033[0m\n";
-    std::cout << "\033[1;35m" << std::string(60, '-') << "\033[0m\n\n";
+    std::cout << "\n\033[1;35m"
+              << std::string(60, '=')
+              << "\033[0m\n";
 
-    for (size_t i = 0; i < tree.servers.size(); ++i) 
+    std::cout << "\033[1;33m[+] PARSER OUTPUT ("
+              << tree.servers.size()
+              << " Servers Found) [+]\033[0m\n";
+
+    std::cout << "\033[1;35m"
+              << std::string(60, '-')
+              << "\033[0m\n\n";
+
+    for (size_t i = 0; i < tree.servers.size(); ++i)
     {
-        std::cout << "\033[1;32m=== SERVER " << (i + 1) << " ===\033[0m\n";
-        
-        // 1. Print Server-Level Directives
-        std::map<std::string, std::string>::const_iterator sIt;
-        for (sIt = tree.servers[i].directives.begin(); sIt != tree.servers[i].directives.end(); ++sIt) 
+        std::cout << "\033[1;32m=== SERVER "
+                  << (i + 1)
+                  << " ===\033[0m\n";
+
+        // ================= Server Directives =================
+        std::map<std::string, std::vector<std::string> >::const_iterator sIt;
+
+        for (sIt = tree.servers[i].directives.begin();
+             sIt != tree.servers[i].directives.end();
+             ++sIt)
         {
-            std::cout << "  " << sIt->first << " : \033[0;36m" << sIt->second << "\033[0m\n";
+            std::cout << "  "
+                      << sIt->first
+                      << " : \033[0;36m";
+
+            for (size_t j = 0; j < sIt->second.size(); ++j)
+            {
+                std::cout << sIt->second[j];
+
+                if (j + 1 != sIt->second.size())
+                    std::cout << " ";
+            }
+
+            std::cout << "\033[0m\n";
         }
 
-        // 2. Print Location Blocks inside this Server
-        for (size_t j = 0; j < tree.servers[i].locations.size(); ++j) 
+        // ================= Location Blocks =================
+        for (size_t j = 0; j < tree.servers[i].locations.size(); ++j)
         {
             const LocationConfig& loc = tree.servers[i].locations[j];
-            std::cout << "\n  \033[1;34m--- Location: " << loc.path << " ---\033[0m\n";
-            
-            // Print Location-Level Directives
-            std::map<std::string, std::string>::const_iterator lIt;
-            for (lIt = loc.directives.begin(); lIt != loc.directives.end(); ++lIt) 
+
+            std::cout << "\n  \033[1;34m--- Location: "
+                      << loc.path
+                      << " ---\033[0m\n";
+
+            std::map<std::string,
+                     std::vector<std::string> >::const_iterator lIt;
+
+            for (lIt = loc.directives.begin();
+                 lIt != loc.directives.end();
+                 ++lIt)
             {
-                std::cout << "      " << lIt->first << " : \033[0;36m" << lIt->second << "\033[0m\n";
+                std::cout << "      "
+                          << lIt->first
+                          << " : \033[0;36m";
+
+                for (size_t k = 0; k < lIt->second.size(); ++k)
+                {
+                    std::cout << lIt->second[k];
+
+                    if (k + 1 != lIt->second.size())
+                        std::cout << " ";
+                }
+
+                std::cout << "\033[0m\n";
             }
         }
+
         std::cout << "\n";
     }
-    std::cout << "\033[1;35m" << std::string(60, '=') << "\033[0m\n\n";
+
+    std::cout << "\033[1;35m"
+              << std::string(60, '=')
+              << "\033[0m\n\n";
 }
 
 void PrintParsedRequest(const Request& req) 
@@ -145,83 +193,24 @@ int main(int argc, char const *argv[])
     std::vector<std::string> tokens = Lexer::Tokenize(configContent);
 
     ConfigParser parser(tokens);
-    ConfigTree config = parser.Parse();
+    ConfigTree config;
+    try 
+    {
+        config = parser.Parse();
+        // PrintParsedConfig(config);
+        
+        engine.Init(config);
+        engine.Run();
+        engine.Shutdown();
+    } 
+    catch (const std::exception& e)
+     {
+        std::cerr << "\n\033[1;31m[!] CONFIGURATION ERROR [!]\033[0m\n";
+        std::cerr << e.what() << "\n\n";
+        return 1;
+    }
 
-	engine.Init(config);
-	engine.Run();
-	engine.Shutdown();
+	
 
 	return 0;
 }
-
-// int main()
-// {
-//     std::string rawNetworkBuffer = 
-//         "POST /api/v1/upload?user=bob&id=42#ignored HTTP/1.1\r\n"
-//         "Host:   localhost:8080   \r\n"
-//         "User-Agent: curl/7.68.0\r\n"
-//         "Content-Type: text/plain\r\n"
-//         "Content-Length: 13\r\n"
-//         "\r\n"
-//         "Hello Server!";
-
-//     Request req;
-    
-//     // Run the parser!
-//     bool isComplete = RequestParser::Parse(req, rawNetworkBuffer);
-
-//     if (isComplete) {
-//         std::cout << "Parser returned TRUE! Request is fully assembled.\n";
-//     } else {
-//         std::cout << "Parser returned FALSE. We need to call recv() again.\n";
-//     }
-
-//     // Visualize the final object
-//     PrintParsedRequest(req);
-//     return 0;
-// }
-
-// int main(int argc, char** argv) 
-// {
-//     if (argc != 2) {
-//         std::cerr << "Usage: ./webserve <path_to_config_file>" << std::endl;
-//         return 1;
-//     }
-
-//     // 1. Read the file
-//     std::string configContent = ReadFileToString(argv[1]);
-//     if (configContent.empty()) {
-//         return 1; // Exit if file is empty or unreadable
-//     }
-
-//     try 
-//     {
-//         // 2. Run the Lexer
-//         std::vector<std::string> tokens = Lexer::Tokenize(configContent);
-        
-//         // Uncomment this block if you still want to see the raw Lexer output
-//         // std::cout << "\n\033[1;36m" << std::string(50, '=') << "\033[0m\n";
-//         // std::cout << "\033[1;32m[+] LEXER OUTPUT (" << tokens.size() << " tokens found) [+]\033[0m\n";
-//         // for (size_t i = 0; i < tokens.size(); ++i) {
-//         //     std::cout << "[" << tokens[i] << "] ";
-//         //     if (tokens[i] == ";" || tokens[i] == "{" || tokens[i] == "}") std::cout << "\n";
-//         // }
-//         // std::cout << "\033[1;36m" << std::string(50, '=') << "\033[0m\n\n";
-        
-
-//         // 3. Run the Parser
-//         ConfigParser parser(tokens);
-//         ConfigTree config = parser.Parse();
-//         // 4. Visualize the Result!
-//         // PrintParsedConfig(config);
-//     } 
-//     // 5. Catch and print any syntax errors safely
-//     catch (const std::exception& e) 
-//     {
-//         std::cerr << "\n\033[1;31m[!] CONFIGURATION ERROR [!]\033[0m\n";
-//         std::cerr << e.what() << "\n\n";
-//         return 1;
-//     }
-
-//     return 0;
-// }

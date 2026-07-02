@@ -47,3 +47,10 @@
     [ ] Implement the Router that takes a Request and a Config and returns a Location object.
 
     [ ] Implement the ResponseBuilder that generates the final HTTP/1.1 200 OK... string.
+
+# (ablabib) Task: 
+    ConfigResolver::GetPorts()
+    ConfigResolver::GetServersForPort() (needed for virtual hosts)
+    ConfigResolver::FindServer(host, port) (needed after HTTP parsing)
+    ConfigResolver::FindLocation(uri) (needed for routing)
+    ConfigResolver::GetRoot(), GetIndex(), MethodAllowed(), etc. (needed when serving requests)

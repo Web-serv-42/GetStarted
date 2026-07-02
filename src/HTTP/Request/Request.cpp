@@ -6,7 +6,7 @@
 /*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/30 15:22:06 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/02 15:41:08 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 #include "../include/HTTP/Request/Request.hpp"
 #include <iostream>
 
-// Constructor initializes default states
 Request::Request() : m_Method(HTTP_UNKNOWN), m_State(PARSE_REQUEST_LINE), m_ContentLength(0), m_ErrorCode(0) {}
 
 // Setters

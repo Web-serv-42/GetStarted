@@ -6,14 +6,13 @@
 /*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/01 15:43:04 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/02 16:36:37 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "Core/Log.hpp"
-#include "../include/Parsing/ConfigParser.hpp"
 #include "Core/Timer.hpp"
 #include "Network/TcpServer.hpp"
 #include "Network/Multiplexer.hpp"
@@ -21,29 +20,39 @@
 #include "Client/ClientManager.hpp"
 #include "CGI/CGI.hpp"
 #include "CGI/CGIManager.hpp"
-#include "Parsing/Lexer.hpp"
+#include "../../include/Parsing/ConfigParser.hpp"
+#include "../../include/Parsing/ConfigResolver.hpp"
+
+
 
 #include <vector>
 #include <map>
 
+#include <csignal>
 
 class Webserv
 {
 	private:
-		bool					m_IsRunning;
+		volatile static bool	m_IsRunning;
 		// Vector is bad
 		std::vector<TcpServer*>	m_Servers;
 		Multiplexer				m_Polling;
 		CGIManager				m_CGIManager;
 		ClientManager			m_ClientManager;
+		// stored as pointer to get NULL , since its calling constructor
+		ConfigResolver*			m_Resolver;
 
 	public:
 		Webserv();
 		~Webserv();
 
-		bool		Init(const ConfigTree& config);
+		// bool		Init();
+		bool 		Init(const ConfigTree& config);
 		void		Run();
 		void		Shutdown();
+
+		static void	HandleSignals(int sigint);
+		void		SetupSignals();
 
 		bool		IsServerFd(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);
