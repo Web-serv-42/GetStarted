@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:11:13 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/03 23:04:52 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,12 +14,14 @@
 
 #include "Core/Log.hpp"
 #include "CGI/CGI.hpp"
+#include "../HTTP/Request/Request.hpp"
 
 #include <sstream>
 
 #include <unistd.h>
 #include <cstring>
 #include <cerrno>
+
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -49,7 +51,7 @@ class Client
 		int						m_SocketFd;
 		struct sockaddr_storage	m_ClientAddr;
 		CGI*					m_CGI;
-		// Request  m_Request;   <-- Later: HTTP Request Parser
+		Request  m_Request;   //<-- Later: HTTP Request Parser
 		// Response m_Response;  <-- Later: HTTP Response Builder
 		ClientState				m_State;
 		// Buffers to hold data if recv/send are interrupted (Non-blocking)
@@ -70,7 +72,10 @@ class Client
 
 		bool	ReadData();
 		bool	SendData();
-
+		
+		Request& GetRequest();
+		const Request& GetRequest() const;
+		
 		// Entry point for processing request
 		int	ProcessRequest();
 		// Request Phase

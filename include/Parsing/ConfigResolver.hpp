@@ -22,6 +22,7 @@ struct ListenConfig
 //     ├── Server B
 //     └── Server C
 //
+// without this we can combiene multiple servers to one socket
 struct ResolvedListen
 {
     ListenConfig                        listen;
@@ -39,15 +40,15 @@ private:
     std::vector<ResolvedListen>         m_RuntimeListens;
 
 private:
-
-    ListenConfig ParseListenValue(
-        const std::string& value) const;
+    // we parse the listen value 127.0.0.1:8080 or 8080 and give it the default 0.0.0.0
+    ListenConfig ParseListenValue(const std::string& value) const;
 
     void BuildRuntimeListens();
 
     // Search an already-created runtime listen.
-    ResolvedListen* FindRuntimeListen(
-        const ListenConfig& listen);
+    ResolvedListen* FindRuntimeListen(const ListenConfig& listen);
+    // with this we get the exact path for the URI
+    bool IsPrefixMatch(const std::string& location,const std::string& uri) const;
 
 public:
 
@@ -55,15 +56,10 @@ public:
     ~ConfigResolver();
 
     // Used by Webserv::Init()
-    const std::vector<ResolvedListen>&
-    GetRuntimeListens() const;
+    const std::vector<ResolvedListen>& GetRuntimeListens() const;
 
     // Used later by the router.
-    const ServerConfig* ResolveServer(
-        int port,
-        const std::string& host) const;
+    const ServerConfig* GetServerBy_Port_Host(int port,const std::string& host) const;
 
-    const LocationConfig* ResolveLocation(
-        const ServerConfig& server,
-        const std::string& uri) const;
+    const LocationConfig* GetLocationBy_Server_Uri(const ServerConfig& server,const std::string& uri) const;
 };

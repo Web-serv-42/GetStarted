@@ -3,16 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   ClientManager.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:47 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:13:59 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/03 23:30:43 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "Client/Client.hpp"
+#include "../Parsing/ConfigResolver.hpp"
 #include "Network/Multiplexer.hpp"
 #include "Network/TcpServer.hpp"
 #include "CGI/CGIManager.hpp"
@@ -25,6 +26,7 @@ class ClientManager
 		std::map<int, Client*>	m_Clients;
 		Multiplexer&			m_Polling;
 		CGIManager&				m_CGIManager;
+		ConfigResolver* 		m_Resolver;
 
 	public:
 		ClientManager(Multiplexer& poller, CGIManager& CGIManager);
@@ -35,6 +37,6 @@ class ClientManager
 		void		ExecuteRequest(Client* client);
 		void		DisconnectClient(Client* client);
 		void		CheckClientTimeouts();
-
+		void		SetResolver(ConfigResolver *resolver);
 		Client*		GetClient(int clientFd);
 };

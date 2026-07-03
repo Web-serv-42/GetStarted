@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:20:49 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/03 23:04:08 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -323,3 +323,13 @@ void	Client::DisplayClientInfo() const
 		INFO_LOG("Connection from client: " + std::string(str));
 }
 ;
+
+Request& Client::GetRequest()
+{
+    return m_Request;
+}
+
+const Request& Client::GetRequest() const
+{
+    return m_Request;
+}

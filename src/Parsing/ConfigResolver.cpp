@@ -51,10 +51,12 @@ void ConfigResolver::BuildRuntimeListens()
         for (size_t j = 0; j < listens.size(); ++j)
         {
             ListenConfig cfg = ParseListenValue(listens[j]);
-
+            // cfg produce host:port 
             // Does this socket already exist?
             ResolvedListen* runtime = FindRuntimeListen(cfg);
-
+            // if we find the same server with the same port meaning duplicated 
+            // directive listen in in 2+ viruatl servers we return a  pointer runtime to that object
+            // 
             if (runtime)
             {
                 // Same socket -> add another virtual server.
@@ -75,10 +77,32 @@ void ConfigResolver::BuildRuntimeListens()
     }
 }
 
+bool ConfigResolver::IsPrefixMatch(
+    const std::string& location,
+    const std::string& uri) const
+{
+    // URI shorter than the location cannot match.
+    if (uri.size() < location.size())
+        return false;
 
-const ServerConfig* ConfigResolver::ResolveServer(
-    int port,
-    const std::string& host) const
+    // The URI must begin with the location.
+    if (uri.compare(0, location.size(), location) != 0)
+        return false;
+
+    // "/" matches everything
+    if (location == "/")
+        return true;
+
+    // Exact match.
+    if (uri.size() == location.size())
+        return true;
+
+    // The next character must be a path separator.
+    return (uri[location.size()] == '/');
+}
+
+
+const ServerConfig* ConfigResolver::GetServerBy_Port_Host(int port,const std::string& host) const
 {
     for (size_t i = 0; i < m_RuntimeListens.size(); ++i)
     {
@@ -97,7 +121,7 @@ const ServerConfig* ConfigResolver::ResolveServer(
                      std::vector<std::string> >::const_iterator it;
 
             it = servers[j]->directives.find("server_name");
-
+            // if we dont find the server_name dirrective go next block
             if (it == servers[j]->directives.end())
                 continue;
 
@@ -108,13 +132,36 @@ const ServerConfig* ConfigResolver::ResolveServer(
             }
         }
 
-        // No Host match.
         return defaultServer;
     }
 
     return NULL;
 }
 
+
+const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(
+    const ServerConfig& server,
+    const std::string& uri) const
+{
+    const LocationConfig* best = NULL;
+    size_t longestMatch = 0;
+
+    for (size_t i = 0; i < server.locations.size(); ++i)
+    {
+        const LocationConfig& location = server.locations[i];
+
+        if (!IsPrefixMatch(location.path, uri))
+            continue;
+
+        if (location.path.size() > longestMatch)
+        {
+            longestMatch = location.path.size();
+            best = &location;
+        }
+    }
+
+    return best;
+}
 
 // --Listen Directive Config Resolver
 
@@ -144,30 +191,3 @@ ListenConfig ConfigResolver::ParseListenValue(const std::string& value) const
 
     return listen_line;
 }
-
-// std::vector<ListenConfig> ConfigResolver::GetListenConfigs() const
-// {
-//     std::vector<ListenConfig> result;
-    
-//     for (size_t i = 0; i < m_Config.servers.size(); ++i)
-//     {
-//         std::map<std::string,
-//                  std::vector<std::string> >::const_iterator it;
-
-//         it = m_Config.servers[i].directives.find("listen");
-//         //  throw error if no location dirrective found
-//         if (it == m_Config.servers[i].directives.end())
-//         {
-//             throw std::runtime_error(
-//             "Configuration Error: server block is missing a 'listen' directive"
-//             );
-//         }
-
-//         const std::vector<std::string>& values = it->second;
-
-//         for (size_t j = 0; j < values.size(); ++j)
-//             result.push_back(ParseListenValue(values[j]));
-//     }
-
-//     return result;
-// }

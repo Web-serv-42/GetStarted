@@ -6,7 +6,7 @@
 /*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/02 17:08:45 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/03 23:30:38 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,6 +42,8 @@ bool Webserv::Init(const ConfigTree& config)
 
 	m_Resolver = new ConfigResolver(config);
 
+	m_ClientManager.SetResolver(m_Resolver);
+	
 	const std::vector<ResolvedListen>& runtime = m_Resolver->GetRuntimeListens();
 	
     INFO_LOG("Initializing Webserv Engine...");

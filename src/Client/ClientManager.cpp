@@ -3,14 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   ClientManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:36 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:25:57 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/03 23:31:03 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client/ClientManager.hpp"
+#include "../../include/HTTP/Request/Request.hpp"
+#include "../../include/Parsing/ConfigResolver.hpp"
 
 ClientManager::ClientManager(Multiplexer& poller, CGIManager& CGIManager) : m_Polling(poller), m_CGIManager(CGIManager)
 {
@@ -56,6 +58,8 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 	}
 	SUCCESS_LOG("New client connected");
 }
+
+
 void ClientManager::ServeClient(int clientFd, int eventIndex)
 {
     int     statusCode;
@@ -106,6 +110,76 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
         // =========================================================================
 
         statusCode = client->ProcessRequest();
+
+        if (statusCode == 200)
+            {
+                const Request& request = client->GetRequest();
+
+                std::string host = request.GetHeader("Host");
+
+                size_t colon = host.find(':');
+
+                if (colon != std::string::npos)
+                    host.erase(colon);
+
+                int port = 8080; // TODO: replace with client's listening port.
+
+                const ServerConfig* server =
+                    m_Resolver->GetServerBy_Port_Host(port, host);
+
+                const LocationConfig* location = NULL;
+
+                if (server)
+                {
+                    location = m_Resolver->GetLocationBy_Server_Uri(
+                        *server,
+                        request.GetPath()
+                    );
+                }
+
+                std::cout << "\n";
+                std::cout << "============= ROUTING =============\n";
+                std::cout << "Method   : " << request.GetMethod() << "\n";
+                std::cout << "Host     : " << host << "\n";
+                std::cout << "URI      : " << request.GetPath() << "\n";
+
+                if (server)
+                {
+                    std::cout << "Server   : FOUND\n";
+
+                    std::map<std::string,
+                            std::vector<std::string> >::const_iterator it;
+
+                    it = server->directives.find("server_name");
+
+                    if (it != server->directives.end())
+                    {
+                        std::cout << "Names    : ";
+
+                        for (size_t i = 0; i < it->second.size(); ++i)
+                        {
+                            if (i)
+                                std::cout << ", ";
+
+                            std::cout << it->second[i];
+                        }
+
+                        std::cout << "\n";
+                    }
+                }
+                else
+                {
+                    std::cout << "Server   : NOT FOUND\n";
+                }
+
+                if (location)
+                    std::cout << "Location : " << location->path << "\n";
+                else
+                    std::cout << "Location : /\n";
+
+                std::cout << "===================================\n\n";
+            }
+
         if (statusCode == 200 && client->GetState() == STATE_EXECUTING)
         {
             //TODO: Execute request and track status code
@@ -138,6 +212,7 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
         }
     }
 }
+
 
 void	ClientManager::ExecuteRequest(Client* client)
 {
@@ -192,3 +267,9 @@ Client*		ClientManager::GetClient(int clientFd)
 {
 	return (this->m_Clients[clientFd]);
 }
+
+void ClientManager::SetResolver(ConfigResolver* resolver)
+{
+    m_Resolver = resolver;
+}
+
