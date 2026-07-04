@@ -64,6 +64,9 @@ class Client
 		// Content to send (static file/CGI tmpFile output).
 		std::string				m_FileContentPath;
 		int						m_ContentFileFd;
+		// infos that we need for Routing
+		std::string m_LocalIp;
+		int         m_LocalPort;
 
 	public:
 		Client();
@@ -99,4 +102,12 @@ class Client
 		void		SetState(ClientState state);
 		void		DisplayClientInfo() const;
 		const std::string &GetRawRequestString() const;
+		std::string &GetRawRequestString();
+
+		// for routing we need to know where did the request come from which port + host ? 
+		void SetLocalIp(const std::string& ip);
+		void SetLocalPort(int port);
+		const std::string& GetLocalIp() const;
+		int GetLocalPort() const;
+
 };

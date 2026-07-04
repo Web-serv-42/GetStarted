@@ -30,6 +30,7 @@ class ClientManager
 
 	public:
 		ClientManager(Multiplexer& poller, CGIManager& CGIManager);
+		ClientManager(Multiplexer& poller, CGIManager& CGIManager,ConfigResolver * resolver);
 		~ClientManager();
 
 		void		ConnectClient(TcpServer* server);
@@ -39,4 +40,5 @@ class ClientManager
 		void		CheckClientTimeouts();
 		void		SetResolver(ConfigResolver *resolver);
 		Client*		GetClient(int clientFd);
+		void 		PrintRoutingInfo(Client* client);
 };

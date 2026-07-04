@@ -44,11 +44,11 @@ class ConfigParser {
 
         // State Machine Functions
         // void                ParseDirective(std::map<std::string, std::string>& directivesMap);
-        void                 ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap);
+        void                ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap);
         LocationConfig      ParseLocationBlock();
         ServerConfig        ParseServerBlock();
         bool                IsDirective(const std::string& token);
-        void ValidateDirective(
+        void                ValidateDirective(
                                 const std::string& key,
                                 const std::vector<std::string>& values,
                                 const std::map<std::string,

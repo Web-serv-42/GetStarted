@@ -214,11 +214,11 @@ void ConfigParser::ParseDirective(std::map<std::string, std::vector<std::string>
 
 
 
-
-
 // =========================================================================
 // STATE 2: PARSE LOCATION (e.g., "location / { ... }")
 // =========================================================================
+
+
 LocationConfig ConfigParser::ParseLocationBlock() 
 {
     LocationConfig loc;

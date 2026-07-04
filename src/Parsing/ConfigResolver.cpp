@@ -102,41 +102,64 @@ bool ConfigResolver::IsPrefixMatch(
 }
 
 
-const ServerConfig* ConfigResolver::GetServerBy_Port_Host(int port,const std::string& host) const
+const ServerConfig* ConfigResolver::GetServerBy_Ip_Port_Host(
+    const std::string& localIp, 
+    int port, 
+    const std::string& hostHeader) const
 {
+    const ResolvedListen* matchedListen = NULL;
+
+    // WE TRY TO FIND THE SOCKET IP + PORT we are listening for with the config file first 
     for (size_t i = 0; i < m_RuntimeListens.size(); ++i)
     {
-        if (m_RuntimeListens[i].listen.port != port)
-            continue;
-
-        const std::vector<const ServerConfig*>& servers =
-            m_RuntimeListens[i].servers;
-
-        // First server is the default one.
-        const ServerConfig* defaultServer = servers[0];
-
-        for (size_t j = 0; j < servers.size(); ++j)
+        if (m_RuntimeListens[i].listen.port == port && 
+            m_RuntimeListens[i].listen.host == localIp)
         {
-            std::map<std::string,
-                     std::vector<std::string> >::const_iterator it;
-
-            it = servers[j]->directives.find("server_name");
-            // if we dont find the server_name dirrective go next block
-            if (it == servers[j]->directives.end())
-                continue;
-
-            for (size_t k = 0; k < it->second.size(); ++k)
-            {
-                if (it->second[k] == host)
-                    return servers[j];
-            }
+            matchedListen = &m_RuntimeListens[i];
+            break; 
         }
-
-        return defaultServer;
     }
 
-    return NULL;
+    // IF WE dont find any thing with the IP + PORT we compaire with the socket 
+    // we have wildcard  (listen 8080;) in the config meanign we compairre 0.0.0.0 + PORT
+    if (matchedListen == NULL)
+    {
+        for (size_t i = 0; i < m_RuntimeListens.size(); ++i)
+        {
+            if (m_RuntimeListens[i].listen.port == port && 
+                m_RuntimeListens[i].listen.host == "0.0.0.0")
+            {
+                matchedListen = &m_RuntimeListens[i];
+                break; 
+            }
+        }
+    }
+
+    if (matchedListen == NULL)
+        return NULL;
+
+    const std::vector<const ServerConfig*>& servers = matchedListen->servers;
+    const ServerConfig* defaultServer = servers[0];
+    
+    // match the HTTP Host header "Example => Host: site1" against server_name configurations 
+    for (size_t j = 0; j < servers.size(); ++j)
+    {
+        std::map<std::string, std::vector<std::string> >::const_iterator it;
+        it = servers[j]->directives.find("server_name");
+        if (it == servers[j]->directives.end())
+            continue;
+
+        for (size_t k = 0; k < it->second.size(); ++k)
+        {
+            if (it->second[k] == hostHeader)
+            {
+                return servers[j];
+            }
+        }
+    }
+    return defaultServer;
 }
+
 
 
 const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(

@@ -90,22 +90,59 @@ bool	TcpServer::Setup()
 	return (true);
 }
 
-Client*	TcpServer::AcceptNewClient()
+Client* TcpServer::AcceptNewClient()
 {
-	int						clientFd;
-	struct sockaddr_storage	clientAddr;
-	socklen_t				addrLen = sizeof(clientAddr);
+    int clientFd;
+    struct sockaddr_storage clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
 
-	if ((clientFd = accept(this->m_ListenFd, (struct sockaddr*)&clientAddr, &addrLen)) == -1)
-	{
-		ERROR_LOG("Failed to accept client connection");
-		return (NULL);
-	}
-	// By default, sockets are Blocking. This is the "Wait for me" mode.
-	fcntl(clientFd, F_SETFL, O_NONBLOCK);
-	fcntl(clientFd, F_SETFD, FD_CLOEXEC);
-	return (new Client(clientFd, clientAddr));
+    if ((clientFd = accept(this->m_ListenFd,
+            (struct sockaddr*)&clientAddr, &addrLen)) == -1)
+    {
+        ERROR_LOG("Failed to accept client connection");
+        return NULL;
+    }
+
+    fcntl(clientFd, F_SETFL, O_NONBLOCK);
+    fcntl(clientFd, F_SETFD, FD_CLOEXEC);
+
+    // ADD THIS PART
+    struct sockaddr_in local;
+    socklen_t len = sizeof(local);
+
+    getsockname(clientFd, (struct sockaddr*)&local, &len);
+
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &local.sin_addr, ip, sizeof(ip));
+
+    int port = ntohs(local.sin_port);
+
+    Client* client = new Client(clientFd, clientAddr);
+
+    client->SetLocalIp(ip);
+    client->SetLocalPort(port);
+
+    return client;
 }
+
+// Client*	TcpServer::AcceptNewClient()
+// {
+// 	int						clientFd;
+// 	struct sockaddr_storage	clientAddr;
+// 	socklen_t				addrLen = sizeof(clientAddr);
+
+// 	if ((clientFd = accept(this->m_ListenFd, (struct sockaddr*)&clientAddr, &addrLen)) == -1)
+// 	{
+// 		ERROR_LOG("Failed to accept client connection");
+// 		return (NULL);
+// 	}
+// 	// By default, sockets are Blocking. This is the "Wait for me" mode.
+// 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
+// 	fcntl(clientFd, F_SETFD, FD_CLOEXEC);
+
+	
+// 	return (new Client(clientFd, clientAddr));
+// }
 
 int	TcpServer::GetPort() const
 {

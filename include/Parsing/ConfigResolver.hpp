@@ -1,6 +1,8 @@
 #pragma once
 #include "ConfigParser.hpp"
 #include <cstdlib>
+#include <iostream>
+
 
 // Represents one parsed "listen" directive.
 struct ListenConfig
@@ -59,7 +61,7 @@ public:
     const std::vector<ResolvedListen>& GetRuntimeListens() const;
 
     // Used later by the router.
-    const ServerConfig* GetServerBy_Port_Host(int port,const std::string& host) const;
+    const ServerConfig* GetServerBy_Ip_Port_Host(const std::string& localIp,int port,const std::string& hostHeader) const;
 
     const LocationConfig* GetLocationBy_Server_Uri(const ServerConfig& server,const std::string& uri) const;
 };
