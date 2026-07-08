@@ -54,3 +54,89 @@
     ConfigResolver::FindServer(host, port) (needed after HTTP parsing)
     ConfigResolver::FindLocation(uri) (needed for routing)
     ConfigResolver::GetRoot(), GetIndex(), MethodAllowed(), etc. (needed when serving requests)
+
+ [ ] Implement the ResponseBuilder that generates the final HTTP/1.1 200 OK... string.
+
+## Prepare Write Buffer from Response builder object
+```cpp
+int Client::PrepareWriteBuffer()
+{
+    struct stat         fileInfo;
+    std::stringstream   headerStream;
+
+    // 0. Handle quick in-memory responses (Errors or small responses)
+    if ((this->m_State == STATE_SENDING_ERROR_RESPONSE || this->m_State == STATE_SENDING_FULL_RESPONSE)
+        && !this->m_WriteBuffer.empty())
+    {
+        // Since the response here is small the response builder already store it in-memory, a std::string is enougth
+        this->m_WriteBuffer = this->m_Response->m_FullResponse;
+        this->m_State = STATE_RESPONSE_SENT;
+        return (200);
+    }
+
+    // Dynamically identify our data source file target
+    if (this->m_State == STATE_SENDING_HEADERS)
+    {
+        if (this->m_CGI) // If it was a CGI transaction
+            this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
+        else            // If it was a static request handled by Member 2
+            this->m_FileContentPath = this->m_Response->m_ResponseFilePath; 
+
+        if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
+        {
+            ERROR_LOG("Could not find source file to measure size");
+            return (500);
+        }
+
+        // Before sending headers we check if a body exist and open the bodyFile [static file, cgi output file]
+        if (this->m_Response->m_HasBody)
+        {
+            // Open the descriptor for streaming phase
+            this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
+            if (this->m_ContentFileFd == -1)
+            {
+                ERROR_LOG("Could not open source file");
+                return (500);
+            }
+        }
+        // 1. Let Member 2 pass down the pre-built headers, OR generate standard ones
+        if (!this->m_CGI && !this->m_Response->m_HeadersBuffer.empty())
+        {
+            this->m_WriteBuffer = this->m_Response->m_HeadersBuffer;
+            return (200);
+        }
+        else if (this->m_CGI)
+        {
+            // Case1: Extract Headers if they exists then return 200 [and set state to STATE_SENDING_BODY]
+            // Case2: if Headers not exist just continue down and create headers from zero ...
+        }
+        // Simple fallback headers generation
+        headerStream << "HTTP/1.1 200 OK\r\n"
+                        << "Content-Type: text/html\r\n"
+                        << "Content-Length: " << fileInfo.st_size << "\r\n"
+                        << "\r\n";
+        this->m_WriteBuffer = headerStream.str();
+        this->m_State = STATE_SENDING_BODY;
+    }
+
+        // 2. Read body [static file/cgi output file] chunk-by-chunk BUFFER_SIZE=4096
+    else if (this->m_State == STATE_SENDING_BODY)
+    {
+        if (this->m_WriteBuffer.empty())
+        {
+            int res = this->ReadFileContent();
+            if (res == -1)
+            {
+                close(this->m_ContentFileFd);   
+                return (500);
+            }
+            if (res == 0) 
+            {
+                close(this->m_ContentFileFd);
+                this->m_State = STATE_RESPONSE_SENT;
+            }
+        }
+    }
+    return (200);
+}
+``` 

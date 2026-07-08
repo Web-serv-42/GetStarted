@@ -30,6 +30,7 @@ class CGI
 	private:
 		std::string					m_Interpreter;
 		std::string					m_ScriptPath;
+		std::string					m_ScriptName;
 		std::vector<std::string>	m_EnvVars;
 
 		bool						m_HasBody;
@@ -52,8 +53,7 @@ class CGI
 		TimerBenchmark				m_Timer;
 	public:
 		CGI();
-		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile);
-		CGI&	operator=(const CGI& copy);
+		CGI(std::string interpreter, std::string scriptPath, std::string scriptName, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile);		CGI&	operator=(const CGI& copy);
 		~CGI();
 
 		bool	Run();

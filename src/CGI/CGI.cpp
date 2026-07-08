@@ -19,9 +19,8 @@
 CGI::CGI()
 {
 }
-
-CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile)
-	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_EnvVars(envVars), m_HasBody(hasBody), m_TmpBodyFile(tmpBodyFile),  m_TmpOutputFile(tmpOutputFile)
+CGI::CGI(std::string interpreter, std::string scriptPath, std::string scriptName, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile)
+	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_ScriptName(scriptName), m_EnvVars(envVars), m_HasBody(hasBody), m_TmpBodyFile(tmpBodyFile),  m_TmpOutputFile(tmpOutputFile)
 {
 	this->m_Pid = -1;
 	this->m_TmpFileFd = -1;
@@ -31,7 +30,6 @@ CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::strin
 	this->m_Argv = NULL;
 	this->m_BodyBytesSent = 0;
 }
-
 CGI&	CGI::operator=(const CGI& copy)
 {
 	// Later
@@ -89,6 +87,12 @@ bool	CGI::Run()
 		close(this->m_PipeOutFd[0]);
 		this->ClearInheritedFds(this->m_PipeOutFd[1]);
 		this->RedirectIO();
+		// run in the correct directory
+		if (chdir(this->m_ScriptPath.c_str()) != 0)
+		{
+			ERROR_LOG("chdir failed!");
+			std::exit(EXIT_FAILURE);
+		}
 		// Exevce with correct parametres
 		if (execve(this->m_Interpreter.c_str(), this->m_Argv, this->m_Envp) == -1)
 		{
@@ -127,7 +131,7 @@ void	CGI::InitEnvpAndArgv()
 	// Initialize Argv
 	this->m_ArgvStrings.clear();
 	this->m_ArgvStrings.push_back(const_cast<char*>(this->m_Interpreter.c_str()));
-	this->m_ArgvStrings.push_back(const_cast<char*>(this->m_ScriptPath.c_str()));
+	this->m_ArgvStrings.push_back(const_cast<char*>(this->m_ScriptName.c_str()));
 	this->m_ArgvStrings.push_back(NULL); // Null-terminate for execve
 	
 	this->m_Argv = &this->m_ArgvStrings[0];
@@ -139,7 +143,7 @@ bool	CGI::ReadOutputFromScript()
 	// read() + waitpid
 	char	buffer[BUFFER_SIZE];
 	int		bytesRead = 0;
-	int		status;
+	int		status = 0;
 
 	bytesRead = read(this->m_PipeOutFd[0], buffer, BUFFER_SIZE);
 	if (bytesRead > 0)
