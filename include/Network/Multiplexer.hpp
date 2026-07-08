@@ -17,8 +17,10 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
+#include <cerrno>
 
 #define MAX_QUEUE_EVENTS_LENGTH 1024
+#define EPOLL_WAIT_TIMEOUT 1000
 
 class Multiplexer
 {

@@ -79,6 +79,7 @@ bool	TcpServer::Setup()
 	if ((status = listen(sockfd, SOMAXCONN)) == -1)
 	{
 		ERROR_LOG("Failed to listening / queue is full");
+		close(sockfd);
 		return(false);
 	}
 

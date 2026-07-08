@@ -98,8 +98,11 @@ int	Multiplexer::WaitEvents()
 {
 	int	numEvents = 0;
 
-	if ((numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, 1000)) == -1)
+	numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, EPOLL_WAIT_TIMEOUT);
+	if (numEvents < 0)
 	{
+		if (errno == EINTR)
+			return  (0);
 		ERROR_LOG("Failed to waits for events on the epoll instance");
 	}
 	return (numEvents);
