@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:20:49 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/03 23:04:08 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,12 @@
 
 #define BUFFER_SIZE 4096
 
+// Client::Client()
+// {
+// }
+
 Client::Client()
+    : m_SocketFd(-1), m_CGI(NULL), m_State(STATE_READING_HEADERS), m_LocalPort(-1)
 {
 }
 
@@ -32,6 +37,17 @@ Client::~Client()
 	}
 	delete	this->m_CGI;
 }
+
+const std::string& Client::GetRawRequestString() const 
+{
+	return this->m_ReadBuffer;
+}
+
+std::string& Client::GetRawRequestString()
+{
+	return this->m_ReadBuffer;
+}
+
 
 bool	Client::ReadData()
 {
@@ -133,45 +149,61 @@ int	Client::ParseAndFinalizeCgiResponse()
 }
 
 // Parsing the request headers == rules, routing then body : return status code
-int	Client::ProcessRequest()
-{
-	int	statusCode;
+// int	Client::ProcessRequest()
+// {
+// 	int	statusCode;
 
-	// Parsing Headers first
-	if (this->m_State == STATE_READING_HEADERS)
-	{
-		//TODO Member 2: HttpRequest Hearders Parser
-		statusCode = this->ProcessHeaders();
-		if (statusCode != 200)
-		{
-			return (statusCode);
-		}
-		// Routing logic
-		//TODO Member 1: Change State to STATE_ROUTING_INTERCEPTION
-		if (this->m_State == STATE_ROUTING_INTERCEPTION)
-		{
-			statusCode = this->ValidateRequestWithRouter();
-			if (statusCode != 200)
-			{
-				return (statusCode);
-			}
-			//TODO Member 1: Change State to STATE_EXECUTING Directly if no body found
-			//TODO Member 1: Change State to STATE_READING_BODY if body found
-		}
-	}
-	// Body Parsing
-	if (this->m_State == STATE_READING_BODY)
-	{
-		//TODO Member 2: HttpRequest Body Parser [The routing is already checked]
-		statusCode = this->ProcessBody();
-		if (statusCode != 200)
-		{
-			return (statusCode);
-		}
-		//TODO Member 1: Change State to STATE_EXECUTING
-		// Executing Request is done by ClientManager after parsing both Headers and Body
-	}
-	return (200); // No error accured, even still more to consume from request or is it aleady handled
+// 	// Parsing Headers first
+// 	if (this->m_State == STATE_READING_HEADERS)
+// 	{
+// 		//TODO Member 2: HttpRequest Hearders Parser
+// 		statusCode = this->ProcessHeaders();
+// 		if (statusCode != 200)
+// 		{
+// 			return (statusCode);
+// 		}
+// 		// Routing logic
+// 		//TODO Member 1: Change State to STATE_ROUTING_INTERCEPTION
+// 		if (this->m_State == STATE_ROUTING_INTERCEPTION)
+// 		{
+// 			statusCode = this->ValidateRequestWithRouter();
+// 			if (statusCode != 200)
+// 			{
+// 				return (statusCode);
+// 			}
+// 			//TODO Member 1: Change State to STATE_EXECUTING Directly if no body found
+// 			//TODO Member 1: Change State to STATE_READING_BODY if body found
+// 		}
+// 	}
+// 	// Body Parsing
+// 	if (this->m_State == STATE_READING_BODY)
+// 	{
+// 		//TODO Member 2: HttpRequest Body Parser [The routing is already checked]
+// 		statusCode = this->ProcessBody();
+// 		if (statusCode != 200)
+// 		{
+// 			return (statusCode);
+// 		}
+// 		//TODO Member 1: Change State to STATE_EXECUTING
+// 		// Executing Request is done by ClientManager after parsing both Headers and Body
+// 	}
+// 	return (200); // No error accured, even still more to consume from request or is it aleady handled
+// }
+
+int Client::ProcessRequest()
+{
+    // 1. Validate the routing using the server name / host headers now that parsing is complete
+    int statusCode = this->ValidateRequestWithRouter();
+    if (statusCode != 200)
+    {
+        return (statusCode);
+    }
+
+    // 2. Decide if the request is ready for execution or if it needs CGI processing
+    // For a standard static file or complete request, transition directly to EXECUTING
+    this->m_State = STATE_EXECUTING; 
+
+    return (200); 
 }
 
 // Returns: -1 on error, 0 on EOF, or positive bytes read
@@ -318,3 +350,33 @@ void	Client::DisplayClientInfo() const
 		INFO_LOG("Connection from client: " + std::string(str));
 }
 ;
+
+Request& Client::GetRequest()
+{
+    return m_Request;
+}
+
+const Request& Client::GetRequest() const
+{
+    return m_Request;
+}
+
+void Client::SetLocalIp(const std::string& ip)
+{
+    m_LocalIp = ip;
+}
+
+void Client::SetLocalPort(int port)
+{
+    m_LocalPort = port;
+}
+
+const std::string& Client::GetLocalIp() const
+{
+    return m_LocalIp;
+}
+
+int Client::GetLocalPort() const
+{
+    return m_LocalPort;
+}

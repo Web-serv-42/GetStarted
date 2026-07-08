@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Webserv.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/11 14:52:01 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/02 16:36:37 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,28 +20,39 @@
 #include "Client/ClientManager.hpp"
 #include "CGI/CGI.hpp"
 #include "CGI/CGIManager.hpp"
+#include "../../include/Parsing/ConfigParser.hpp"
+#include "../../include/Parsing/ConfigResolver.hpp"
+
+
 
 #include <vector>
 #include <map>
 
+#include <csignal>
 
 class Webserv
 {
 	private:
-		bool					m_IsRunning;
+		volatile static bool	m_IsRunning;
 		// Vector is bad
 		std::vector<TcpServer*>	m_Servers;
 		Multiplexer				m_Polling;
 		CGIManager				m_CGIManager;
 		ClientManager			m_ClientManager;
+		// stored as pointer to get NULL , since its calling constructor
+		ConfigResolver*			m_Resolver;
 
 	public:
 		Webserv();
 		~Webserv();
 
-		bool		Init();
+		// bool		Init();
+		bool 		Init(const ConfigTree& config);
 		void		Run();
 		void		Shutdown();
+
+		static void	HandleSignals(int sigint);
+		void		SetupSignals();
 
 		bool		IsServerFd(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);
