@@ -500,7 +500,8 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
                 loc.allow_methods = loc.directives["allow_methods"];
             }
 
-            // Parse CGI (Pairs of Extension -> Interpreter)
+            // in dirrective multiple cgi data is stored this way : [".py", "/usr/bin/python3", ".php", "/usr/bin/php-cgi"]
+            // meaning we need to skip k += 2 ; to get Extension | interpreter 
             if (loc.directives.count("cgi")) {
                 const std::vector<std::string>& cgi_vals = loc.directives["cgi"];
                 for (size_t k = 0; k + 1 < cgi_vals.size(); k += 2) {
@@ -514,19 +515,18 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
                 loc.return_directive.first = std::atoi(ret_vals[0].c_str());
                 if (ret_vals.size() > 1) {
                     loc.return_directive.second = ret_vals[1];
-                }
+                }   
             }
 
             // Parse Error Pages (Format: 400 403 405 413 /error/error.html)
             if (loc.directives.count("error_page")) {
-                const std::vector<std::string>& err_vals = loc.directives["error_page"];
-                
-                // We need at least one status code and one file path (min 2 items)
+                const std::vector<std::string>& err_vals = loc.directives["error_page"];                
+                // we can throw an error for the error page at least having 2 argument 
+                // but im not gonna do that the user should respect the structure 
+                // the last argument should be the URI to serve => the HTML file path
                 if (err_vals.size() >= 2) { 
-                    // The last item in the vector is always the HTML file path
                     std::string error_file_path = err_vals.back(); 
                     
-                    // Loop through everything EXCEPT the last item, treating them as status codes
                     for (size_t k = 0; k < err_vals.size() - 1; ++k) {
                         int status_code = std::atoi(err_vals[k].c_str());
                         loc.error_pages[status_code] = error_file_path;

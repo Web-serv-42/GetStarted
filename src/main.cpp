@@ -144,8 +144,8 @@ int main(int argc, char const *argv[])
         // PrintParsedConfig(config);
         
         engine.Init(config);
-        // engine.Run();
-        // engine.Shutdown();
+        engine.Run();
+        engine.Shutdown();
     } 
     catch (const std::exception& e)
      {

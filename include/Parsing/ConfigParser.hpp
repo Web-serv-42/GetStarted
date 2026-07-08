@@ -18,7 +18,7 @@ struct ListenConfig
 struct LocationConfig {
     // this part is handled from the parsing 
     std::string                         path;
-    std::map<std::string, std::vector<std::string>> directives;
+    std::map<std::string, std::vector<std::string> > directives;
     // and from the parsing we get this infos
     // we add the importat dirrective and give the important one a defualt constructor
     // location inherit from server block 
