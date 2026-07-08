@@ -41,6 +41,28 @@ void ConfigParser::Expect(const std::string& expectedToken)
     m_Pos++;
 }
 
+
+ListenConfig ConfigParser::ParseListenValue(const std::string& value) const
+{
+    ListenConfig listen_line;
+    size_t colon = value.find(':');
+
+    if (colon == std::string::npos) {
+        listen_line.host = "0.0.0.0";
+        listen_line.port = std::atoi(value.c_str());
+    } else {
+        listen_line.host = value.substr(0, colon);
+        listen_line.port = std::atoi(value.substr(colon + 1).c_str());
+    }
+
+    if (listen_line.port < 1 || listen_line.port > 65535) {
+        throw std::runtime_error("Invalid listen port: " + value);
+    }
+
+    return listen_line;
+}
+
+
 bool ConfigParser::IsDirective(const std::string& token)
 {
     return token == "listen"
@@ -72,6 +94,7 @@ void ConfigParser::ValidateDirective(
         || key == "root"
         || key == "index"
         || key == "autoindex"
+        || key == "server_name"
         || key == "client_max_body_size")
     {
         if (values.size() != 1)
@@ -85,8 +108,7 @@ void ConfigParser::ValidateDirective(
 
     // ---------- Directives expecting one or more arguments ----------
 
-    if (key == "server_name"
-        || key == "allow_methods"
+    if (key == "allow_methods"
         || key == "error_page")
     {
         if (values.empty())
@@ -137,6 +159,8 @@ void ConfigParser::ValidateDirective(
 
     if (key == "root"
         || key == "index"
+        || key == "server_name"
+        || key == "listen"
         || key == "autoindex"
         || key == "client_max_body_size"
         || key == "return")
@@ -199,7 +223,7 @@ void ConfigParser::ParseDirective(std::map<std::string, std::vector<std::string>
 
     ValidateDirective(key, values, directivesMap);
     // to handle multiple CGI AND PORTS
-    if (key == "listen" || key == "cgi")
+    if (key == "cgi")
     {
         directivesMap[key].insert(
             directivesMap[key].end(),
@@ -266,6 +290,129 @@ ServerConfig ConfigParser::ParseServerBlock()
 
 
 
+static void PrintStringVector(const std::vector<std::string>& vec)
+{
+    std::cout << "[ ";
+    for (size_t i = 0; i < vec.size(); ++i)
+    {
+        std::cout << "\"" << vec[i] << "\"";
+        if (i + 1 != vec.size())
+            std::cout << ", ";
+    }
+    std::cout << " ]";
+}
+
+void PrintConfigTree(const ConfigTree& tree)
+{
+    std::cout << "=========================================\n";
+    std::cout << "           CONFIG TREE\n";
+    std::cout << "=========================================\n\n";
+
+    for (size_t i = 0; i < tree.servers.size(); ++i)
+    {
+        const ServerConfig& srv = tree.servers[i];
+
+        std::cout << "SERVER #" << i + 1 << "\n";
+        std::cout << "-----------------------------------------\n";
+
+        std::cout << "Server Name            : " << srv.server_name << "\n";
+
+        std::cout << "Listen                 : ";
+        for (size_t j = 0; j < srv.listens.size(); ++j)
+        {
+            std::cout << srv.listens[j].host << ":" << srv.listens[j].port;
+            if (j + 1 != srv.listens.size())
+                std::cout << ", ";
+        }
+        std::cout << "\n";
+
+        std::cout << "Root                   : " << srv.root << "\n";
+        std::cout << "Index                  : " << srv.index << "\n";
+        std::cout << "Autoindex              : " << (srv.autoindex ? "on" : "off") << "\n";
+        std::cout << "Client Max Body Size   : " << srv.client_max_body_size << "\n";
+
+        std::cout << "\nRaw Directives:\n";
+        for (std::map<std::string, std::vector<std::string> >::const_iterator it = srv.directives.begin();
+             it != srv.directives.end(); ++it)
+        {
+            std::cout << "  " << it->first << " = ";
+            PrintStringVector(it->second);
+            std::cout << "\n";
+        }
+
+        std::cout << "\nLocations (" << srv.locations.size() << ")\n";
+
+        for (size_t j = 0; j < srv.locations.size(); ++j)
+        {
+            const LocationConfig& loc = srv.locations[j];
+
+            std::cout << "\n  LOCATION #" << j + 1 << "\n";
+            std::cout << "  -----------------------------\n";
+            std::cout << "  Path                  : " << loc.path << "\n";
+            std::cout << "  Root                  : " << loc.root << "\n";
+            std::cout << "  Index                 : " << loc.index << "\n";
+            std::cout << "  Autoindex             : " << (loc.autoindex ? "on" : "off") << "\n";
+            std::cout << "  Client Max Body Size  : " << loc.client_max_body_size << "\n";
+
+            std::cout << "  Allow Methods         : ";
+            PrintStringVector(loc.allow_methods);
+            std::cout << "\n";
+
+            std::cout << "  CGI:\n";
+            if (loc.cgi.empty())
+                std::cout << "    (none)\n";
+            else
+            {
+                for (std::map<std::string, std::string>::const_iterator it = loc.cgi.begin();
+                     it != loc.cgi.end(); ++it)
+                {
+                    std::cout << "    " << it->first
+                              << " -> " << it->second << "\n";
+                }
+            }
+
+            std::cout << "  Return Directive      : ";
+            if (loc.return_directive.first == 0)
+                std::cout << "(none)\n";
+            else
+                std::cout << loc.return_directive.first
+                          << " -> "
+                          << loc.return_directive.second
+                          << "\n";
+
+            std::cout << "  Error Pages:\n";
+            if (loc.error_pages.empty())
+                std::cout << "    (none)\n";
+            else
+            {
+                for (std::map<int, std::string>::const_iterator it = loc.error_pages.begin();
+                     it != loc.error_pages.end(); ++it)
+                {
+                    std::cout << "    "
+                              << it->first
+                              << " -> "
+                              << it->second
+                              << "\n";
+                }
+            }
+
+            std::cout << "  Raw Directives:\n";
+            for (std::map<std::string, std::vector<std::string> >::const_iterator it = loc.directives.begin();
+                 it != loc.directives.end(); ++it)
+            {
+                std::cout << "    " << it->first << " = ";
+                PrintStringVector(it->second);
+                std::cout << "\n";
+            }
+        }
+
+        std::cout << "\n";
+    }
+
+    std::cout << "=========================================\n";
+}
+
+
 // =========================================================================
 // MAIN ENTRY POINT
 // =========================================================================
@@ -287,5 +434,105 @@ ConfigTree ConfigParser::Parse()
         throw std::runtime_error("Configuration Error: No valid server blocks found.");
     }
 
+    FinalizeAndInherit(tree);
+
+    PrintConfigTree(tree); 
+
     return tree;
+}
+
+
+void ConfigParser::FinalizeAndInherit(ConfigTree& tree) 
+{
+    for (size_t i = 0; i < tree.servers.size(); ++i) 
+    {
+        ServerConfig& srv = tree.servers[i];
+
+        // 1. EXTRACT SERVER-LEVEL DEFAULTS
+        srv.root = srv.directives.count("root") ? srv.directives["root"][0] : "/var/www/html";
+        srv.index = srv.directives.count("index") ? srv.directives["index"][0] : "index.html";
+        srv.autoindex = srv.directives.count("autoindex") && srv.directives["autoindex"][0] == "on";
+        
+        if (srv.directives.count("client_max_body_size"))
+            srv.client_max_body_size = std::atoi(srv.directives["client_max_body_size"][0].c_str());
+        else
+            srv.client_max_body_size = 1048576; // 1MB default
+
+        // Extract Single Server Name
+        if (srv.directives.count("server_name") && !srv.directives["server_name"].empty()) {
+            srv.server_name = srv.directives["server_name"][0]; // Only take the first one
+        } else {
+            srv.server_name = ""; // Empty string acts as the default catch-all
+        }
+
+        // Extract Listens
+        if (srv.directives.count("listen")) {
+            for (size_t l = 0; l < srv.directives["listen"].size(); ++l) {
+                srv.listens.push_back(ParseListenValue(srv.directives["listen"][l]));
+            }
+        }
+
+        // 2. INHERIT TO LOCATIONS
+        for (size_t j = 0; j < srv.locations.size(); ++j) 
+        {
+            LocationConfig& loc = srv.locations[j];
+
+            // here we handle the location duplication before inheritance
+            for (size_t j = 0; j < srv.locations.size(); ++j)
+            {
+                for (size_t k = j + 1; k < srv.locations.size(); ++k)
+                {
+                    if (srv.locations[j].path == srv.locations[k].path)
+                        throw std::runtime_error(
+                            "Configuration Error: duplicate location \"" +
+                            srv.locations[j].path + "\"");
+                }
+            }
+            
+            // Inherit standard directives
+            loc.root = loc.directives.count("root") ? loc.directives["root"][0] : srv.root;
+            loc.index = loc.directives.count("index") ? loc.directives["index"][0] : srv.index;
+            loc.autoindex = loc.directives.count("autoindex") ? (loc.directives["autoindex"][0] == "on") : srv.autoindex;
+            loc.client_max_body_size = loc.directives.count("client_max_body_size") ? std::atoi(loc.directives["client_max_body_size"][0].c_str()) : srv.client_max_body_size;
+
+            // Allow Methods (Will automatically contain ["GET", "POST", "DELETE"])
+            if (loc.directives.count("allow_methods")) {
+                loc.allow_methods = loc.directives["allow_methods"];
+            }
+
+            // Parse CGI (Pairs of Extension -> Interpreter)
+            if (loc.directives.count("cgi")) {
+                const std::vector<std::string>& cgi_vals = loc.directives["cgi"];
+                for (size_t k = 0; k + 1 < cgi_vals.size(); k += 2) {
+                    loc.cgi[cgi_vals[k]] = cgi_vals[k + 1];
+                }
+            }
+
+            // Parse Return Directive (Status Code + URL/Text)
+            if (loc.directives.count("return")) {
+                const std::vector<std::string>& ret_vals = loc.directives["return"];
+                loc.return_directive.first = std::atoi(ret_vals[0].c_str());
+                if (ret_vals.size() > 1) {
+                    loc.return_directive.second = ret_vals[1];
+                }
+            }
+
+            // Parse Error Pages (Format: 400 403 405 413 /error/error.html)
+            if (loc.directives.count("error_page")) {
+                const std::vector<std::string>& err_vals = loc.directives["error_page"];
+                
+                // We need at least one status code and one file path (min 2 items)
+                if (err_vals.size() >= 2) { 
+                    // The last item in the vector is always the HTML file path
+                    std::string error_file_path = err_vals.back(); 
+                    
+                    // Loop through everything EXCEPT the last item, treating them as status codes
+                    for (size_t k = 0; k < err_vals.size() - 1; ++k) {
+                        int status_code = std::atoi(err_vals[k].c_str());
+                        loc.error_pages[status_code] = error_file_path;
+                    }
+                }
+            }
+        }
+    }
 }

@@ -68,20 +68,20 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 }
 
 
-void ClientManager::PrintRoutingInfo(Client* client)
+void ClientManager::PrintRoutingInfo(Client* client, Request &request)
 {
-    Request request;
+    // Request request;
 
-    bool is_done = RequestParser::Parse(request, client->GetRawRequestString());
+    // bool is_done = RequestParser::Parse(request, client->GetRawRequestString());
 
-    if (is_done)
-    {
-                std::cout << "Parser returned TRUE! Request is fully assembled.\n";
-    }else
-    {
-                std::cout << "Parser returned FALSE. We need to call recv() again.\n";
+    // if (is_done)
+    // {
+    //             std::cout << "Parser returned TRUE! Request is fully assembled.\n";
+    // }else
+    // {
+    //             std::cout << "Parser returned FALSE. We need to call recv() again.\n";
 
-    }
+    // }
 
     std::string host = request.GetHeader("host");
 
@@ -249,6 +249,9 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
         }
 
         PrintParsedRequest(client->GetRequest());
+        
+        PrintRoutingInfo(client, client->GetRequest());
+
         
         client->SetState(STATE_EXECUTING); 
         statusCode = client->ProcessRequest();
