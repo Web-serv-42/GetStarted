@@ -25,24 +25,43 @@ void		CGIManager::AttachCGI(Client* client)
 {
 	if (!client)
 		return;
-	// --- FAKE ROUTER START ---
-	// In the future, this comes from Member 3's logic.
-	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	std::string scriptPath = "./ect/generateHtmlPage.py";
-	std::string	tmpFileBody = "./ect/cgiBody_1.tmp";
-	std::string	tmpFileOutput = GenerateTmpFileName("cgi");
-	bool		hasBody = true;
+	// // --- FAKE ROUTER START (PYTHON3 EDITION)  ---
+	// // In the future, this comes from Member 1's logic.
+	// std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
+	// std::string scriptPath = "./etc/";
+	// std::string scriptName = "generateHtmlPage.py";
+	// std::string	tmpFileBody = "./etc/cgiBody_1.tmp";
+	// std::string	tmpFileOutput = GenerateTmpFileName("cgi");
+	// bool		hasBody = true;
 
-	std::vector<std::string> envVars;
-	envVars.push_back("REQUEST_METHOD=POST");
-	envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
+	// std::vector<std::string> envVars;
+	// envVars.push_back("REQUEST_METHOD=POST");
+	// envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
+	// envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
+	// envVars.push_back("CONTENT_TYPE=plain/text");
+	// envVars.push_back("SCRIPT_FILENAME=" + scriptName);
+	// envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
+	// // --- FAKE ROUTER END ---
+
+	// --- FAKE ROUTER START (PHP-CGI EDITION) ---
+    // On Ubuntu, the CGI flavor is always 'php-cgi', not regular 'php'
+    std::string interpreter = "/usr/bin/php-cgi"; 
+    std::string scriptPath = "./etc/";
+    std::string scriptName = "info.php";
+    std::string	tmpFileBody = "./etc/cgiBody_1.tmp";
+    std::string tmpFileOutput = GenerateTmpFileName("cgi");
+    bool        hasBody = true;
+
+    std::vector<std::string> envVars;
+    envVars.push_back("REQUEST_METHOD=POST");
+    envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
 	envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
 	envVars.push_back("CONTENT_TYPE=plain/text");
-	envVars.push_back("SCRIPT_FILENAME=" + scriptPath);
-	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
-	// --- FAKE ROUTER END ---
+    envVars.push_back("SCRIPT_FILENAME=" + scriptName);
+    envVars.push_back("REDIRECT_STATUS=200"); 
+    // --- FAKE ROUTER END ---
 
-	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, hasBody, tmpFileBody, tmpFileOutput);
+	CGI*	cgi = new CGI(interpreter, scriptPath, scriptName, envVars, hasBody, tmpFileBody, tmpFileOutput);
 	//TODO Track tmp file or fd so you can work with both static or CGI
 	if (cgi->Run() == true)
 	{
@@ -58,8 +77,7 @@ void		CGIManager::AttachCGI(Client* client)
 		ERROR_LOG("Failed to execute CGI");
 		delete	cgi;
 		client->SetCGI(NULL);
-		//TODO Member 2 client->BuildStaticErrorResponse(500); // You will need to implement this
-		client->BuildStaticErrorResponse();
+		client->BuildStaticErrorResponse(/*500*/);
 		// Switch state so we can send an error immediately
 		client->SetState(STATE_SENDING_ERROR_RESPONSE);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
