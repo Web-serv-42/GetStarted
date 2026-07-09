@@ -2,14 +2,10 @@
 #include "ConfigParser.hpp"
 #include <cstdlib>
 #include <iostream>
+#include "../Utils/utils.hpp"
 
 
 // Represents one parsed "listen" directive.
-struct ListenConfig
-{
-    std::string host;
-    int         port;
-};
 
 // Represents one unique listening socket.
 //
@@ -28,7 +24,6 @@ struct ListenConfig
 struct ResolvedListen
 {
     ListenConfig                        listen;
-
     // Every server block sharing this listen socket.
     std::vector<const ServerConfig*>    servers;
 };

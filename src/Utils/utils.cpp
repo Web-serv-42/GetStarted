@@ -21,6 +21,15 @@ std::string	GenerateTmpFileName(std::string contex)
 	return ("/tmp/" + contex + std::string(buf) + ".tmp");
 }
 
+
+std::string toString(int port)
+{
+    std::stringstream ss;
+    ss << port;
+    return ss.str();
+}
+
+
 // void PrintParsedRequest(const Request& req) 
 // {
 //     std::cout << "\n\033[1;35m" << std::string(60, '=') << "\033[0m\n";

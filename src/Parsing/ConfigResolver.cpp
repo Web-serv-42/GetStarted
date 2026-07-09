@@ -1,4 +1,5 @@
 #include "../../include/Parsing/ConfigResolver.hpp"
+#include <stdexcept>
 
 
 // ConfigResolver::ConfigResolver(const ConfigTree& config): m_Config(config) {}
@@ -35,22 +36,12 @@ void ConfigResolver::BuildRuntimeListens()
     {
         const ServerConfig& server = m_Config.servers[i];
 
-        std::map<std::string,
-                 std::vector<std::string> >::const_iterator it;
+        if (server.listens.empty())
+            throw std::runtime_error("Configuration Error: server block missing listen directive");
 
-        it = server.directives.find("listen");
-
-        if (it == server.directives.end())
-        {
-            throw std::runtime_error(
-                "Configuration Error: server block missing listen directive");
-        }
-
-        const std::vector<std::string>& listens = it->second;
-
-        for (size_t j = 0; j < listens.size(); ++j)
-        {
-            ListenConfig cfg = ParseListenValue(listens[j]);
+        for (size_t j = 0; j < server.listens.size(); ++j)
+        {   
+            ListenConfig cfg = server.listens[j];
             // cfg produce host:port 
             // Does this socket already exist?
             ResolvedListen* runtime = FindRuntimeListen(cfg);
@@ -58,8 +49,20 @@ void ConfigResolver::BuildRuntimeListens()
             // directive listen in in 2+ viruatl servers we return a  pointer runtime to that object
             // 
             if (runtime)
-            {
+            {   
+                // we reject the server_name and listen duplication 
                 // Same socket -> add another virtual server.
+                for (size_t k = 0; k < runtime->servers.size(); ++k)
+                {
+                    if (runtime->servers[k]->server_name == server.server_name)
+                    {
+                        throw std::runtime_error(
+                            "Configuration Error: duplicate server_name \"" +
+                            server.server_name +
+                            "\" for listen " +  
+                            cfg.host + ":" + toString(cfg.port));
+                    }
+                }
                 runtime->servers.push_back(&server);
             }
             else
@@ -144,17 +147,9 @@ const ServerConfig* ConfigResolver::GetServerBy_Ip_Port_Host(
     // match the HTTP Host header "Example => Host: site1" against server_name configurations 
     for (size_t j = 0; j < servers.size(); ++j)
     {
-        std::map<std::string, std::vector<std::string> >::const_iterator it;
-        it = servers[j]->directives.find("server_name");
-        if (it == servers[j]->directives.end())
-            continue;
-
-        for (size_t k = 0; k < it->second.size(); ++k)
+        if (servers[j]->server_name == hostHeader)
         {
-            if (it->second[k] == hostHeader)
-            {
-                return servers[j];
-            }
+            return servers[j];
         }
     }
     return defaultServer;
@@ -188,29 +183,29 @@ const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(
 
 // --Listen Directive Config Resolver
 
-ListenConfig ConfigResolver::ParseListenValue(const std::string& value) const
-{
-    ListenConfig listen_line;
+// ListenConfig ConfigResolver::ParseListenValue(const std::string& value) const
+// {
+//     ListenConfig listen_line;
 
-    size_t colon = value.find(':');
+//     size_t colon = value.find(':');
 
-    if (colon == std::string::npos)
-    {
-        listen_line.host = "0.0.0.0";
-        listen_line.port = std::atoi(value.c_str());
-    }
-    else
-    {
-        listen_line.host = value.substr(0, colon);
-        listen_line.port = std::atoi(value.substr(colon + 1).c_str());
-    }
+//     if (colon == std::string::npos)
+//     {
+//         listen_line.host = "0.0.0.0";
+//         listen_line.port = std::atoi(value.c_str());
+//     }
+//     else
+//     {
+//         listen_line.host = value.substr(0, colon);
+//         listen_line.port = std::atoi(value.substr(colon + 1).c_str());
+//     }
 
-    if (listen_line.port < 1 || listen_line.port > 65535)
-    {
-        throw std::runtime_error(
-            "Invalid listen port: " + value
-        );
-    }
+//     if (listen_line.port < 1 || listen_line.port > 65535)
+//     {
+//         throw std::runtime_error(
+//             "Invalid listen port: " + value
+//         );
+//     }
 
-    return listen_line;
-}
+//     return listen_line;
+// }

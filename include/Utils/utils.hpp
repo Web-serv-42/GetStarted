@@ -14,5 +14,7 @@
 
 #include "Core/Timer.hpp"
 #include <string>
+#include <sstream>
 
 std::string	GenerateTmpFileName(std::string contex);
+std::string toString(int port);

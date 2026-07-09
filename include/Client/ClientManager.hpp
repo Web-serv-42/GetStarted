@@ -40,5 +40,5 @@ class ClientManager
 		void		CheckClientTimeouts();
 		void		SetResolver(ConfigResolver *resolver);
 		Client*		GetClient(int clientFd);
-		void 		PrintRoutingInfo(Client* client);
+		void 		PrintRoutingInfo(Client* client, Request &request);
 };
