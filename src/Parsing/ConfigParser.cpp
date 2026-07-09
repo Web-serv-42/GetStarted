@@ -68,6 +68,7 @@ bool ConfigParser::IsDirective(const std::string& token)
     return token == "listen"
         || token == "root"
         || token == "cgi"
+        || token == "upload_file"
         || token == "index"
         || token == "return"
         || token == "autoindex"
@@ -95,6 +96,7 @@ void ConfigParser::ValidateDirective(
         || key == "index"
         || key == "autoindex"
         || key == "server_name"
+        || key == "upload_file"
         || key == "client_max_body_size")
     {
         if (values.size() != 1)
@@ -193,7 +195,7 @@ void ConfigParser::ValidateDirective(
     }
 }
 
-void ConfigParser::ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap)
+void ConfigParser::ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap,std::map<int, std::string>& error_pages)
 {
     std::string key;
     std::vector<std::string> values;
@@ -222,6 +224,21 @@ void ConfigParser::ParseDirective(std::map<std::string, std::vector<std::string>
     Expect(";");
 
     ValidateDirective(key, values, directivesMap);
+
+    if (key == "error_page")
+    {
+        if (values.size() >= 2)
+        {
+            const std::string& path = values.back();
+
+            for (size_t i = 0; i + 1 < values.size(); ++i)
+            {
+                int status = std::atoi(values[i].c_str());
+                error_pages[status] = path;
+            }
+        }
+    }
+
     // to handle multiple CGI AND PORTS
     if (key == "cgi")
     {
@@ -230,7 +247,7 @@ void ConfigParser::ParseDirective(std::map<std::string, std::vector<std::string>
             values.begin(),
             values.end());
     }
-    else
+    else    
     {
         directivesMap[key] = values;
     }
@@ -254,7 +271,7 @@ LocationConfig ConfigParser::ParseLocationBlock()
     // Read everything inside the braces
     while (!IsEOF() && CurrentToken() != "}") 
     {
-        ParseDirective(loc.directives);
+        ParseDirective(loc.directives,loc.error_pages);
     }
 
     Expect("}");
@@ -279,7 +296,7 @@ ServerConfig ConfigParser::ParseServerBlock()
             server.locations.push_back(ParseLocationBlock());
         } else {
             // Treat as a standard server-level directive
-            ParseDirective(server.directives);
+            ParseDirective(server.directives,server.error_pages);
         }
     }
 
@@ -353,6 +370,7 @@ void PrintConfigTree(const ConfigTree& tree)
             std::cout << "  Index                 : " << loc.index << "\n";
             std::cout << "  Autoindex             : " << (loc.autoindex ? "on" : "off") << "\n";
             std::cout << "  Client Max Body Size  : " << loc.client_max_body_size << "\n";
+            std::cout << "  upload_file           :" << loc.upload_file << "\n";
 
             std::cout << "  Allow Methods         : ";
             PrintStringVector(loc.allow_methods);
@@ -465,6 +483,8 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
             srv.server_name = ""; // Empty string acts as the default catch-all
         }
 
+
+
         // Extract Listens
         if (srv.directives.count("listen")) {
             for (size_t l = 0; l < srv.directives["listen"].size(); ++l) {
@@ -494,11 +514,20 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
             loc.index = loc.directives.count("index") ? loc.directives["index"][0] : srv.index;
             loc.autoindex = loc.directives.count("autoindex") ? (loc.directives["autoindex"][0] == "on") : srv.autoindex;
             loc.client_max_body_size = loc.directives.count("client_max_body_size") ? std::atoi(loc.directives["client_max_body_size"][0].c_str()) : srv.client_max_body_size;
-
+            
+             loc.upload_file = loc.directives.count("upload_file") ? loc.directives["upload_file"][0] : "";
             // Allow Methods (Will automatically contain ["GET", "POST", "DELETE"])
             if (loc.directives.count("allow_methods")) {
                 loc.allow_methods = loc.directives["allow_methods"];
             }
+            
+            // here we handle the error_pages 
+            // we only inherite if we dont have a error_pages and the server block is also non-empty
+            if (loc.error_pages.empty() && !srv.error_pages.empty())
+            {
+                loc.error_pages = srv.error_pages;
+            }
+
 
             // in dirrective multiple cgi data is stored this way : [".py", "/usr/bin/python3", ".php", "/usr/bin/php-cgi"]
             // meaning we need to skip k += 2 ; to get Extension | interpreter 
@@ -519,20 +548,20 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
             }
 
             // Parse Error Pages (Format: 400 403 405 413 /error/error.html)
-            if (loc.directives.count("error_page")) {
-                const std::vector<std::string>& err_vals = loc.directives["error_page"];                
-                // we can throw an error for the error page at least having 2 argument 
-                // but im not gonna do that the user should respect the structure 
-                // the last argument should be the URI to serve => the HTML file path
-                if (err_vals.size() >= 2) { 
-                    std::string error_file_path = err_vals.back(); 
+            // if (loc.directives.count("error_page")) {
+            //     const std::vector<std::string>& err_vals = loc.directives["error_page"];                
+            //     // we can throw an error for the error page at least having 2 argument 
+            //     // but im not gonna do that the user should respect the structure 
+            //     // the last argument should be the URI to serve => the HTML file path
+            //     if (err_vals.size() >= 2) { 
+            //         std::string error_file_path = err_vals.back(); 
                     
-                    for (size_t k = 0; k < err_vals.size() - 1; ++k) {
-                        int status_code = std::atoi(err_vals[k].c_str());
-                        loc.error_pages[status_code] = error_file_path;
-                    }
-                }
-            }
+            //         for (size_t k = 0; k < err_vals.size() - 1; ++k) {
+            //             int status_code = std::atoi(err_vals[k].c_str());
+            //             loc.error_pages[status_code] = error_file_path;
+            //         }
+            //     }
+            // }
         }
     }
 }

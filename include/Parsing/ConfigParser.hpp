@@ -37,6 +37,8 @@ struct LocationConfig {
     // Error pages: map of status code to file path (e.g., {404: "/404.html"})
     std::map<int, std::string>  error_pages; 
 
+    std::string upload_file;
+
     // Default constructor for safe fallbacks
     LocationConfig() : autoindex(false), client_max_body_size(1048576) {
         return_directive.first = 0;
@@ -55,8 +57,10 @@ struct ServerConfig {
     // we give default since we dont have http{} and that would locaion inherit from
     std::string root;
     std::string index;
+    std::map<int, std::string>  error_pages; 
     bool        autoindex;
-    size_t      client_max_body_size;   
+    size_t      client_max_body_size;
+
 };
 
 struct ConfigTree {
@@ -80,7 +84,7 @@ class ConfigParser {
 
         // State Machine Functions
         // void                ParseDirective(std::map<std::string, std::string>& directivesMap);
-        void                ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap);
+        void                ParseDirective(std::map<std::string, std::vector<std::string> >& directivesMap,std::map<int, std::string>& error_pages);
         LocationConfig      ParseLocationBlock();
         ServerConfig        ParseServerBlock();
         bool                IsDirective(const std::string& token);
