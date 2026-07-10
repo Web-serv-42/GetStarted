@@ -103,6 +103,7 @@ class Client
 		ClientState	GetState() const;
 		void		SetState(ClientState state);
 		void		DisplayClientInfo() const;
+		
 		const std::string &GetRawRequestString() const;
 		std::string &GetRawRequestString();
 
@@ -122,5 +123,6 @@ class Client
 			return m_Routing;
 		}
 
+		
 
 };

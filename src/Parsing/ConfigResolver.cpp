@@ -181,8 +181,6 @@ const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(
         if (!IsPrefixMatch(location.path, uri))
             continue;
         
-        std::cout << "Location Path => " << location.path << std::endl;
-
         if (location.path.size() > longestMatch)
         {
             longestMatch = location.path.size();

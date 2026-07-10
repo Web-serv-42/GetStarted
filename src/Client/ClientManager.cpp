@@ -274,14 +274,15 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
         }
         // we parse request when we fully parse it we return true else keep on waiting epoll 
         bool is_request_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
-
+        // if this failed check the request->
         if (!is_request_fully_parsed)
         {
+            // std::cout << "REQUEST FAILED error_code => " << client->GetRequest().GetErrorCode() << std::endl;
             DEBUG_LOG("Request incomplete. Yielding execution back to epoll loop.");
             return; 
         }
 
-        // PrintParsedRequest(client->GetRequest());
+        PrintParsedRequest(client->GetRequest());
 
         // -------------------------------------------------
         // Resolve routing.
@@ -301,7 +302,7 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 
         client->SetRouting(routing);
 
-        PrintRoutingInfo(client);
+        // PrintRoutingInfo(client);
 
         
         client->SetState(STATE_EXECUTING); 
