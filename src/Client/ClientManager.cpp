@@ -65,29 +65,22 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 	SUCCESS_LOG("New client connected");
 }
 
-
-void ClientManager::PrintRoutingInfo(Client* client, Request& request)
+void ClientManager::PrintRoutingInfo(Client* client)
 {
-    std::string host = request.GetHeader("host");
+    const Request& request = client->GetRequest();
+    const Routing& routing = client->GetRouting();
 
-    int localPort = client->GetLocalPort();
-    std::string localIp = client->GetLocalIp();
+    std::string host = request.GetHeader("host");
 
     size_t colon = host.find(':');
     if (colon != std::string::npos)
-        host = host.substr(0, colon);
-
-    Routing routing = m_Resolver->ResolveRequest(
-        localIp,
-        localPort,
-        host,
-        request.GetPath());
+        host.erase(colon);
 
     std::cout << "\n";
     std::cout << "=============== ROUTING ===============\n";
 
-    std::cout << "Socket IP      : " << localIp << "\n";
-    std::cout << "Socket Port    : " << localPort << "\n";
+    std::cout << "Socket IP      : " << client->GetLocalIp() << "\n";
+    std::cout << "Socket Port    : " << client->GetLocalPort() << "\n";
     std::cout << "Host Header    : " << host << "\n";
     std::cout << "URI            : " << request.GetPath() << "\n";
     std::cout << "Method         : " << request.GetMethod() << "\n";
@@ -110,8 +103,8 @@ void ClientManager::PrintRoutingInfo(Client* client, Request& request)
         std::cout << "Root           : "
                   << routing.location->root << "\n";
 
-        std::cout << "Physical Path  : "
-                  << routing.rooterPath << "\n";
+        std::cout << "File Path  : "
+                  << routing.filePath << "\n";
 
         std::cout << "Index          : "
                   << routing.location->index << "\n";
@@ -120,16 +113,15 @@ void ClientManager::PrintRoutingInfo(Client* client, Request& request)
                   << (routing.location->autoindex ? "ON" : "OFF") << "\n";
 
         std::cout << "Body Limit     : "
-                  << routing.location->client_max_body_size << " bytes\n";
+                  << routing.location->client_max_body_size
+                  << " bytes\n";
 
         std::cout << "Upload Path    : "
                   << routing.location->upload_file << "\n";
 
         std::cout << "Allowed Methods: ";
 
-        for (size_t i = 0;
-             i < routing.location->allow_methods.size();
-             ++i)
+        for (size_t i = 0; i < routing.location->allow_methods.size(); ++i)
         {
             if (i)
                 std::cout << ", ";
@@ -280,18 +272,36 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
             this->DisconnectClient(client);
             return;
         }
-        
-        bool is_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
+        // we parse request when we fully parse it we return true else keep on waiting epoll 
+        bool is_request_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
 
-        if (!is_fully_parsed)
+        if (!is_request_fully_parsed)
         {
             DEBUG_LOG("Request incomplete. Yielding execution back to epoll loop.");
             return; 
         }
 
         // PrintParsedRequest(client->GetRequest());
-        
-        PrintRoutingInfo(client, client->GetRequest());
+
+        // -------------------------------------------------
+        // Resolve routing.
+        // -------------------------------------------------
+
+        std::string host = client->GetRequest().GetHeader("host");
+
+        size_t colon = host.find(':');
+        if (colon != std::string::npos)
+            host.erase(colon);
+
+        Routing routing = m_Resolver->ResolveRequest(
+            client->GetLocalIp(),
+            client->GetLocalPort(),
+            host,
+            client->GetRequest().GetPath());
+
+        client->SetRouting(routing);
+
+        PrintRoutingInfo(client);
 
         
         client->SetState(STATE_EXECUTING); 

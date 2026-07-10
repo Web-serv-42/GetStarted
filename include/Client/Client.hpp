@@ -15,6 +15,7 @@
 #include "Core/Log.hpp"
 #include "CGI/CGI.hpp"
 #include "../HTTP/Request/Request.hpp"
+#include "../Parsing/ConfigResolver.hpp"
 
 #include <sstream>
 
@@ -54,6 +55,7 @@ class Client
 		Request  				m_Request;   //<-- Later: HTTP Request Parser
 		// Response m_Response;  <-- Later: HTTP Response Builder
 		ClientState				m_State;
+		Routing					m_Routing; 
 		// Buffers to hold data if recv/send are interrupted (Non-blocking)
 		std::string				m_ReadBuffer;
 		std::string				m_WriteBuffer;
@@ -109,5 +111,16 @@ class Client
 		void SetLocalPort(int port);
 		const std::string& GetLocalIp() const;
 		int GetLocalPort() const;
+
+		// ROUTING
+		void SetRouting(const Routing& routing)
+		{
+			m_Routing = routing;
+		}
+		const Routing& GetRouting() const
+		{
+			return m_Routing;
+		}
+
 
 };

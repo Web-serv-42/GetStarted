@@ -36,7 +36,7 @@ struct Routing
 {
     const ServerConfig*      server;
     const LocationConfig*    location;
-    std::string              rooterPath;
+    std::string              filePath;
 
     Routing() : server(NULL), location(NULL) {}
 };
