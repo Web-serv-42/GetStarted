@@ -15,6 +15,9 @@
 
 #include <string>
 #include <map>
+ #include <stdlib.h>
+ #include <unistd.h>
+
 
 // Core Enums
 enum HttpMethod { HTTP_GET, HTTP_POST, HTTP_DELETE, HTTP_UNKNOWN };
@@ -27,8 +30,11 @@ class Request {
         std::string                         m_Query;   // for CGI in case or ?id=1
         std::string                         m_Version; //  HTTP version
         std::map<std::string, std::string>  m_Headers; // headers map
-        std::string                         m_Body; // we can change this after and stop it into a file
         
+        int                                 m_BodyFd;
+        // should we change this size_t ?
+        size_t                              m_BodyReceived;
+
         ParseState                          m_State;
         size_t                              m_ContentLength; // setting the content length
         int                                 m_ErrorCode; // error code
@@ -45,7 +51,7 @@ class Request {
         void SetQuery(const std::string& q);
         void SetVersion(const std::string& v);
         void AddHeader(const std::string& k, const std::string& v);
-        void AppendBody(const std::string& d);
+        // void AppendBody(const std::string& d);
         void SetContentLength(size_t l);
 
         // Getters
@@ -55,12 +61,21 @@ class Request {
         
         const std::string& GetPath() const;
         const std::string& GetQuery() const;
-        const std::string& GetBody() const;
+        // const std::string& GetBody() const;
         const std::string& GetVesrion() const;
         const std::map<std::string, std::string>& GetHeaders() const;
         
         size_t      GetContentLength() const;
         std::string GetHeader(const std::string& key) const;
+        // handling boddy 
+
+        bool        OpenBodyFile();
+        bool        AppendBody(const char* buffer, size_t len);
+        void        CloseBodyFile();
+        int         GetBodyFd() const;
+        size_t      GetBodyReceived();
+
+
 };
 
 #endif

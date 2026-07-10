@@ -157,6 +157,14 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
                     }
 
                     req.SetContentLength(std::atoi(cl.c_str()));
+                    // after we know that we are going to parse the body we open the file
+                    if (!req.OpenBodyFile())
+                    {
+                        req.SetErrorCode(500);
+                        req.SetState(PARSE_ERROR);
+                        return true;
+                    }
+
                     req.SetState(PARSE_BODY);
                 }
                 else
@@ -182,8 +190,31 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
         else if (req.GetState() == PARSE_BODY) {
             size_t expected = req.GetContentLength();
             if (rawBuffer.length() >= expected) {
-                req.AppendBody(rawBuffer.substr(0, expected));
-                rawBuffer.erase(0, expected);
+                size_t remaining = expected - req.GetBodyReceived();
+
+                size_t toWrite = rawBuffer.size();
+
+                if (toWrite > remaining)
+                    toWrite = remaining;
+
+                if (!req.AppendBody(rawBuffer.data(), toWrite))
+                {
+                    req.SetErrorCode(500);
+                    req.SetState(PARSE_ERROR);
+                    return true;
+                }
+
+                rawBuffer.erase(0, toWrite);
+
+                if (req.GetBodyReceived() == expected)
+                {
+                    lseek(req.GetBodyFd(), 0, SEEK_SET);
+                    req.SetState(PARSE_COMPLETE);
+                }
+                else
+                {
+                    return false;
+                }
                 req.SetState(PARSE_COMPLETE);
             } else {
                 return false; // waiting for more data from epoll
@@ -192,3 +223,4 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
     }
     return (req.GetState() == PARSE_COMPLETE); // return true parsing is done
 }
+
