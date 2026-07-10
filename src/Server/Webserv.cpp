@@ -30,7 +30,6 @@ Webserv::Webserv() :
 
 Webserv::~Webserv()
 {
-	
 	delete m_Resolver;
 	for (size_t i = 0; i < this->m_Servers.size(); i++)
 	{
@@ -40,7 +39,7 @@ Webserv::~Webserv()
 
 bool Webserv::Init(const ConfigTree& config)
 {
-
+	// we run config resolver as a runtime to resolve listen so we dont have dangling servers
 	m_Resolver = new ConfigResolver(config);
 
 	m_ClientManager.SetResolver(m_Resolver);
@@ -81,7 +80,8 @@ bool Webserv::Init(const ConfigTree& config)
                       << runtime[i].listen.host << ":" 
                       << runtime[i].listen.port << std::endl;
             delete server;
-            continue; // Skip this one, but try the others
+            continue; // if we failed to bind we should break and stop 
+			// its a binding problem 
         }
 
         this->m_Servers.push_back(server);

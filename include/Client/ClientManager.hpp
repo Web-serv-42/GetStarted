@@ -26,6 +26,7 @@ class ClientManager
 		std::map<int, Client*>	m_Clients;
 		Multiplexer&			m_Polling;
 		CGIManager&				m_CGIManager;
+		// we would use this for the routing phase , to get the server and location
 		ConfigResolver* 		m_Resolver;
 
 	public:
@@ -40,5 +41,5 @@ class ClientManager
 		void		CheckClientTimeouts();
 		void		SetResolver(ConfigResolver *resolver);
 		Client*		GetClient(int clientFd);
-		void 		PrintRoutingInfo(Client* client, Request &request);
+		void 		PrintRoutingInfo(Client* client);
 };

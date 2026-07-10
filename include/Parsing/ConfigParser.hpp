@@ -6,9 +6,8 @@
 #include <map>
 #include <stdexcept>
 #include <cstdlib>
-// =========================================================================
-// DATA STRUCTURES (The "Abstract Syntax Tree")
-// =========================================================================
+
+
 struct ListenConfig
 {
     std::string host;
@@ -39,7 +38,7 @@ struct LocationConfig {
 
     std::string upload_file;
 
-    // Default constructor for safe fallbacks
+    // default constructor for safe fallbacks | 1M default client_max_body_size
     LocationConfig() : autoindex(false), client_max_body_size(1048576) {
         return_directive.first = 0;
     }
@@ -51,6 +50,7 @@ struct ServerConfig {
     std::vector<LocationConfig>         locations;
     // so now we enforce that this 2 are mandatory in the config file 
 
+    // leave this here even if we just accept one listen per server , for future adjustment
     std::vector<ListenConfig> listens;
     std::string  server_name; // forcing only one server_name per server
 

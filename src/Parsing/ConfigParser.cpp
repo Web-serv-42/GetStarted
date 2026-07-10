@@ -1,4 +1,5 @@
 #include "../include/Parsing/ConfigParser.hpp"
+#include "../../include/Utils/utils.hpp"
 #include <iostream>
 // =========================================================================
 // CONSTRUCTOR & DESTRUCTOR
@@ -280,8 +281,10 @@ LocationConfig ConfigParser::ParseLocationBlock()
 
 
 // =========================================================================
-// STATE 3: PARSE SERVER (e.g., "server { ... }")
+// STATE 3: PARSE SERVER ("server {}")
 // =========================================================================
+
+
 ServerConfig ConfigParser::ParseServerBlock() 
 {
     ServerConfig server;
@@ -305,135 +308,11 @@ ServerConfig ConfigParser::ParseServerBlock()
 }
 
 
-
-
-static void PrintStringVector(const std::vector<std::string>& vec)
-{
-    std::cout << "[ ";
-    for (size_t i = 0; i < vec.size(); ++i)
-    {
-        std::cout << "\"" << vec[i] << "\"";
-        if (i + 1 != vec.size())
-            std::cout << ", ";
-    }
-    std::cout << " ]";
-}
-
-void PrintConfigTree(const ConfigTree& tree)
-{
-    std::cout << "=========================================\n";
-    std::cout << "           CONFIG TREE\n";
-    std::cout << "=========================================\n\n";
-
-    for (size_t i = 0; i < tree.servers.size(); ++i)
-    {
-        const ServerConfig& srv = tree.servers[i];
-
-        std::cout << "SERVER #" << i + 1 << "\n";
-        std::cout << "-----------------------------------------\n";
-
-        std::cout << "Server Name            : " << srv.server_name << "\n";
-
-        std::cout << "Listen                 : ";
-        for (size_t j = 0; j < srv.listens.size(); ++j)
-        {
-            std::cout << srv.listens[j].host << ":" << srv.listens[j].port;
-            if (j + 1 != srv.listens.size())
-                std::cout << ", ";
-        }
-        std::cout << "\n";
-
-        std::cout << "Root                   : " << srv.root << "\n";
-        std::cout << "Index                  : " << srv.index << "\n";
-        std::cout << "Autoindex              : " << (srv.autoindex ? "on" : "off") << "\n";
-        std::cout << "Client Max Body Size   : " << srv.client_max_body_size << "\n";
-
-        std::cout << "\nRaw Directives:\n";
-        for (std::map<std::string, std::vector<std::string> >::const_iterator it = srv.directives.begin();
-             it != srv.directives.end(); ++it)
-        {
-            std::cout << "  " << it->first << " = ";
-            PrintStringVector(it->second);
-            std::cout << "\n";
-        }
-
-        std::cout << "\nLocations (" << srv.locations.size() << ")\n";
-
-        for (size_t j = 0; j < srv.locations.size(); ++j)
-        {
-            const LocationConfig& loc = srv.locations[j];
-
-            std::cout << "\n  LOCATION #" << j + 1 << "\n";
-            std::cout << "  -----------------------------\n";
-            std::cout << "  Path                  : " << loc.path << "\n";
-            std::cout << "  Root                  : " << loc.root << "\n";
-            std::cout << "  Index                 : " << loc.index << "\n";
-            std::cout << "  Autoindex             : " << (loc.autoindex ? "on" : "off") << "\n";
-            std::cout << "  Client Max Body Size  : " << loc.client_max_body_size << "\n";
-            std::cout << "  upload_file           :" << loc.upload_file << "\n";
-
-            std::cout << "  Allow Methods         : ";
-            PrintStringVector(loc.allow_methods);
-            std::cout << "\n";
-
-            std::cout << "  CGI:\n";
-            if (loc.cgi.empty())
-                std::cout << "    (none)\n";
-            else
-            {
-                for (std::map<std::string, std::string>::const_iterator it = loc.cgi.begin();
-                     it != loc.cgi.end(); ++it)
-                {
-                    std::cout << "    " << it->first
-                              << " -> " << it->second << "\n";
-                }
-            }
-
-            std::cout << "  Return Directive      : ";
-            if (loc.return_directive.first == 0)
-                std::cout << "(none)\n";
-            else
-                std::cout << loc.return_directive.first
-                          << " -> "
-                          << loc.return_directive.second
-                          << "\n";
-
-            std::cout << "  Error Pages:\n";
-            if (loc.error_pages.empty())
-                std::cout << "    (none)\n";
-            else
-            {
-                for (std::map<int, std::string>::const_iterator it = loc.error_pages.begin();
-                     it != loc.error_pages.end(); ++it)
-                {
-                    std::cout << "    "
-                              << it->first
-                              << " -> "
-                              << it->second
-                              << "\n";
-                }
-            }
-
-            std::cout << "  Raw Directives:\n";
-            for (std::map<std::string, std::vector<std::string> >::const_iterator it = loc.directives.begin();
-                 it != loc.directives.end(); ++it)
-            {
-                std::cout << "    " << it->first << " = ";
-                PrintStringVector(it->second);
-                std::cout << "\n";
-            }
-        }
-
-        std::cout << "\n";
-    }
-
-    std::cout << "=========================================\n";
-}
-
-
 // =========================================================================
 // MAIN ENTRY POINT
 // =========================================================================
+
+
 ConfigTree ConfigParser::Parse() 
 {
     ConfigTree tree;
@@ -454,11 +333,14 @@ ConfigTree ConfigParser::Parse()
 
     FinalizeAndInherit(tree);
 
-    PrintConfigTree(tree); 
+    // PrintConfigTree(tree); 
 
     return tree;
 }
 
+// =========================================================================
+// PARSING FINALIZER  
+// =========================================================================
 
 void ConfigParser::FinalizeAndInherit(ConfigTree& tree) 
 {
@@ -528,7 +410,6 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
                 loc.error_pages = srv.error_pages;
             }
 
-
             // in dirrective multiple cgi data is stored this way : [".py", "/usr/bin/python3", ".php", "/usr/bin/php-cgi"]
             // meaning we need to skip k += 2 ; to get Extension | interpreter 
             if (loc.directives.count("cgi")) {
@@ -546,22 +427,6 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
                     loc.return_directive.second = ret_vals[1];
                 }   
             }
-
-            // Parse Error Pages (Format: 400 403 405 413 /error/error.html)
-            // if (loc.directives.count("error_page")) {
-            //     const std::vector<std::string>& err_vals = loc.directives["error_page"];                
-            //     // we can throw an error for the error page at least having 2 argument 
-            //     // but im not gonna do that the user should respect the structure 
-            //     // the last argument should be the URI to serve => the HTML file path
-            //     if (err_vals.size() >= 2) { 
-            //         std::string error_file_path = err_vals.back(); 
-                    
-            //         for (size_t k = 0; k < err_vals.size() - 1; ++k) {
-            //             int status_code = std::atoi(err_vals[k].c_str());
-            //             loc.error_pages[status_code] = error_file_path;
-            //         }
-            //     }
-            // }
         }
     }
 }

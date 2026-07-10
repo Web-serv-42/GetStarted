@@ -84,24 +84,34 @@ bool ConfigResolver::IsPrefixMatch(
     const std::string& location,
     const std::string& uri) const
 {
-    // URI shorter than the location cannot match.
-    if (uri.size() < location.size())
-        return false;
-
-    // The URI must begin with the location.
-    if (uri.compare(0, location.size(), location) != 0)
-        return false;
-
-    // "/" matches everything
     if (location == "/")
         return true;
 
+    // what we do here is that if the location ends with  '/' 
+    // we remove it just for comparison with URI
+    std::string normalized = location;
+
+    if (normalized.size() > 1 &&
+        normalized[normalized.size() - 1] == '/')
+    {
+        normalized.erase(normalized.size() - 1);
+    }
+
+    // URI shorter than the normalized location cannot match.
+    if (uri.size() < normalized.size())
+        return false;
+
+    // URI must begin with the normalized location.
+    if (uri.compare(0, normalized.size(), normalized) != 0)
+        return false;
+
     // Exact match.
-    if (uri.size() == location.size())
+    if (uri.size() == normalized.size())
         return true;
 
-    // The next character must be a path separator.
-    return (uri[location.size()] == '/');
+    // after that we compaire the last characterand it should be '/'
+    // example : downloadss this would match but we check the last character 
+    return (uri[normalized.size()] == '/');
 }
 
 
@@ -170,42 +180,55 @@ const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(
 
         if (!IsPrefixMatch(location.path, uri))
             continue;
-
+        
         if (location.path.size() > longestMatch)
         {
             longestMatch = location.path.size();
             best = &location;
         }
     }
-
+    
     return best;
 }
 
-// --Listen Directive Config Resolver
+// --- ROUTING RESOLVER for Responce
 
-// ListenConfig ConfigResolver::ParseListenValue(const std::string& value) const
-// {
-//     ListenConfig listen_line;
+Routing ConfigResolver::ResolveRequest(
+    const std::string& localIp,
+    int port,
+    const std::string& hostHeader,
+    const std::string& uri) const
+{
+    Routing routing;
 
-//     size_t colon = value.find(':');
+    routing.server = GetServerBy_Ip_Port_Host(localIp, port, hostHeader);
 
-//     if (colon == std::string::npos)
-//     {
-//         listen_line.host = "0.0.0.0";
-//         listen_line.port = std::atoi(value.c_str());
-//     }
-//     else
-//     {
-//         listen_line.host = value.substr(0, colon);
-//         listen_line.port = std::atoi(value.substr(colon + 1).c_str());
-//     }
+    if (routing.server == NULL)
+        return routing;
 
-//     if (listen_line.port < 1 || listen_line.port > 65535)
-//     {
-//         throw std::runtime_error(
-//             "Invalid listen port: " + value
-//         );
-//     }
+    routing.location = GetLocationBy_Server_Uri(*routing.server, uri);
 
-//     return listen_line;
-// }
+    if (routing.location == NULL)
+        return routing;
+
+    // Build the physical filesystem path.
+    std::string remaining = uri;
+
+    // 
+    if (routing.location->path != "/")
+        remaining.erase(0, routing.location->path.size());
+
+    // we make sure that the URI is starting with a '/'
+    if (!remaining.empty() && remaining[0] != '/')
+        remaining.insert(0, "/");
+    
+    // this for case that the root => /var/www/ meanind ends with '/' we normalize that
+    std::string root = routing.location->root;
+
+    if (root.size() > 1 && root[root.size() - 1] == '/')
+        root.erase(root.size() - 1);
+
+    routing.filePath = root + remaining;
+
+    return routing;
+}

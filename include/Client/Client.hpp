@@ -15,6 +15,7 @@
 #include "Core/Log.hpp"
 #include "CGI/CGI.hpp"
 #include "../HTTP/Request/Request.hpp"
+#include "../Parsing/ConfigResolver.hpp"
 
 #include <sstream>
 
@@ -51,9 +52,10 @@ class Client
 		int						m_SocketFd;
 		struct sockaddr_storage	m_ClientAddr;
 		CGI*					m_CGI;
-		Request  m_Request;   //<-- Later: HTTP Request Parser
+		Request  				m_Request;   //<-- Later: HTTP Request Parser
 		// Response m_Response;  <-- Later: HTTP Response Builder
 		ClientState				m_State;
+		Routing					m_Routing; 
 		// Buffers to hold data if recv/send are interrupted (Non-blocking)
 		std::string				m_ReadBuffer;
 		std::string				m_WriteBuffer;
@@ -66,7 +68,7 @@ class Client
 		int						m_ContentFileFd;
 		// infos that we need for Routing
 		std::string m_LocalIp;
-		int         m_LocalPort;
+		int         m_LocalPort;	
 
 	public:
 		Client();
@@ -101,6 +103,7 @@ class Client
 		ClientState	GetState() const;
 		void		SetState(ClientState state);
 		void		DisplayClientInfo() const;
+		
 		const std::string &GetRawRequestString() const;
 		std::string &GetRawRequestString();
 
@@ -109,5 +112,17 @@ class Client
 		void SetLocalPort(int port);
 		const std::string& GetLocalIp() const;
 		int GetLocalPort() const;
+
+		// ROUTING
+		void SetRouting(const Routing& routing)
+		{
+			m_Routing = routing;
+		}
+		const Routing& GetRouting() const
+		{
+			return m_Routing;
+		}
+
+		
 
 };
