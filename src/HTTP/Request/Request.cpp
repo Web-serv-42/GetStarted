@@ -112,7 +112,7 @@ int Request::GetBodyFd() const
     return m_BodyFd;
 }
 
-size_t  Request::GetBodyReceived()
+size_t  Request::GetBodyReceived() const
 {
     return m_BodyReceived;
 }
