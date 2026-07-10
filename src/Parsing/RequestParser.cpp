@@ -99,7 +99,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 
             // need more work on this 
             // do we just get what http 1.0 needed or ust parse every thing ??
-            if (line.empty()) { // End of headers
+            if (line.empty()) {
                 std::string cl = req.GetHeader("content-length");
                 if (!cl.empty()) {
                     req.SetContentLength(std::atoi(cl.c_str()));

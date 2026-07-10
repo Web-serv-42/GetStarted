@@ -181,31 +181,38 @@ const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(
     return best;
 }
 
-// --Listen Directive Config Resolver
+// --- ROUTING RESOLVER for Responce
 
-// ListenConfig ConfigResolver::ParseListenValue(const std::string& value) const
-// {
-//     ListenConfig listen_line;
+Routing ConfigResolver::ResolveRequest(
+    const std::string& localIp,
+    int port,
+    const std::string& hostHeader,
+    const std::string& uri) const
+{
+    Routing routing;
 
-//     size_t colon = value.find(':');
+    // Resolve the virtual server.
+    routing.server = GetServerBy_Ip_Port_Host(localIp, port, hostHeader);
 
-//     if (colon == std::string::npos)
-//     {
-//         listen_line.host = "0.0.0.0";
-//         listen_line.port = std::atoi(value.c_str());
-//     }
-//     else
-//     {
-//         listen_line.host = value.substr(0, colon);
-//         listen_line.port = std::atoi(value.substr(colon + 1).c_str());
-//     }
+    if (routing.server == NULL)
+        return routing;
 
-//     if (listen_line.port < 1 || listen_line.port > 65535)
-//     {
-//         throw std::runtime_error(
-//             "Invalid listen port: " + value
-//         );
-//     }
+    // Resolve the best matching location.
+    routing.location = GetLocationBy_Server_Uri(*routing.server, uri);
 
-//     return listen_line;
-// }
+    if (routing.location == NULL)
+        return routing;
+
+    // Build the physical filesystem path.
+    std::string remaining = uri;
+
+    if (routing.location->path != "/")
+        remaining.erase(0, routing.location->path.size());
+
+    if (!remaining.empty() && remaining[0] != '/')
+        remaining.insert(0, "/");
+
+    routing.rooterPath = routing.location->root + remaining;
+
+    return routing;
+}

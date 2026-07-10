@@ -35,6 +35,7 @@ class Request {
 
     public:
         Request();
+        ~Request();
         
         // Setters
         void SetState(ParseState s);

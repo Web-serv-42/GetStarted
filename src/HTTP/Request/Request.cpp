@@ -15,6 +15,8 @@
 #include <iostream>
 
 Request::Request() : m_Method(HTTP_UNKNOWN), m_State(PARSE_REQUEST_LINE), m_ContentLength(0), m_ErrorCode(0) {}
+Request::~Request(){}
+
 
 // Setters
 void Request::SetState(ParseState s) { m_State = s; }

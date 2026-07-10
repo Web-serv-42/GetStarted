@@ -42,7 +42,7 @@ class Webserv
 		// stored as pointer to get NULL , since its calling constructor
 		ConfigResolver*			m_Resolver;
 
-	public:
+	public:	
 		Webserv();
 		~Webserv();
 

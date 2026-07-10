@@ -21,6 +21,7 @@
 //     └── Server C
 //
 // without this we can combiene multiple servers to one socket
+
 struct ResolvedListen
 {
     ListenConfig                        listen;
@@ -28,35 +29,53 @@ struct ResolvedListen
     std::vector<const ServerConfig*>    servers;
 };
 
+
+// we make this struct for to resolve Server , location , and the rooter path 
+
+struct Routing
+{
+    const ServerConfig*      server;
+    const LocationConfig*    location;
+    std::string              rooterPath;
+
+    Routing() : server(NULL), location(NULL) {}
+};
+
+
 class ConfigResolver
 {
-private:
+    private:
 
-    const ConfigTree&                   m_Config;
+        const ConfigTree&                   m_Config;
 
-    std::vector<ResolvedListen>         m_RuntimeListens;
+        std::vector<ResolvedListen>         m_RuntimeListens;
 
-private:
-    // we parse the listen value 127.0.0.1:8080 or 8080 and give it the default 0.0.0.0
-    ListenConfig ParseListenValue(const std::string& value) const;
+    private:
+        // we parse the listen value 127.0.0.1:8080 or 8080 and give it the default 0.0.0.0
+        ListenConfig ParseListenValue(const std::string& value) const;
 
-    void BuildRuntimeListens();
+        void BuildRuntimeListens();
 
-    // Search an already-created runtime listen.
-    ResolvedListen* FindRuntimeListen(const ListenConfig& listen);
-    // with this we get the exact path for the URI
-    bool IsPrefixMatch(const std::string& location,const std::string& uri) const;
+        // Search an already-created runtime listen.
+        ResolvedListen* FindRuntimeListen(const ListenConfig& listen);
+        // with this we get the exact path for the URI
+        bool IsPrefixMatch(const std::string& location,const std::string& uri) const;
+        // Used later by the router.
+        const ServerConfig* GetServerBy_Ip_Port_Host(const std::string& localIp,int port,const std::string& hostHeader) const;
 
-public:
+        const LocationConfig* GetLocationBy_Server_Uri(const ServerConfig& server,const std::string& uri) const;
 
-    ConfigResolver(const ConfigTree& config);
-    ~ConfigResolver();
+    public:
 
-    // Used by Webserv::Init()
-    const std::vector<ResolvedListen>& GetRuntimeListens() const;
+        ConfigResolver(const ConfigTree& config);
+        ~ConfigResolver();
 
-    // Used later by the router.
-    const ServerConfig* GetServerBy_Ip_Port_Host(const std::string& localIp,int port,const std::string& hostHeader) const;
+        // Used by Webserv::Init()
+        const std::vector<ResolvedListen>& GetRuntimeListens() const;
 
-    const LocationConfig* GetLocationBy_Server_Uri(const ServerConfig& server,const std::string& uri) const;
+        // this for routing resolving 
+        Routing ResolveRequest(const std::string& localIp,int port,
+                                const std::string& hostHeader,
+                                const std::string& uri) const;
+
 };

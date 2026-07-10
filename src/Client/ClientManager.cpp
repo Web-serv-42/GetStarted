@@ -18,12 +18,10 @@
 
 ClientManager::ClientManager(Multiplexer& poller, CGIManager& CGIManager) : m_Polling(poller), m_CGIManager(CGIManager)
 {
-
 }
 
 ClientManager::ClientManager(Multiplexer& poller, CGIManager& CGIManager,ConfigResolver * resolver) : m_Polling(poller), m_CGIManager(CGIManager), m_Resolver(resolver)
 { 
-
 }
 
 
@@ -68,87 +66,130 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 }
 
 
-void ClientManager::PrintRoutingInfo(Client* client, Request &request)
+void ClientManager::PrintRoutingInfo(Client* client, Request& request)
 {
-    // Request request;
-
-    // bool is_done = RequestParser::Parse(request, client->GetRawRequestString());
-
-    // if (is_done)
-    // {
-    //             std::cout << "Parser returned TRUE! Request is fully assembled.\n";
-    // }else
-    // {
-    //             std::cout << "Parser returned FALSE. We need to call recv() again.\n";
-
-    // }
-
     std::string host = request.GetHeader("host");
 
-    int localport = client->GetLocalPort();
-    std::string localIP = client->GetLocalIp();
+    int localPort = client->GetLocalPort();
+    std::string localIp = client->GetLocalIp();
 
     size_t colon = host.find(':');
     if (colon != std::string::npos)
-    {
         host = host.substr(0, colon);
-    }
 
-    std::cout << "Socket Request Port is => " << localport << std::endl;
-    std::cout << "Socket Request host is => " << localIP << std::endl;
-    std::cout << "Host Header is => " << host << std::endl;
-
-    const ServerConfig* server =
-        m_Resolver->GetServerBy_Ip_Port_Host(localIP,localport, host);
-
-        
-    const LocationConfig* location = NULL;
-
-    if (server)
-    {
-        location = m_Resolver->GetLocationBy_Server_Uri(*server, request.GetPath());
-    }
+    Routing routing = m_Resolver->ResolveRequest(
+        localIp,
+        localPort,
+        host,
+        request.GetPath());
 
     std::cout << "\n";
-    std::cout << "============= ROUTING =============\n";
-    std::cout << "Method   : " << request.GetMethod() << "\n";
-    std::cout << "Host     : " << host << "\n";
-    std::cout << "URI      : " << request.GetPath() << "\n";
+    std::cout << "=============== ROUTING ===============\n";
 
-    if (server)
+    std::cout << "Socket IP      : " << localIp << "\n";
+    std::cout << "Socket Port    : " << localPort << "\n";
+    std::cout << "Host Header    : " << host << "\n";
+    std::cout << "URI            : " << request.GetPath() << "\n";
+    std::cout << "Method         : " << request.GetMethod() << "\n";
+
+    if (routing.server)
     {
-        std::cout << "Server   : FOUND\n";
+        std::cout << "Server Name    : "
+                  << routing.server->server_name << "\n";
+    }
+    else
+    {
+        std::cout << "Server         : NOT FOUND\n";
+    }
 
-        std::map<std::string, std::vector<std::string> >::const_iterator it =
-            server->directives.find("server_name");
+    if (routing.location)
+    {
+        std::cout << "Location       : "
+                  << routing.location->path << "\n";
 
-        if (it != server->directives.end())
+        std::cout << "Root           : "
+                  << routing.location->root << "\n";
+
+        std::cout << "Physical Path  : "
+                  << routing.rooterPath << "\n";
+
+        std::cout << "Index          : "
+                  << routing.location->index << "\n";
+
+        std::cout << "Autoindex      : "
+                  << (routing.location->autoindex ? "ON" : "OFF") << "\n";
+
+        std::cout << "Body Limit     : "
+                  << routing.location->client_max_body_size << " bytes\n";
+
+        std::cout << "Upload Path    : "
+                  << routing.location->upload_file << "\n";
+
+        std::cout << "Allowed Methods: ";
+
+        for (size_t i = 0;
+             i < routing.location->allow_methods.size();
+             ++i)
         {
-            std::cout << "Names    : ";
+            if (i)
+                std::cout << ", ";
 
-            for (size_t i = 0; i < it->second.size(); ++i)
+            std::cout << routing.location->allow_methods[i];
+        }
+
+        std::cout << "\n";
+
+        if (routing.location->return_directive.first != 0)
+        {
+            std::cout << "Redirect       : "
+                      << routing.location->return_directive.first
+                      << " -> "
+                      << routing.location->return_directive.second
+                      << "\n";
+        }
+
+        if (!routing.location->cgi.empty())
+        {
+            std::cout << "CGI:\n";
+
+            std::map<std::string, std::string>::const_iterator it;
+
+            for (it = routing.location->cgi.begin();
+                 it != routing.location->cgi.end();
+                 ++it)
             {
-                if (i)
-                    std::cout << ", ";
-
-                std::cout << it->second[i];
+                std::cout << "    "
+                          << it->first
+                          << " -> "
+                          << it->second
+                          << "\n";
             }
+        }
 
-            std::cout << "\n";
+        if (!routing.location->error_pages.empty())
+        {
+            std::cout << "Error Pages:\n";
+
+            std::map<int, std::string>::const_iterator it;
+
+            for (it = routing.location->error_pages.begin();
+                 it != routing.location->error_pages.end();
+                 ++it)
+            {
+                std::cout << "    "
+                          << it->first
+                          << " -> "
+                          << it->second
+                          << "\n";
+            }
         }
     }
     else
     {
-        std::cout << "Server   : NOT FOUND\n";
+        std::cout << "Location       : NOT FOUND\n";
     }
 
-    
-    if (location)
-        std::cout << "Location : " << location->path << "\n";
-    else
-        std::cout << "Location : /\n";
-
-    std::cout << "===================================\n\n";
+    std::cout << "=======================================\n\n";
 }
 
 
@@ -248,7 +289,7 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
             return; 
         }
 
-        PrintParsedRequest(client->GetRequest());
+        // PrintParsedRequest(client->GetRequest());
         
         PrintRoutingInfo(client, client->GetRequest());
 
