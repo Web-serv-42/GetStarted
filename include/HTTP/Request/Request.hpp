@@ -73,7 +73,7 @@ class Request {
         bool        AppendBody(const char* buffer, size_t len);
         void        CloseBodyFile();
         int         GetBodyFd() const;
-        size_t      GetBodyReceived();
+        size_t      GetBodyReceived() const;
 
 
 };
