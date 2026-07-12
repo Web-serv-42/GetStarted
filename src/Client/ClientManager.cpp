@@ -218,6 +218,7 @@ void PrintParsedRequest(const Request& req)
 	// 4. Print Body Data
 	std::cout << "\033[1;32m[BODY]\033[0m\n";
 	std::cout << "  Expected Content-Length : " << req.GetContentLength() << " bytes\n";
+	std::cout << "  Body File Path          :" << req.GetBodyFilePath() << "\n";
 	std::cout << "  Body File Fd            :\n\033[0;36m";
 	(req.GetBodyFd() == -1)
 		? (std::cout << "(no FD)")

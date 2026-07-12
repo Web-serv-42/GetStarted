@@ -55,7 +55,7 @@ bool	Client::ReadData()
 	char	buffer[BUFFER_SIZE];
 
 	//TODO Member 2: Max Body Size check
-	receivedBytes = recv(this->m_SocketFd, (void*)&buffer, BUFFER_SIZE, 0);
+	receivedBytes = recv(this->m_SocketFd, buffer, BUFFER_SIZE, 0);
 	if (receivedBytes == 0)
 	{
 		TRACE_LOG("Client closed the connection.");
@@ -95,33 +95,45 @@ bool	Client::SendData()
 	return (true);
 }
 
-void	Client::BuildStaticResponse()
+void    Client::BuildStaticResponse()
 {
-	// A standard HTTP 200 OK response with some basic HTML
-	std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
-	
-	this->m_WriteBuffer = "HTTP/1.0 200 OK\r\n";
-	this->m_WriteBuffer += "Content-Type: text/html\r\n";
-	this->m_WriteBuffer += "Content-Length: 61\r\n"; // Length of the html string
-	this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
-	this->m_WriteBuffer += html;
-	
-	// Clear the read buffer so we are ready for the next request (Keep-Alive)
-	this->m_ReadBuffer.clear();
+    std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
+    std::ostringstream oss;
+
+    // 1. Standard HTTP/1.0 Status line
+    oss << "HTTP/1.0 200 OK\r\n";
+    // 2. Dynamic dynamic calculations for content length
+    oss << "Content-Type: text/html\r\n";
+    oss << "Content-Length: " << html.length() << "\r\n";
+    // 3. Keep connection active if needed (HTTP/1.0 explicitly flags this)
+    oss << "Connection: keep-alive\r\n";
+    oss << "\r\n";
+    oss << html;
+    
+    this->m_WriteBuffer = oss.str();
+    // REMOVED: this->m_ReadBuffer.clear() to preserve pipelined headers!
 }
 
-void	Client::BuildStaticErrorResponse()
-{
-	std::string html = "<html><body><h1>Fatal Error</h1></body></html>";
-	
-	this->m_WriteBuffer = "HTTP/1.0 500 KO\r\n";
-	this->m_WriteBuffer += "Content-Type: text/html\r\n";
-	this->m_WriteBuffer += "Content-Length: 40\r\n"; // Length of the html string
-	this->m_WriteBuffer += "\r\n"; // Empty line separating headers from body
-	this->m_WriteBuffer += html;
+#include <sstream>
 
-	// Clear the read buffer so we are ready for the next request (Keep-Alive)
-	this->m_ReadBuffer.clear();
+void Client::BuildStaticErrorResponse()
+{
+    std::string html = "<html><body><h1>500 Internal Server Error</h1></body></html>";
+    std::ostringstream oss;
+
+    // 1. Standard status line
+    oss << "HTTP/1.0 500 Internal Server Error\r\n";
+    // 2. Essential headers
+    oss << "Content-Type: text/html\r\n";
+    oss << "Content-Length: " << html.length() << "\r\n";
+    // 3. Explicitly tell the client we are dropping the connection due to the fatal error
+    oss << "Connection: close\r\n"; 
+    // 4. Empty line delimiter
+    oss << "\r\n"; 
+    // 5. Body payload
+    oss << html;
+    // Save to your write buffer
+    this->m_WriteBuffer = oss.str();
 }
 
 // Returns: -1 on error, 0 on EOF, or positive bytes read
@@ -161,7 +173,14 @@ int Client::PrepareWriteBuffer()
 		this->m_State = STATE_RESPONSE_SENT;
 		return (0);;
 	}
-	this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
+	if (this->m_CGI != NULL)
+	{
+		this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
+	}
+	else
+	{
+		this->m_FileContentPath = this->m_Routing.filePath;
+	}
 	// 1. A base implementaion of building headers before body
 	if (this->m_State == STATE_SENDING_HEADERS)
 	{
@@ -173,7 +192,7 @@ int Client::PrepareWriteBuffer()
 		}
 
 		headerStream << "HTTP/1.0 200 OK\r\n"
-		<< "Content-Type: text/html\r\n"
+		<< "Content-Type: text/html\r\n" // Note: can be extended with mime-types later
 		<< "Content-Length: " << fileInfo.st_size << "\r\n" // Exact dynamic size!
 		<< "\r\n";
 		this->m_WriteBuffer = headerStream.str();
@@ -211,7 +230,9 @@ int Client::PrepareWriteBuffer()
 	return (0);;
 }
 
-// Getters & Setters & Helpers
+// =========================================================================
+// GETTERS, SETTERS & BOILERPLATE HELPERS
+// =========================================================================
 
 int	Client::GetClientFd() const
 {

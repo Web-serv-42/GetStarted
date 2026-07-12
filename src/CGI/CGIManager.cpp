@@ -25,42 +25,6 @@ void		CGIManager::AttachCGI(Client* client)
 {
 	if (!client)
 		return;
-	// // --- FAKE ROUTER START (PYTHON3 EDITION)  ---
-	// // In the future, this comes from Member 1's logic.
-	// std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	// std::string scriptPath = "./cgi-bin/";
-	// std::string scriptName = "generateHtmlPage.py";
-	// std::string	tmpFileBody = "./cgi-bin/cgiBody_1.tmp";
-	// std::string	tmpFileOutput = GenerateTmpFileName("cgi");
-	// bool		hasBody = true;
-
-	// std::vector<std::string> envVars;
-	// envVars.push_back("REQUEST_METHOD=POST");
-	// envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-	// envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
-	// envVars.push_back("CONTENT_TYPE=plain/text");
-	// envVars.push_back("SCRIPT_FILENAME=" + scriptName);
-	// envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
-	// // --- FAKE ROUTER END ---
-
-	// --- FAKE ROUTER START (PHP-CGI EDITION) ---
-    // On Ubuntu, the CGI flavor is always 'php-cgi', not regular 'php'
-    // std::string interpreter = "/usr/bin/php-cgi"; 
-    // std::string scriptPath = "./cgi-bin/";
-    // std::string scriptName = "info.php";
-    // std::string	tmpFileBody = "./cgi-bin/cgiBody_1.tmp";
-    // std::string tmpFileOutput = GenerateTmpFileName("cgi");
-    // bool        hasBody = true;
-
-    // std::vector<std::string> envVars;
-    // envVars.push_back("REQUEST_METHOD=POST");
-    // envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-	// envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
-	// envVars.push_back("CONTENT_TYPE=plain/text");
-    // envVars.push_back("SCRIPT_FILENAME=" + scriptName);
-    // envVars.push_back("REDIRECT_STATUS=200"); 
-    // --- FAKE ROUTER END ---
-
 	const Request& request = client->GetRequest();
 	const Routing& routing = client->GetRouting();
 
@@ -73,7 +37,7 @@ void		CGIManager::AttachCGI(Client* client)
 	size_t lastSlashPos = fullPath.find_last_of('/');
     if (lastSlashPos != std::string::npos)
     {
-        scriptPath = fullPath.substr(0, lastSlashPos + 1); // e.g., "./www/cgi-bin/"
+        scriptPath = fullPath.substr(0, lastSlashPos + 1); // e.g., "./cgi-bin/"
         scriptName = fullPath.substr(lastSlashPos + 1);    // e.g., "info.php"
     }
 
@@ -81,15 +45,13 @@ void		CGIManager::AttachCGI(Client* client)
     std::string tmpFileBody = request.GetBodyFilePath(); 
     std::string tmpFileOutput = GenerateTmpFileName("cgi_out");
     bool hasBody = (request.GetContentLength() > 0); // Cleaner check based on your Request object
-	std::cout << "LEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEENGTH: " << request.GetContentLength() << std::endl;
     std::vector<std::string> envVars;
     envVars.push_back("REQUEST_METHOD=" + request.GetMethodString());
     envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
 	if (hasBody)
     {
         envVars.push_back("CONTENT_LENGTH=" + request.GetHeader("content-length"));
-        // envVars.push_back("CONTENT_TYPE=" + request.GetHeader("content-type"));
-		envVars.push_back("CONTENT_TYPE=plain/text");
+        envVars.push_back("CONTENT_TYPE=" + request.GetHeader("content-type"));
     }
     envVars.push_back("SCRIPT_FILENAME=" + scriptName);
 	if (!request.GetQuery().empty())
@@ -97,7 +59,6 @@ void		CGIManager::AttachCGI(Client* client)
     envVars.push_back("REDIRECT_STATUS=200");
 
 	CGI*	cgi = new CGI(interpreter, scriptPath, scriptName, envVars, hasBody, tmpFileBody, tmpFileOutput);
-	//TODO Track tmp file or fd so you can work with both static or CGI
 	if (cgi->Run() == true)
 	{
 		client->SetCGI(cgi);
@@ -128,8 +89,13 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 
 	if (this->m_Polling.IsErrorFired(eventIndex))
 	{
+		ERROR_LOG("CGI pipe error or hangup detected");
+		this->DetachCGI(cgi); // Remove pipe from epoll and map
+		client->DeleteCGI();  // Fire destructor to clean up process/files
+		
 		client->BuildStaticErrorResponse();
 		client->SetState(STATE_SENDING_ERROR_RESPONSE);
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		return;
 	}
 	// Read output from the CGI script via read()
