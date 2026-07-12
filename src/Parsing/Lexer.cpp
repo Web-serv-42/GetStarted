@@ -1,4 +1,4 @@
-#include "../include/Parsing/Lexer.hpp"
+#include "Parsing/Lexer.hpp"
 #include <vector>
 
 Lexer::Lexer() {};

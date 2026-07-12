@@ -2,7 +2,7 @@
 #include "ConfigParser.hpp"
 #include <cstdlib>
 #include <iostream>
-#include "../Utils/utils.hpp"
+#include "Utils/utils.hpp"
 
 
 // Represents one parsed "listen" directive.
@@ -37,7 +37,7 @@ struct Routing
     const ServerConfig*      server;
     const LocationConfig*    location;
     std::string              filePath;
-
+    
     Routing() : server(NULL), location(NULL) {}
 };
 

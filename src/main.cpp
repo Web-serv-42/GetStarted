@@ -15,10 +15,10 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include "../include/Parsing/Lexer.hpp"
-#include "../include/HTTP/Request/Request.hpp"
-#include "../include/Parsing/ConfigParser.hpp"
-#include "../include/Parsing/RequestParser.hpp"
+#include "Parsing/Lexer.hpp"
+#include "HTTP/Request/Request.hpp"
+#include "Parsing/ConfigParser.hpp"
+#include "Parsing/RequestParser.hpp"
 
 // Helper function to read the file
 std::string ReadFileToString(const char* filepath) 
