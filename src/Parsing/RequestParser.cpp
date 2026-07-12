@@ -46,7 +46,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line) {
         req.SetState(PARSE_ERROR);
         return;
     }
-
+    req.SetMethodString(methodStr);
     // URI must start with / 
     if (rawUri.empty() || rawUri[0] != '/')
     {
@@ -187,40 +187,47 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
         }
         
         // --- PARSE BODY ---
-        else if (req.GetState() == PARSE_BODY) {
+        else if (req.GetState() == PARSE_BODY)
+        {
             size_t expected = req.GetContentLength();
-            if (rawBuffer.length() >= expected) {
-                size_t remaining = expected - req.GetBodyReceived();
+            size_t remaining = expected - req.GetBodyReceived();
 
-                size_t toWrite = rawBuffer.size();
+            // If rawBuffer is empty, drop out and let epoll wait for more network packets
+            if (rawBuffer.empty())
+            {
+                return false;
+            }
 
-                if (toWrite > remaining)
-                    toWrite = remaining;
+            // Determine how much we can write from the current epoll chunk
+            size_t toWrite = rawBuffer.length();
+            if (toWrite > remaining)
+            {
+                toWrite = remaining;
+            }
 
-                if (!req.AppendBody(rawBuffer.data(), toWrite))
-                {
-                    req.SetErrorCode(500);
-                    req.SetState(PARSE_ERROR);
-                    return true;
-                }
+            // Write this chunk directly to disk
+            if (!req.AppendBody(rawBuffer.data(), toWrite))
+            {
+                req.SetErrorCode(500);
+                req.SetState(PARSE_ERROR);
+                req.CloseBodyFile(); // Clean up FD immediately on failure
+                return true;
+            }
 
-                rawBuffer.erase(0, toWrite);
+            // Erase only what we consumed from the stream buffer
+            rawBuffer.erase(0, toWrite);
 
-                if (req.GetBodyReceived() == expected)
-                {
-                    lseek(req.GetBodyFd(), 0, SEEK_SET);
-                    req.SetState(PARSE_COMPLETE);
-                }
-                else
-                {
-                    return false;
-                }
+            // Check if we finally crossed the finish line
+            if (req.GetBodyReceived() == expected)
+            {
+                req.CloseBodyFile(); // Cleanly close the FD here! No lseek needed.
                 req.SetState(PARSE_COMPLETE);
-            } else {
-                return false; // waiting for more data from epoll
+            }
+            else
+            {
+                return false; // Body is incomplete, yield back to epoll loop
             }
         }
     }
     return (req.GetState() == PARSE_COMPLETE); // return true parsing is done
 }
-

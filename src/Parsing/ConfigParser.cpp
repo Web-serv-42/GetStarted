@@ -415,7 +415,7 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
             if (loc.directives.count("cgi")) {
                 const std::vector<std::string>& cgi_vals = loc.directives["cgi"];
                 for (size_t k = 0; k + 1 < cgi_vals.size(); k += 2) {
-                    loc.cgi[cgi_vals[k]] = cgi_vals[k + 1];
+                    loc.cgis[cgi_vals[k]] = cgi_vals[k + 1];
                 }
             }
 

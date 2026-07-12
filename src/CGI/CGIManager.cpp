@@ -28,9 +28,9 @@ void		CGIManager::AttachCGI(Client* client)
 	// // --- FAKE ROUTER START (PYTHON3 EDITION)  ---
 	// // In the future, this comes from Member 1's logic.
 	// std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	// std::string scriptPath = "./etc/";
+	// std::string scriptPath = "./cgi-bin/";
 	// std::string scriptName = "generateHtmlPage.py";
-	// std::string	tmpFileBody = "./etc/cgiBody_1.tmp";
+	// std::string	tmpFileBody = "./cgi-bin/cgiBody_1.tmp";
 	// std::string	tmpFileOutput = GenerateTmpFileName("cgi");
 	// bool		hasBody = true;
 
@@ -45,21 +45,56 @@ void		CGIManager::AttachCGI(Client* client)
 
 	// --- FAKE ROUTER START (PHP-CGI EDITION) ---
     // On Ubuntu, the CGI flavor is always 'php-cgi', not regular 'php'
-    std::string interpreter = "/usr/bin/php-cgi"; 
-    std::string scriptPath = "./etc/";
-    std::string scriptName = "info.php";
-    std::string	tmpFileBody = "./etc/cgiBody_1.tmp";
-    std::string tmpFileOutput = GenerateTmpFileName("cgi");
-    bool        hasBody = true;
+    // std::string interpreter = "/usr/bin/php-cgi"; 
+    // std::string scriptPath = "./cgi-bin/";
+    // std::string scriptName = "info.php";
+    // std::string	tmpFileBody = "./cgi-bin/cgiBody_1.tmp";
+    // std::string tmpFileOutput = GenerateTmpFileName("cgi");
+    // bool        hasBody = true;
 
-    std::vector<std::string> envVars;
-    envVars.push_back("REQUEST_METHOD=POST");
-    envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-	envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
-	envVars.push_back("CONTENT_TYPE=plain/text");
-    envVars.push_back("SCRIPT_FILENAME=" + scriptName);
-    envVars.push_back("REDIRECT_STATUS=200"); 
+    // std::vector<std::string> envVars;
+    // envVars.push_back("REQUEST_METHOD=POST");
+    // envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
+	// envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
+	// envVars.push_back("CONTENT_TYPE=plain/text");
+    // envVars.push_back("SCRIPT_FILENAME=" + scriptName);
+    // envVars.push_back("REDIRECT_STATUS=200"); 
     // --- FAKE ROUTER END ---
+
+	const Request& request = client->GetRequest();
+	const Routing& routing = client->GetRouting();
+
+	std::string interpreter = routing.cgiInterpreter;
+	// Split the physical path into Directory (for chdir) and Name (for execve)
+    std::string fullPath = routing.filePath;
+    std::string scriptPath = "./"; // fallback
+    std::string scriptName = fullPath;
+
+	size_t lastSlashPos = fullPath.find_last_of('/');
+    if (lastSlashPos != std::string::npos)
+    {
+        scriptPath = fullPath.substr(0, lastSlashPos + 1); // e.g., "./www/cgi-bin/"
+        scriptName = fullPath.substr(lastSlashPos + 1);    // e.g., "info.php"
+    }
+
+    // Now grab the body path directly from the parsed request
+    std::string tmpFileBody = request.GetBodyFilePath(); 
+    std::string tmpFileOutput = GenerateTmpFileName("cgi_out");
+    bool hasBody = (request.GetContentLength() > 0); // Cleaner check based on your Request object
+	std::cout << "LEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEENGTH: " << request.GetContentLength() << std::endl;
+    std::vector<std::string> envVars;
+    envVars.push_back("REQUEST_METHOD=" + request.GetMethodString());
+    envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
+	if (hasBody)
+    {
+        envVars.push_back("CONTENT_LENGTH=" + request.GetHeader("content-length"));
+        // envVars.push_back("CONTENT_TYPE=" + request.GetHeader("content-type"));
+		envVars.push_back("CONTENT_TYPE=plain/text");
+    }
+    envVars.push_back("SCRIPT_FILENAME=" + scriptName);
+	if (!request.GetQuery().empty())
+    	envVars.push_back("QUERY_STRING=" + request.GetQuery());	
+    envVars.push_back("REDIRECT_STATUS=200");
 
 	CGI*	cgi = new CGI(interpreter, scriptPath, scriptName, envVars, hasBody, tmpFileBody, tmpFileOutput);
 	//TODO Track tmp file or fd so you can work with both static or CGI
