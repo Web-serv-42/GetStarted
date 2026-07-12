@@ -28,7 +28,7 @@ struct LocationConfig {
     std::vector<std::string>    allow_methods;
     
     // CGI: map of extension to interpreter (e.g., {".py": "/usr/bin/python3"})
-    std::map<std::string, std::string> cgi; 
+    std::map<std::string, std::string> cgis; 
     
     // Return: <status_code, url/text> (0 means no return directive)
     std::pair<int, std::string> return_directive; 

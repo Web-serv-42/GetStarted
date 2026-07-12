@@ -101,12 +101,12 @@ void PrintConfigTree(const ConfigTree& tree)
             std::cout << "\n";
 
             std::cout << "  CGI:\n";
-            if (loc.cgi.empty())
+            if (loc.cgis.empty())
                 std::cout << "    (none)\n";
             else
             {
-                for (std::map<std::string, std::string>::const_iterator it = loc.cgi.begin();
-                     it != loc.cgi.end(); ++it)
+                for (std::map<std::string, std::string>::const_iterator it = loc.cgis.begin();
+                     it != loc.cgis.end(); ++it)
                 {
                     std::cout << "    " << it->first
                               << " -> " << it->second << "\n";

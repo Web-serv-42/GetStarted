@@ -23,6 +23,7 @@ Request::~Request(){}
 void Request::SetState(ParseState s) { m_State = s; }
 void Request::SetErrorCode(int c) { m_ErrorCode = c; }
 void Request::SetMethod(HttpMethod m) { m_Method = m; }
+void Request::SetMethodString(std::string& m) { m_MethodString = m; }
 void Request::SetPath(const std::string& p) { m_Path = p; }
 void Request::SetQuery(const std::string& q) { m_Query = q; }
 void Request::SetVersion(const std::string& v) { m_Version = v; }
@@ -37,6 +38,8 @@ int         Request::GetErrorCode() const { return m_ErrorCode; }
 
 HttpMethod  Request::GetMethod() const { return m_Method; }
 
+const std::string&  Request::GetMethodString() const { return m_MethodString; }
+
 const std::string& Request::GetPath() const { return m_Path; }
 
 const std::string& Request::GetQuery() const { return m_Query; }
@@ -46,73 +49,92 @@ const std::string& Request::GetQuery() const { return m_Query; }
 const std::string& Request::GetVesrion() const { return m_Version;}
 
 const std::map<std::string, std::string>& Request::GetHeaders() const {
-    return m_Headers;
+	return m_Headers;
 }
 
 size_t      Request::GetContentLength() const { return m_ContentLength; }
 
 std::string Request::GetHeader(const std::string& key) const {
-    std::map<std::string, std::string>::const_iterator it = m_Headers.find(key);
-    if (it != m_Headers.end()) {
-        return it->second;
-    }
-    return ""; // return empty string if header doesnt exist , we could check it after 
+	std::map<std::string, std::string>::const_iterator it = m_Headers.find(key);
+	if (it != m_Headers.end()) {
+		return it->second;
+	}
+	return ""; // return empty string if header doesnt exist , we could check it after 
 }
 
-// body appending to file
+// (Forbidden)  body appending to file
+
+// bool Request::OpenBodyFile()
+// {
+//     if (m_BodyFd != -1)
+//         return true;
+
+//     char path[] = "./tmp/Request_body_XXXXXX";
+
+//     m_BodyFd = mkstemp(path);
+
+//     // std::cout << "CReated file FD [ " << m_BodyFd << " ] , name => " << path << std::endl;
+
+//     if (m_BodyFd == -1)
+//         return false;
+
+//     // unlink it will delete the file name if no process have the file open
+//     // unlink(path);
+
+//     return true;
+// }
 
 bool Request::OpenBodyFile()
 {
-    if (m_BodyFd != -1)
-        return true;
+	// If it's already open, just keep using it (epoll chunking)
+	if (m_BodyFd != -1)
+		return true;
 
-    char path[] = "./tmp/Request_body_XXXXXX";
+	// Use your custom function instead of mkstemp
+	m_BodyFilePath = GenerateTmpFileName("request_body");
 
-    m_BodyFd = mkstemp(path);
+	// Open using allowed syscall (read/write, create if missing, truncate if exists)
+	m_BodyFd = open(m_BodyFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
 
-    // std::cout << "CReated file FD [ " << m_BodyFd << " ] , name => " << path << std::endl;
-
-    if (m_BodyFd == -1)
-        return false;
-
-    // unlink it will delete the file name if no process have the file open
-    // unlink(path);
-
-    return true;
+	return (m_BodyFd != -1);
 }
 
 bool Request::AppendBody(const char* buffer, size_t len)
 {
-    if (m_BodyFd == -1)
-        return false;
+	if (m_BodyFd == -1)
+		return false;
 
-    ssize_t written = write(m_BodyFd, buffer, len);
-    // what if written return -1 ? 
-    // shoulde we return fasle ?
-    if (written != (ssize_t)len)
-        return false;
+	ssize_t written = write(m_BodyFd, buffer, len);
+	// what if written return -1 ? 
+	// shoulde we return fasle ?
+	if (written != (ssize_t)len)
+		return false;
 
-    m_BodyReceived += written;
+	m_BodyReceived += written;
 
-    return true;
+	return true;
 }
-
 
 void Request::CloseBodyFile()
 {
-    if (m_BodyFd != -1)
-    {
-        close(m_BodyFd);
-        m_BodyFd = -1;
-    }
+	if (m_BodyFd != -1)
+	{
+		close(m_BodyFd);
+		m_BodyFd = -1;
+	}
+}
+
+const std::string&  Request::GetBodyFilePath() const
+{
+	return m_BodyFilePath;
 }
 
 int Request::GetBodyFd() const
 {
-    return m_BodyFd;
+	return m_BodyFd;
 }
 
 size_t  Request::GetBodyReceived() const
 {
-    return m_BodyReceived;
+	return m_BodyReceived;
 }

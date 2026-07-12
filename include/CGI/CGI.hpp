@@ -19,6 +19,7 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 
 #include <dirent.h>
 #include <sys/types.h>
@@ -44,7 +45,8 @@ class CGI
 		std::vector<char*>			m_ArgvStrings;
 
 		pid_t						m_Pid;
-		int							m_TmpFileFd;
+		int							m_TmpBodyFileFd;
+		int							m_TmpOutputFileFd;
 		int							m_PipeOutFd[2];
 
 		size_t						m_BodyBytesSent;

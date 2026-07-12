@@ -138,14 +138,14 @@ void ClientManager::PrintRoutingInfo(Client* client)
 					  << "\n";
 		}
 
-		if (!routing.location->cgi.empty())
+		if (!routing.location->cgis.empty())
 		{
 			std::cout << "CGI:\n";
 
 			std::map<std::string, std::string>::const_iterator it;
 
-			for (it = routing.location->cgi.begin();
-				 it != routing.location->cgi.end();
+			for (it = routing.location->cgis.begin();
+				 it != routing.location->cgis.end();
 				 ++it)
 			{
 				std::cout << "    "
@@ -218,6 +218,7 @@ void PrintParsedRequest(const Request& req)
 	// 4. Print Body Data
 	std::cout << "\033[1;32m[BODY]\033[0m\n";
 	std::cout << "  Expected Content-Length : " << req.GetContentLength() << " bytes\n";
+	std::cout << "  Body File Path          :" << req.GetBodyFilePath() << "\n";
 	std::cout << "  Body File Fd            :\n\033[0;36m";
 	(req.GetBodyFd() == -1)
 		? (std::cout << "(no FD)")
@@ -336,7 +337,7 @@ int	ClientManager::HandleInboundData(Client* client)
 	if (routing.server == NULL || routing.location == NULL)
 		return (404); // Not Found
 	client->SetRouting(routing);
-	// PrintRoutingInfo(client);
+	PrintRoutingInfo(client);
 
 	client->SetState(STATE_EXECUTING); 
 	this->DispatchResponse(client);
@@ -347,7 +348,9 @@ int	ClientManager::HandleInboundData(Client* client)
 void	ClientManager::DispatchResponse(Client* client)
 {
 	// At this point the whole request is processed, time to execute it	
-	if (/* condition to check if it's a CGI request */ true)
+	const Routing& routing = client->GetRouting();
+
+	if (!routing.cgiInterpreter.empty())
 	{
 		client->SetState(STATE_WAITING_CGI);
 		//TODO Member 2: CGI parametres input

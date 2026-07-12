@@ -227,5 +227,24 @@ Routing ConfigResolver::ResolveRequest(
 
     routing.filePath = root + remaining;
 
+    // --- NEW: DETERMINE IF IT IS A CGI REQUEST ---
+    if (routing.location != NULL)
+    {
+        // 1. Find the position of the last dot '.' in the path to get the extension
+        size_t dotPos = routing.filePath.find_last_of('.');
+        if (dotPos != std::string::npos)
+        {
+            std::string extension = routing.filePath.substr(dotPos); // returns ".php" or ".py"
+
+            // 2. Check if this specific extension exists in our location's CGI map
+            std::map<std::string, std::string>::const_iterator it = routing.location->cgis.find(extension);
+            if (it != routing.location->cgis.end())
+            {
+                // Extension found! Save the interpreter path to your routing object
+                routing.cgiInterpreter = it->second; // "/usr/bin/php-cgi"
+            }
+        }
+    }
+
     return routing;
 }

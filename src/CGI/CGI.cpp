@@ -23,7 +23,8 @@ CGI::CGI(std::string interpreter, std::string scriptPath, std::string scriptName
 	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_ScriptName(scriptName), m_EnvVars(envVars), m_HasBody(hasBody), m_TmpBodyFile(tmpBodyFile),  m_TmpOutputFile(tmpOutputFile)
 {
 	this->m_Pid = -1;
-	this->m_TmpFileFd = -1;
+	this->m_TmpBodyFileFd = -1;
+	this->m_TmpOutputFileFd = -1;
 	this->m_PipeOutFd[0] = -1;
 	this->m_PipeOutFd[1] = -1;
 	this->m_Envp = NULL;
@@ -39,25 +40,30 @@ CGI&	CGI::operator=(const CGI& copy)
 
 CGI::~CGI()
 {
-	if (this->m_Pid > 0) // Add this safety check
+	// Check if process is still alive before touching it
+	if (this->m_Pid != -1)
 	{
 		kill(this->m_Pid, SIGKILL);
-		waitpid(this->m_Pid, NULL, WNOHANG);
+		waitpid(this->m_Pid, NULL, 0); // Block until it's dead to prevent zombies!
 	}
-	//TODO: uncomment this after request part is done
-	// Tmp_File FD ?
-	// if (!this->m_TmpBodyFile.empty()
-	// {
-	// 	unlink(this->m_TmpBodyFile.c_str());
-	// }
 	this->ClosePipeOut();
-	if (this->m_TmpFileFd != -1)
+	// Body File
+	if (this->m_TmpBodyFileFd != -1)
 	{
-		close(this->m_TmpFileFd);
+		close(this->m_TmpBodyFileFd);
+	}
+	if (this->m_TmpOutputFileFd != -1)
+	{
+		close(this->m_TmpOutputFileFd);
+	}
+	// Output File
+	if (!this->m_TmpBodyFile.empty())
+	{
+		std::remove(this->m_TmpBodyFile.c_str());
 	}
 	if (!this->m_TmpOutputFile.empty())
 	{
-		unlink(this->m_TmpOutputFile.c_str());
+		std::remove(this->m_TmpOutputFile.c_str());
 	}
 }
 
@@ -66,6 +72,13 @@ bool	CGI::Run()
 	this->m_Timer.Reset();
 	// Build this->m_Envp and this->m_Argv
 	this->InitEnvpAndArgv();
+
+	// Open the output file ONCE right here
+    this->m_TmpOutputFileFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
+    if (this->m_TmpOutputFileFd == -1)
+    {
+        return (false);
+    }
 
 	// Setup pipes
 	if ((pipe(this->m_PipeOutFd) == -1))
@@ -77,7 +90,13 @@ bool	CGI::Run()
 	this->m_Pid = fork();
 	if (this->m_Pid == -1)
 	{
-		// Close pipes
+		close(this->m_PipeOutFd[0]);
+		close(this->m_PipeOutFd[1]);
+		if (this->m_TmpOutputFileFd != -1)
+		{
+			close(this->m_TmpOutputFileFd);
+			this->m_TmpOutputFileFd = -1;
+		}
 		return (false);
 	}
 	// --- CHILD PROCESS (The Script) ---
@@ -147,31 +166,33 @@ bool	CGI::ReadOutputFromScript()
 
 	bytesRead = read(this->m_PipeOutFd[0], buffer, BUFFER_SIZE);
 	if (bytesRead > 0)
-	{		
-		// Open the response tmp file in append mode
-		int outFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_RDWR | O_APPEND, 0666);
-		if (outFd != -1)
-		{
-			write(outFd, buffer, bytesRead);
-		}
-		close(outFd);
+	{
+		if (this->m_TmpOutputFileFd != -1)
+        {
+            write(this->m_TmpOutputFileFd, buffer, bytesRead);
+        }
 		return (false); // Not done yet, more data coming from CGI script
 	}
 	else if (bytesRead == 0)
 	{
 		DEBUG_LOG("CGI Output ready");
+		// 💡 Fix: Close the output file descriptor here!
+		if (this->m_TmpOutputFileFd != -1)
+		{
+			close(this->m_TmpOutputFileFd);
+			this->m_TmpOutputFileFd = -1;
+		}
 		// Finished reading (EOF)
 		waitpid(this->m_Pid, &status, WNOHANG);
+		this->m_Pid = -1;
 		return (true);
 	}
 	else
 	{
-		// Error [Bug ? Timeout]
 		ERROR_LOG("Error while reading from CGI output");
 		return (true);
 	}
 }
-
 
 // ======================= Pipes && Fds =======================
 void	CGI::ClearInheritedFds(int pipeOut)
@@ -202,19 +223,19 @@ void	CGI::RedirectIO()
 {
 	if (this->m_HasBody)
 	{
-		this->m_TmpFileFd = open(this->m_TmpBodyFile.c_str(), O_RDONLY);
-		if (this->m_TmpFileFd == -1)
+		this->m_TmpBodyFileFd = open(this->m_TmpBodyFile.c_str(), O_RDONLY);
+		if (this->m_TmpBodyFileFd == -1)
 		{
 			ERROR_LOG("open failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		// Redirect from stdin to inFd [RequestBody]
-		if (dup2(this->m_TmpFileFd, STDIN_FILENO) == -1)
+		if (dup2(this->m_TmpBodyFileFd, STDIN_FILENO) == -1)
 		{
 			ERROR_LOG("dup2 failed!");
 			std::exit(EXIT_FAILURE);
 		}
-		close(this->m_TmpFileFd);
+		close(this->m_TmpBodyFileFd);
 	}
 	else
 	{
