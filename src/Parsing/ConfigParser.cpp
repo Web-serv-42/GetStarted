@@ -1,5 +1,5 @@
-#include "../include/Parsing/ConfigParser.hpp"
-#include "../../include/Utils/utils.hpp"
+#include "Parsing/ConfigParser.hpp"
+#include "Utils/utils.hpp"
 #include <iostream>
 // =========================================================================
 // CONSTRUCTOR & DESTRUCTOR

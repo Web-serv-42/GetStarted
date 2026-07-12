@@ -15,7 +15,7 @@
 #include "Core/Timer.hpp"
 #include <string>
 #include <sstream>
-#include "../Parsing/ConfigParser.hpp"
+#include "Parsing/ConfigParser.hpp"
 
 std::string	GenerateTmpFileName(std::string contex);
 std::string toString(int port);

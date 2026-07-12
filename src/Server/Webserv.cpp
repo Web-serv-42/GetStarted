@@ -12,8 +12,8 @@
 
 #include "Server/Webserv.hpp"
 #include "Utils/utils.hpp"
-#include "../../include/Parsing/ConfigParser.hpp"
-#include "../../include/Parsing/ConfigResolver.hpp"
+#include "Parsing/ConfigParser.hpp"
+#include "Parsing/ConfigResolver.hpp"
 #include <stdexcept>
 
 volatile bool Webserv::m_IsRunning = true;

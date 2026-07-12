@@ -1,4 +1,4 @@
-#include "../../include/Parsing/ConfigResolver.hpp"
+#include "Parsing/ConfigResolver.hpp"
 #include <stdexcept>
 
 
@@ -114,7 +114,6 @@ bool ConfigResolver::IsPrefixMatch(
     return (uri[normalized.size()] == '/');
 }
 
-
 const ServerConfig* ConfigResolver::GetServerBy_Ip_Port_Host(
     const std::string& localIp, 
     int port, 
@@ -164,8 +163,6 @@ const ServerConfig* ConfigResolver::GetServerBy_Ip_Port_Host(
     }
     return defaultServer;
 }
-
-
 
 const LocationConfig* ConfigResolver::GetLocationBy_Server_Uri(
     const ServerConfig& server,

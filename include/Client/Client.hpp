@@ -14,8 +14,8 @@
 
 #include "Core/Log.hpp"
 #include "CGI/CGI.hpp"
-#include "../HTTP/Request/Request.hpp"
-#include "../Parsing/ConfigResolver.hpp"
+#include "HTTP/Request/Request.hpp"
+#include "Parsing/ConfigResolver.hpp"
 
 #include <sstream>
 
@@ -55,14 +55,11 @@ class Client
 		Request  				m_Request;   //<-- Later: HTTP Request Parser
 		// Response m_Response;  <-- Later: HTTP Response Builder
 		ClientState				m_State;
-		Routing					m_Routing; 
+		Routing					m_Routing;
 		// Buffers to hold data if recv/send are interrupted (Non-blocking)
 		std::string				m_ReadBuffer;
 		std::string				m_WriteBuffer;
 
-		// Flags to trigger send()
-		// bool					m_HeaderSent;
-		// bool					m_BodySent;
 		// Content to send (static file/CGI tmpFile output).
 		std::string				m_FileContentPath;
 		int						m_ContentFileFd;
@@ -75,54 +72,39 @@ class Client
 		Client(int clientFd, struct sockaddr_storage m_ClientAddr);
 		~Client();
 
-		bool	ReadData();
-		bool	SendData();
+		bool				ReadData();
+		bool				SendData();
 		
-		Request& GetRequest();
-		const Request& GetRequest() const;
+		Request&			GetRequest();
+		const Request&		GetRequest() const;
 		
-		// Entry point for processing request
-		int	ProcessRequest();
-		// Request Phase
-		int	ProcessHeaders();
-		int	ProcessBody();
-		int	ValidateRequestWithRouter();
 		// Response Phase
-		int	ReadFileContent();
-		int	PrepareWriteBuffer();
-		int	ParseAndFinalizeCgiResponse();
+		int					ReadFileContent();
+		int					PrepareWriteBuffer();
+		int					ParseAndFinalizeCgiResponse();
 		
 		// Later I will add methods like:
-   		void	BuildStaticResponse();
-   		void	BuildStaticErrorResponse();
+   		void				BuildStaticResponse();
+   		void				BuildStaticErrorResponse();
 
-		int			GetClientFd() const;
-		CGI*		GetCGI() const;
-		void		SetCGI(CGI* cgi);
-		void		DeleteCGI();
-		ClientState	GetState() const;
-		void		SetState(ClientState state);
-		void		DisplayClientInfo() const;
+		int					GetClientFd() const;
+		CGI*				GetCGI() const;
+		void				SetCGI(CGI* cgi);
+		void				DeleteCGI();
+		ClientState			GetState() const;
+		void				SetState(ClientState state);
+		void				DisplayClientInfo() const;
 		
-		const std::string &GetRawRequestString() const;
-		std::string &GetRawRequestString();
+		const std::string&	GetRawRequestString() const;
+		std::string&		GetRawRequestString();
 
 		// for routing we need to know where did the request come from which port + host ? 
-		void SetLocalIp(const std::string& ip);
-		void SetLocalPort(int port);
-		const std::string& GetLocalIp() const;
-		int GetLocalPort() const;
+		void				SetLocalIp(const std::string& ip);
+		void				SetLocalPort(int port);
+		const std::string&	GetLocalIp() const;
+		int					GetLocalPort() const;
 
 		// ROUTING
-		void SetRouting(const Routing& routing)
-		{
-			m_Routing = routing;
-		}
-		const Routing& GetRouting() const
-		{
-			return m_Routing;
-		}
-
-		
-
+		void				SetRouting(const Routing& routing);
+		const Routing&		GetRouting() const;
 };

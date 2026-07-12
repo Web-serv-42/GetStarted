@@ -13,7 +13,7 @@
 #pragma once
 
 #include "Client/Client.hpp"
-#include "../Parsing/ConfigResolver.hpp"
+#include "Parsing/ConfigResolver.hpp"
 #include "Network/Multiplexer.hpp"
 #include "Network/TcpServer.hpp"
 #include "CGI/CGIManager.hpp"
@@ -35,10 +35,14 @@ class ClientManager
 		~ClientManager();
 
 		void		ConnectClient(TcpServer* server);
+
 		void		ServeClient(int clientFd, int eventIndex);
-		void		ExecuteRequest(Client* client);
+		int			HandleInboundData(Client* client);
+		void		DispatchResponse(Client* client);
+
 		void		DisconnectClient(Client* client);
 		void		CheckClientTimeouts();
+
 		void		SetResolver(ConfigResolver *resolver);
 		Client*		GetClient(int clientFd);
 		void 		PrintRoutingInfo(Client* client);

@@ -20,8 +20,8 @@
 #include "Client/ClientManager.hpp"
 #include "CGI/CGI.hpp"
 #include "CGI/CGIManager.hpp"
-#include "../../include/Parsing/ConfigParser.hpp"
-#include "../../include/Parsing/ConfigResolver.hpp"
+#include "Parsing/ConfigParser.hpp"
+#include "Parsing/ConfigResolver.hpp"
 
 
 

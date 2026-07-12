@@ -1,7 +1,7 @@
 #ifndef REQUEST_PARSER_HPP
 #define REQUEST_PARSER_HPP
 
-#include "../include/HTTP/Request/Request.hpp"
+#include "HTTP/Request/Request.hpp"
 #include <string>
 
 class RequestParser {
