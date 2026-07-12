@@ -3,8 +3,20 @@
 - [ ] Default + Error pages
 - [ ] Bad response + Status code
 - [ ] Status Code
-- [ ] CGI needs Parametres from Request object  
+- [ ] CGI needs Parametres from Request object
 - [ ] Client Timeouts
+- [ ] Fd leaks body
+- [ ] py scipt hang (check access to file or path exist in CGI)
+
+- [ ] Chuncked request is mandatory transfer-encoding header, chunks format:
+    - length\r\n
+    - body-chunk \r\n
+    - 0\r\n
+    - \r\n
+
+- [ ] Since ur (ablabib) filling the body upload to a tmp file (uploads direclty):
+    - [ ] Single File Upload (Direct Binary)
+    - [ ] Multipart Form-Data (Multiple Files)
 
 ## HttpResponse (Hamza)
 - [ ] Need implementaion
