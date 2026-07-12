@@ -48,7 +48,6 @@ std::string& Client::GetRawRequestString()
 	return this->m_ReadBuffer;
 }
 
-
 bool	Client::ReadData()
 {
 	// Check Client Timeout
@@ -125,87 +124,6 @@ void	Client::BuildStaticErrorResponse()
 	this->m_ReadBuffer.clear();
 }
 
-int	Client::ProcessHeaders()
-{
-	this->m_State = STATE_ROUTING_INTERCEPTION;
-	return (200);
-}
-
-int	Client::ProcessBody()
-{
-	this->m_State = STATE_EXECUTING;
-	return (200);
-}
-
-int	Client::ValidateRequestWithRouter()
-{
-	this->m_State = STATE_READING_BODY;
-	return (200);
-}
-
-int	Client::ParseAndFinalizeCgiResponse()
-{
-	return (200);
-}
-
-// Parsing the request headers == rules, routing then body : return status code
-// int	Client::ProcessRequest()
-// {
-// 	int	statusCode;
-
-// 	// Parsing Headers first
-// 	if (this->m_State == STATE_READING_HEADERS)
-// 	{
-// 		//TODO Member 2: HttpRequest Hearders Parser
-// 		statusCode = this->ProcessHeaders();
-// 		if (statusCode != 200)
-// 		{
-// 			return (statusCode);
-// 		}
-// 		// Routing logic
-// 		//TODO Member 1: Change State to STATE_ROUTING_INTERCEPTION
-// 		if (this->m_State == STATE_ROUTING_INTERCEPTION)
-// 		{
-// 			statusCode = this->ValidateRequestWithRouter();
-// 			if (statusCode != 200)
-// 			{
-// 				return (statusCode);
-// 			}
-// 			//TODO Member 1: Change State to STATE_EXECUTING Directly if no body found
-// 			//TODO Member 1: Change State to STATE_READING_BODY if body found
-// 		}
-// 	}
-// 	// Body Parsing
-// 	if (this->m_State == STATE_READING_BODY)
-// 	{
-// 		//TODO Member 2: HttpRequest Body Parser [The routing is already checked]
-// 		statusCode = this->ProcessBody();
-// 		if (statusCode != 200)
-// 		{
-// 			return (statusCode);
-// 		}
-// 		//TODO Member 1: Change State to STATE_EXECUTING
-// 		// Executing Request is done by ClientManager after parsing both Headers and Body
-// 	}
-// 	return (200); // No error accured, even still more to consume from request or is it aleady handled
-// }
-
-int Client::ProcessRequest()
-{
-    // 1. Validate the routing using the server name / host headers now that parsing is complete
-    int statusCode = this->ValidateRequestWithRouter();
-    if (statusCode != 200)
-    {
-        return (statusCode);
-    }
-
-    // 2. Decide if the request is ready for execution or if it needs CGI processing
-    // For a standard static file or complete request, transition directly to EXECUTING
-    this->m_State = STATE_EXECUTING; 
-
-    return (200); 
-}
-
 // Returns: -1 on error, 0 on EOF, or positive bytes read
 int Client::ReadFileContent()
 {
@@ -241,7 +159,7 @@ int Client::PrepareWriteBuffer()
 		&& !this->m_WriteBuffer.empty())
 	{
 		this->m_State = STATE_RESPONSE_SENT;
-		return (200);
+		return (0);;
 	}
 	this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
 	// 1. A base implementaion of building headers before body
@@ -290,8 +208,10 @@ int Client::PrepareWriteBuffer()
 			}
 		}
 	}
-	return (200);
+	return (0);;
 }
+
+// Getters & Setters & Helpers
 
 int	Client::GetClientFd() const
 {
@@ -349,7 +269,6 @@ void	Client::DisplayClientInfo() const
 	if (ptr) 
 		INFO_LOG("Connection from client: " + std::string(str));
 }
-;
 
 Request& Client::GetRequest()
 {
@@ -379,4 +298,15 @@ const std::string& Client::GetLocalIp() const
 int Client::GetLocalPort() const
 {
     return m_LocalPort;
+}
+
+// ROUTING
+void	Client::SetRouting(const Routing& routing)
+{
+	m_Routing = routing;
+}
+
+const Routing&	Client::GetRouting() const
+{
+	return m_Routing;
 }
