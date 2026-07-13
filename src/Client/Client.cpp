@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 12:16:03 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 17:20:29 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,6 +125,10 @@ void    Client::BuildStaticResponse()
     response << "HTTP/1.0 200 OK\r\n";
     response << "Content-Type: text/html\r\n";
     response << "Content-Length: " << html.length() << "\r\n";
+  	for (std::map<std::string, std::string>::iterator it = this->m_OutboundCookies.begin(); it != this->m_OutboundCookies.end(); ++it)
+	{
+  	  response << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+	}
     response << "Connection: close\r\n\r\n";
     response << html;
 
@@ -287,6 +291,32 @@ void	Client::SetState(ClientState state)
 TimerBenchmark	Client::GetTimer() const
 {
 	return (this->m_Timer);
+}
+
+Session*	Client::GetSession()
+{
+	return (this->m_Session);
+}
+
+void		Client::SetSession(Session* session)
+{
+	this->m_Session = session;
+}
+
+void	Client::SetOutboundCookie(const std::string& name, const std::string& value, const std::string& attributes)
+{
+	std::string	fullValue = value;
+
+	if (!attributes.empty())
+	{
+		fullValue += "; " + attributes;
+	}
+	this->m_OutboundCookies[name] = fullValue;
+	// How Member 2 will use your system later:
+	// for (std::map<std::string, std::string>::iterator it = m_OutboundCookies.begin(); it != m_OutboundCookies.end(); ++it)
+	// {
+  	//   response << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+	// }
 }
 
 void	Client::DisplayClientInfo() const

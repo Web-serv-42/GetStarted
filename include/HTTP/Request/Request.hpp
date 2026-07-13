@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 10:34:23 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 16:02:45 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,7 @@ class Request {
 		std::string                         m_Query;   // for CGI in case or ?id=1
 		std::string                         m_Version; //  HTTP version
 		std::map<std::string, std::string>  m_Headers; // headers map
+		std::map<std::string, std::string>	m_Cookies;
 		
 		std::string                         m_BodyFilePath;
 		int                                 m_BodyFd;
@@ -58,7 +59,8 @@ class Request {
 		void	SetQuery(const std::string& q);
 		void	SetVersion(const std::string& v);
 		void	AddHeader(const std::string& k, const std::string& v);
-		// void	AppendBody(const std::string& d);
+		void	AddCookie(const std::string& key, const std::string& value);
+				// void	AppendBody(const std::string& d);
 		void	SetContentLength(size_t l);
 
 		// Getters
@@ -72,9 +74,11 @@ class Request {
 		// const std::string& GetBody() const;
 		const std::string&	GetVesrion() const;
 		const std::map<std::string, std::string>& GetHeaders() const;
-		
+		const std::map<std::string, std::string>& GetCookies() const;
+
 		size_t              GetContentLength() const;
 		std::string         GetHeader(const std::string& key) const;
+		std::string			GetCookie(const std::string& key) const;
 		const std::string&  GetBodyFilePath() const;
 		// handling boddy 
 

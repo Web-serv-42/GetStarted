@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 11:45:17 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 17:02:58 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,7 +57,7 @@ bool Webserv::Init(const ConfigTree& config)
 // }
 
     INFO_LOG("Initializing Webserv Engine...");
-
+	std::srand(static_cast<unsigned int>(std::time(NULL)));
     Timer::Init();
 
     this->SetupSignals();

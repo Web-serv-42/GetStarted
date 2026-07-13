@@ -17,6 +17,7 @@ class RequestParser {
         
         static void ParseRequestLine(Request& req, const std::string& line);
         static void ParseHeader(Request& req, const std::string& line);
+        static void ParseCookies(Request& req, const std::string& line);
 
     public:
         // main func

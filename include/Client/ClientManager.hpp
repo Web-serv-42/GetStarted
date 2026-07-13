@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:47 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 11:54:03 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 17:09:49 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include "Network/Multiplexer.hpp"
 #include "Network/TcpServer.hpp"
 #include "CGI/CGIManager.hpp"
+#include "Session/SessionManager.hpp"
 #include "Core/Timer.hpp"
 
 #include <map>
@@ -30,8 +31,10 @@ class ClientManager
 		std::map<int, Client*>	m_Clients;
 		Multiplexer&			m_Polling;
 		CGIManager&				m_CGIManager;
+		SessionManager			m_SessionManager;
 		// we would use this for the routing phase , to get the server and location
 		ConfigResolver* 		m_Resolver;
+		
 
 	public:
 		ClientManager(Multiplexer& poller, CGIManager& CGIManager);
@@ -42,6 +45,7 @@ class ClientManager
 
 		void			ServeClient(int clientFd, int eventIndex);
 		HttpStatusCode	HandleInboundData(Client* client);
+		void			TrackSession(Client* client, Request& request);
 		void			DispatchResponse(Client* client);
 
 		void			DisconnectClient(Client* client);
