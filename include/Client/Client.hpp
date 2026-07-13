@@ -3,15 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 12:06:17 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 16:46:14 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include "HTTP/Response/Response.hpp"
 #include "Core/Log.hpp"
 #include "CGI/CGI.hpp"
 #include "HTTP/Request/Request.hpp"
@@ -51,7 +52,7 @@ class Client
 		struct sockaddr_storage	m_ClientAddr;
 		CGI*					m_CGI;
 		Request  				m_Request;   //<-- Later: HTTP Request Parser
-		// Response m_Response;  <-- Later: HTTP Response Builder
+		Response m_Response;  // <-- Later: HTTP Response Builder
 		ClientState				m_State;
 		Routing					m_Routing;
 		// Buffers to hold data if recv/send are interrupted (Non-blocking)
