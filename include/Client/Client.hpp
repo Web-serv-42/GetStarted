@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 12:06:17 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 16:52:03 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include "Parsing/ConfigResolver.hpp"
 #include "Core/HttpStatus.hpp"
 #include "Core/Timer.hpp"
+#include "Session/SessionManager.hpp"
 
 #include <sstream>
 #include <unistd.h>
@@ -62,9 +63,12 @@ class Client
 		std::string				m_FileContentPath;
 		int						m_ContentFileFd;
 		// infos that we need for Routing
-		std::string m_LocalIp;
-		int         m_LocalPort;
+		std::string				m_LocalIp;
+		int         			m_LocalPort;
 		TimerBenchmark			m_Timer;
+		Session*				m_Session;
+		// Holds cookies to be sent out: Key -> Value (with optional settings like Path, Max-Age)
+    	std::map<std::string, std::string>	m_OutboundCookies;
 
 	public:
 		Client();
@@ -88,11 +92,16 @@ class Client
 
 		int					GetClientFd() const;
 		CGI*				GetCGI() const;
+		ClientState			GetState() const;
+		TimerBenchmark		GetTimer() const;
+		Session*			GetSession();
+		
 		void				SetCGI(CGI* cgi);
 		void				DeleteCGI();
-		ClientState			GetState() const;
 		void				SetState(ClientState state);
-		TimerBenchmark		GetTimer() const;
+		void				SetSession(Session* session);
+		void				SetOutboundCookie(const std::string& name, const std::string& value, const std::string& attributes = "");
+
 		void				DisplayClientInfo() const;
 		
 		const std::string&	GetRawRequestString() const;
@@ -105,6 +114,6 @@ class Client
 		int					GetLocalPort() const;
 
 		// ROUTING
-		void				SetRouting(const Routing& routing);
 		const Routing&		GetRouting() const;
+		void				SetRouting(const Routing& routing);
 };

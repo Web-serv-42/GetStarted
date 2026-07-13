@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:36 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 12:09:47 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 17:52:53 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,183 +66,207 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 
 void ClientManager::PrintRoutingInfo(Client* client)
 {
-	const Request& request = client->GetRequest();
-	const Routing& routing = client->GetRouting();
+    const Request& request = client->GetRequest();
+    const Routing& routing = client->GetRouting();
 
-	std::string host = request.GetHeader("host");
+    std::string host = request.GetHeader("host");
 
-	size_t colon = host.find(':');
-	if (colon != std::string::npos)
-		host.erase(colon);
+    size_t colon = host.find(':');
+    if (colon != std::string::npos)
+        host.erase(colon);
 
-	std::cout << "\n";
-	std::cout << "=============== ROUTING ===============\n";
+    std::cout << "\n";
+    std::cout << "=============== ROUTING ===============\n";
 
-	std::cout << "Socket IP      : " << client->GetLocalIp() << "\n";
-	std::cout << "Socket Port    : " << client->GetLocalPort() << "\n";
-	std::cout << "Host Header    : " << host << "\n";
-	std::cout << "URI            : " << request.GetPath() << "\n";
-	std::cout << "Method         : " << request.GetMethod() << "\n";
+    std::cout << "Socket IP      : " << client->GetLocalIp() << "\n";
+    std::cout << "Socket Port    : " << client->GetLocalPort() << "\n";
+    std::cout << "Host Header    : " << host << "\n";
+    std::cout << "URI            : " << request.GetPath() << "\n";
+    std::cout << "Method         : " << request.GetMethod() << "\n";
 
-	if (routing.server)
-	{
-		std::cout << "Server Name    : "
-				  << routing.server->server_name << "\n";
-	}
-	else
-	{
-		std::cout << "Server         : NOT FOUND\n";
-	}
+    // --- ADDED: Parsed Cookies View ---
+    const std::map<std::string, std::string>& cookies = request.GetCookies();
+    if (!cookies.empty())
+    {
+        std::cout << "Cookies        :\n";
+        for (std::map<std::string, std::string>::const_iterator cit = cookies.begin(); cit != cookies.end(); ++cit)
+        {
+            std::cout << "    " << cit->first << " = " << cit->second << "\n";
+        }
+    }
 
-	if (routing.location)
-	{
-		std::cout << "Location       : "
-				  << routing.location->path << "\n";
+    if (routing.server)
+    {
+        std::cout << "Server Name    : "
+                  << routing.server->server_name << "\n";
+    }
+    else
+    {
+        std::cout << "Server         : NOT FOUND\n";
+    }
 
-		std::cout << "Root           : "
-				  << routing.location->root << "\n";
+    if (routing.location)
+    {
+        std::cout << "Location       : "
+                  << routing.location->path << "\n";
 
-		std::cout << "File Path  : "
-				  << routing.filePath << "\n";
+        std::cout << "Root           : "
+                  << routing.location->root << "\n";
 
-		std::cout << "Index          : "
-				  << routing.location->index << "\n";
+        std::cout << "File Path  : "
+                  << routing.filePath << "\n";
 
-		std::cout << "Autoindex      : "
-				  << (routing.location->autoindex ? "ON" : "OFF") << "\n";
+        std::cout << "Index          : "
+                  << routing.location->index << "\n";
 
-		std::cout << "Body Limit     : "
-				  << routing.location->client_max_body_size
-				  << " bytes\n";
+        std::cout << "Autoindex      : "
+                  << (routing.location->autoindex ? "ON" : "OFF") << "\n";
 
-		std::cout << "Upload Path    : "
-				  << routing.location->upload_file << "\n";
+        std::cout << "Body Limit     : "
+                  << routing.location->client_max_body_size
+                  << " bytes\n";
 
-		std::cout << "Allowed Methods: ";
+        std::cout << "Upload Path    : "
+                  << routing.location->upload_file << "\n";
 
-		for (size_t i = 0; i < routing.location->allow_methods.size(); ++i)
-		{
-			if (i)
-				std::cout << ", ";
+        std::cout << "Allowed Methods: ";
 
-			std::cout << routing.location->allow_methods[i];
-		}
+        for (size_t i = 0; i < routing.location->allow_methods.size(); ++i)
+        {
+            if (i)
+                std::cout << ", ";
 
-		std::cout << "\n";
+            std::cout << routing.location->allow_methods[i];
+        }
 
-		if (routing.location->return_directive.first != 0)
-		{
-			std::cout << "Redirect       : "
-					  << routing.location->return_directive.first
-					  << " -> "
-					  << routing.location->return_directive.second
-					  << "\n";
-		}
+        std::cout << "\n";
 
-		if (!routing.location->cgis.empty())
-		{
-			std::cout << "CGI:\n";
+        if (routing.location->return_directive.first != 0)
+        {
+            std::cout << "Redirect       : "
+                      << routing.location->return_directive.first
+                      << " -> "
+                      << routing.location->return_directive.second
+                      << "\n";
+        }
 
-			std::map<std::string, std::string>::const_iterator it;
+        if (!routing.location->cgis.empty())
+        {
+            std::cout << "CGI:\n";
 
-			for (it = routing.location->cgis.begin();
-				 it != routing.location->cgis.end();
-				 ++it)
-			{
-				std::cout << "    "
-						  << it->first
-						  << " -> "
-						  << it->second
-						  << "\n";
-			}
-		}
+            std::map<std::string, std::string>::const_iterator it;
 
-		if (!routing.location->error_pages.empty())
-		{
-			std::cout << "Error Pages:\n";
+            for (it = routing.location->cgis.begin();
+                 it != routing.location->cgis.end();
+                 ++it)
+            {
+                std::cout << "    "
+                          << it->first
+                          << " -> "
+                          << it->second
+                          << "\n";
+            }
+        }
 
-			std::map<int, std::string>::const_iterator it;
+        if (!routing.location->error_pages.empty())
+        {
+            std::cout << "Error Pages:\n";
 
-			for (it = routing.location->error_pages.begin();
-				 it != routing.location->error_pages.end();
-				 ++it)
-			{
-				std::cout << "    "
-						  << it->first
-						  << " -> "
-						  << it->second
-						  << "\n";
-			}
-		}
-	}
-	else
-	{
-		std::cout << "Location       : NOT FOUND\n";
-	}
+            std::map<int, std::string>::const_iterator it;
 
-	std::cout << "=======================================\n\n";
+            for (it = routing.location->error_pages.begin();
+                 it != routing.location->error_pages.end();
+                 ++it)
+            {
+                std::cout << "    "
+                          << it->first
+                          << " -> "
+                          << it->second
+                          << "\n";
+            }
+        }
+    }
+    else
+    {
+        std::cout << "Location       : NOT FOUND\n";
+    }
+
+    std::cout << "=======================================\n\n";
 }
 
 void PrintParsedRequest(const Request& req) 
 {
-	std::cout << "\n\033[1;35m" << std::string(60, '=') << "\033[0m\n";
-	std::cout << "\033[1;33m[+] HTTP REQUEST PARSER OUTPUT [+]\033[0m\n";
-	std::cout << "\033[1;35m" << std::string(60, '-') << "\033[0m\n\n";
+    std::cout << "\n\033[1;35m" << std::string(60, '=') << "\033[0m\n";
+    std::cout << "\033[1;33m[+] HTTP REQUEST PARSER OUTPUT [+]\033[0m\n";
+    std::cout << "\033[1;35m" << std::string(60, '-') << "\033[0m\n\n";
 
-	// 1. Resolve Method String
-	std::string methodStr = "UNKNOWN";
-	if (req.GetMethod() == HTTP_GET) methodStr = "GET";
-	else if (req.GetMethod() == HTTP_POST) methodStr = "POST";
-	else if (req.GetMethod() == HTTP_DELETE) methodStr = "DELETE";
+    // 1. Resolve Method String
+    std::string methodStr = "UNKNOWN";
+    if (req.GetMethod() == HTTP_GET) methodStr = "GET";
+    else if (req.GetMethod() == HTTP_POST) methodStr = "POST";
+    else if (req.GetMethod() == HTTP_DELETE) methodStr = "DELETE";
 
-	// 2. Print Request Line Data
-	std::cout << "\033[1;32m[REQUEST LINE]\033[0m\n";
-	std::cout << "  Method  : \033[0;36m" << methodStr << "\033[0m\n";
-	std::cout << "  Path    : \033[0;36m" << req.GetPath() << "\033[0m\n";
-	std::cout << "  Query   : \033[0;36m" << (req.GetQuery().empty() ? "(none)" : req.GetQuery()) << "\033[0m\n";
-	std::cout << "  Version : \033[0;36m" << (req.GetVesrion().empty() ? "(none)" : req.GetVesrion()) << "\033[0m\n\n";
+    // 2. Print Request Line Data
+    std::cout << "\033[1;32m[REQUEST LINE]\033[0m\n";
+    std::cout << "  Method  : \033[0;36m" << methodStr << "\033[0m\n";
+    std::cout << "  Path    : \033[0;36m" << req.GetPath() << "\033[0m\n";
+    std::cout << "  Query   : \033[0;36m" << (req.GetQuery().empty() ? "(none)" : req.GetQuery()) << "\033[0m\n";
+    std::cout << "  Version : \033[0;36m" << (req.GetVesrion().empty() ? "(none)" : req.GetVesrion()) << "\033[0m\n\n";
 
-	// 3. Print Headers Map
-	std::cout << "\033[1;32m[HEADERS]\033[0m\n";
-	const std::map<std::string, std::string>& headers = req.GetHeaders();
-	if (headers.empty()) {
-		std::cout << "  (none)\n";
-	} else {
-		std::map<std::string, std::string>::const_iterator it;
-		for (it = headers.begin(); it != headers.end(); ++it) {
-			// Notice how the keys will all be perfectly lowercase because of our Trim/ToLower logic!
-			std::cout << "  " << it->first << " : \033[0;36m" << it->second << "\033[0m\n";
-		}
-	}
-	std::cout << "\n";
+    // 3. Print Headers Map
+    std::cout << "\033[1;32m[HEADERS]\033[0m\n";
+    const std::map<std::string, std::string>& headers = req.GetHeaders();
+    if (headers.empty()) {
+        std::cout << "  (none)\n";
+    } else {
+        std::map<std::string, std::string>::const_iterator it;
+        for (it = headers.begin(); it != headers.end(); ++it) {
+            std::cout << "  " << it->first << " : \033[0;36m" << it->second << "\033[0m\n";
+        }
+    }
+    std::cout << "\n";
 
-	// 4. Print Body Data
-	std::cout << "\033[1;32m[BODY]\033[0m\n";
-	std::cout << "  Expected Content-Length : " << req.GetContentLength() << " bytes\n";
-	std::cout << "  Body File Path          :" << req.GetBodyFilePath() << "\n";
-	std::cout << "  Body File Fd            :\n\033[0;36m";
-	(req.GetBodyFd() == -1)
-		? (std::cout << "(no FD)")
-		: (std::cout << req.GetBodyFd());
-	std::cout << "\033[0m\n\n";
-	// 5. Print State & Errors
-	std::cout << "\033[1;32m[INTERNAL STATE]\033[0m\n";
-	if (req.GetErrorCode() != 0) {
-		std::cout << "  Error Code : \033[1;31m" << req.GetErrorCode() << " (Parsing Failed!)\033[0m\n";
-	} else {
-		std::cout << "  Error Code : 0 (No Errors)\n";
-	}
-	
-	std::cout << "  Is Ready?  : ";
-	if (req.GetState() == PARSE_COMPLETE) {
-		std::cout << "\033[1;32mYES (Ready for Router)\033[0m\n";
-	} else {
-		std::cout << "\033[1;33mNO (Waiting for more data from epoll...)\033[0m\n";
-	}
+    // --- ADDED: 3.5 Print Cookies Map Block ---
+    std::cout << "\033[1;32m[COOKIES]\033[0m\n";
+    const std::map<std::string, std::string>& cookies = req.GetCookies();
+    if (cookies.empty()) {
+        std::cout << "  \033[0;90m(none)\033[0m\n";
+    } else {
+        std::map<std::string, std::string>::const_iterator cit;
+        for (cit = cookies.begin(); cit != cookies.end(); ++cit) {
+            // Using Magenta (\033[0;35m) for cookie keys to make them pop vs standard headers
+            std::cout << "  \033[0;35m" << cit->first << "\033[0m = \033[0;36m" << cit->second << "\033[0m\n";
+        }
+    }
+    std::cout << "\n";
 
-	std::cout << "\033[1;35m" << std::string(60, '=') << "\033[0m\n\n";
+    // 4. Print Body Data
+    std::cout << "\033[1;32m[BODY]\033[0m\n";
+    std::cout << "  Expected Content-Length : " << req.GetContentLength() << " bytes\n";
+    std::cout << "  Body File Path          :" << req.GetBodyFilePath() << "\n";
+    std::cout << "  Body File Fd            :\n\033[0;36m";
+    (req.GetBodyFd() == -1)
+        ? (std::cout << "(no FD)")
+        : (std::cout << req.GetBodyFd());
+    std::cout << "\033[0m\n\n";
+
+    // 5. Print State & Errors
+    std::cout << "\033[1;32m[INTERNAL STATE]\033[0m\n";
+    if (req.GetErrorCode() != 0) {
+        std::cout << "  Error Code : \033[1;31m" << req.GetErrorCode() << " (Parsing Failed!)\033[0m\n";
+    } else {
+        std::cout << "  Error Code : 0 (No Errors)\n";
+    }
+    
+    std::cout << "  Is Ready?  : ";
+    if (req.GetState() == PARSE_COMPLETE) {
+        std::cout << "\033[1;32mYES (Ready for Router)\033[0m\n";
+    } else {
+        std::cout << "\033[1;33mNO (Waiting for more data from epoll...)\033[0m\n";
+    }
+
+    std::cout << "\033[1;35m" << std::string(60, '=') << "\033[0m\n\n";
 }
-
 
 void ClientManager::ServeClient(int clientFd, int eventIndex)
 {
@@ -302,28 +326,28 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 
 HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 {
-	// Read BUFFER_SIZE of coming request
 	if (client->ReadData() == false)
 		return (DROP_CONNECTION); // Signal an immediate connection drop to the layer above
 
-	// we parse request when we fully parse it we return true else keep on waiting epoll 
 	bool is_request_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
-	// if this failed check the request->
 	if (!is_request_fully_parsed)
 	{
 		DEBUG_LOG("Request incomplete. Yielding execution back to epoll loop.");
 		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
-	PrintParsedRequest(client->GetRequest());
+	Request&	request = client->GetRequest();
+	PrintParsedRequest(request);
 
-	HttpStatusCode	parserError = client->GetRequest().GetErrorCode();
+	this->TrackSession(client, request);
+
+	HttpStatusCode	parserError = request.GetErrorCode();
 	if (parserError != 0)
 		return (parserError); // e.g., 400 Bad Request
 
 	// -------------------------------------------------
 	// Resolve routing.
 	// -------------------------------------------------
-	std::string host = client->GetRequest().GetHeader("host");
+	std::string host = request.GetHeader("host");
 
 	size_t colon = host.find(':');
 	if (colon != std::string::npos)
@@ -333,7 +357,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		client->GetLocalIp(),
 		client->GetLocalPort(),
 		host,
-		client->GetRequest().GetPath());
+		request.GetPath());
 
 	if (routing.server == NULL || routing.location == NULL)
 		return (HTTP_NOT_FOUND);
@@ -344,6 +368,38 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 	this->DispatchResponse(client);
 
 	return (NORMAL); // Execution kicked off safely, no errors to report
+}
+
+void	ClientManager::TrackSession(Client* client, Request& request)
+{
+	// Manage Client Session
+	std::string	sessionId = request.GetCookie("webserv_sid");
+	Session*	currentSession = NULL;
+	
+	if (!sessionId.empty())
+		currentSession = this->m_SessionManager.GetSession(sessionId);
+	if (currentSession == NULL)
+	{
+		currentSession = this->m_SessionManager.CreateSession();
+		// Save some dummy session details to demonstrate tracking to evaluators
+        currentSession->data["user_tier"] = "guest_account";
+        currentSession->data["visit_count"] = "1";
+		
+		// Queue up the Set-Cookie header so the outbound pipeline drops it down the socket
+		client->SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
+		DEBUG_LOG("Created new server session ID: " + currentSession->sessionId);
+	}
+	else
+	{
+		int visits = std::atoi(currentSession->data["visit_count"].c_str());
+        std::ostringstream oss;
+        oss << (visits + 1);
+        currentSession->data["visit_count"] = oss.str();
+        
+        DEBUG_LOG("Welcome back session ID: " + currentSession->sessionId + " | Visits: " + oss.str());
+	}
+	// Attach the session reference directly to the client object so your application handles it
+    client->SetSession(currentSession);
 }
 
 void	ClientManager::DispatchResponse(Client* client)
@@ -378,13 +434,8 @@ void	ClientManager::DispatchResponse(Client* client)
 
 void		ClientManager::DisconnectClient(Client* client)
 {
-	//TODO: To disconnet client you must cal its destructor that chckthe state of exesting CGI and detach it 
-	//TODO then delete the client object 
-	// if (client != NULL) //? Extra safety check for NULL pointers
-	// {
-	//     this->m_Clients.erase(it);
-	//     return;
-	// }
+	if (!client)
+		return ;
 	CGI*	cgi = client->GetCGI();
 	// Safety: If the client was running a CGI, kill it and remove its pipes
 	if (cgi)
