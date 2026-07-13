@@ -2,7 +2,12 @@
 #define REQUEST_PARSER_HPP
 
 #include "HTTP/Request/Request.hpp"
+#include "Core/HttpStatus.hpp"
+
 #include <string>
+#include <sstream>
+#include <cstdlib>
+#include <cctype>
 
 class RequestParser {
     private:

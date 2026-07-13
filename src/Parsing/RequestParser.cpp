@@ -1,8 +1,4 @@
 #include "Parsing/RequestParser.hpp"
-#include <sstream>
-#include <cstdlib>
-#include <cctype>
-
 
 // =========================================================================
 // HELPER METHODS
@@ -33,7 +29,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line)
 	std::string extra;
 	if (!(iss >> methodStr >> rawUri >> version) || (iss >> extra))
 	{
-		req.SetErrorCode(400);
+		req.SetErrorCode(HTTP_BAD_REQUEST);
 		req.SetState(PARSE_ERROR);
 		return;
 	}
@@ -43,7 +39,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line)
 	else if (methodStr == "POST") req.SetMethod(HTTP_POST);
 	else if (methodStr == "DELETE") req.SetMethod(HTTP_DELETE);
 	else {
-		req.SetErrorCode(400); // Bad Request
+		req.SetErrorCode(HTTP_BAD_REQUEST); // Bad Request
 		req.SetState(PARSE_ERROR);
 		return;
 	}
@@ -52,7 +48,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line)
 	// URI must start with / 
 	if (rawUri.empty() || rawUri[0] != '/')
 	{
-		req.SetErrorCode(400);
+		req.SetErrorCode(HTTP_BAD_REQUEST);
 		req.SetState(PARSE_ERROR);
 		return;
 	}
@@ -77,7 +73,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line)
 void RequestParser::ParseHeader(Request& req, const std::string& line) {
 	size_t colonPos = line.find(':');
 	if (colonPos == std::string::npos) {
-		req.SetErrorCode(400);
+		req.SetErrorCode(HTTP_BAD_REQUEST);
 		req.SetState(PARSE_ERROR);
 		return;
 	}
@@ -88,7 +84,7 @@ void RequestParser::ParseHeader(Request& req, const std::string& line) {
 
 	if (key.empty())
 	{
-		req.SetErrorCode(400);
+		req.SetErrorCode(HTTP_BAD_REQUEST);
 		req.SetState(PARSE_ERROR);
 		return;
 	}
@@ -97,7 +93,7 @@ void RequestParser::ParseHeader(Request& req, const std::string& line) {
 	if (key == "content-length" &&
 		!req.GetHeader("content-length").empty())
 	{
-		req.SetErrorCode(400);
+		req.SetErrorCode(HTTP_BAD_REQUEST);
 		req.SetState(PARSE_ERROR);
 		return;
 	}
@@ -139,7 +135,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 				// else we dont now the body length
 				if (!req.GetHeader("transfer-encoding").empty() || !req.GetHeader("content-transfer-encoding").empty())
 				{
-					req.SetErrorCode(501);
+					req.SetErrorCode(HTTP_NOT_IMPLEMENTED);
 					req.SetState(PARSE_ERROR);
 					return true;
 				}
@@ -152,7 +148,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 					{
 						if (!std::isdigit(cl[i]))
 						{
-							req.SetErrorCode(400);
+							req.SetErrorCode(HTTP_BAD_REQUEST);
 							req.SetState(PARSE_ERROR);
 							return true;
 						}
@@ -169,7 +165,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 						// after we know that we are going to parse the body we open the file
 						if (!req.OpenBodyFile())
 						{
-							req.SetErrorCode(500);
+							req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
 							req.SetState(PARSE_ERROR);
 							return true;
 						}   
@@ -181,7 +177,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 					// POST requires Content-Length.
 					if (req.GetMethod() == HTTP_POST)
 					{
-						req.SetErrorCode(400);
+						req.SetErrorCode(HTTP_BAD_REQUEST);
 						req.SetState(PARSE_ERROR);
 						return true;
 					}
@@ -225,7 +221,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 			// Write this chunk directly to disk
 			if (!req.AppendBody(rawBuffer.data(), toWrite))
 			{
-				req.SetErrorCode(500);
+				req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
 				req.SetState(PARSE_ERROR);
 				req.CloseBodyFile(); // Clean up FD immediately on failure
 				return true;

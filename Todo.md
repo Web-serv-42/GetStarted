@@ -1,12 +1,12 @@
 ## Webserv
-- [ ] Efficient server/client management
+- [~] Efficient server/client management
 - [ ] Default + Error pages
 - [ ] Bad response + Status code
-- [ ] Status Code
-- [ ] CGI needs Parametres from Request object
-- [ ] Client Timeouts
-- [ ] Fd leaks body
-- [ ] py scipt hang (check access to file or path exist in CGI)
+- [~] Status Code
+- [x] CGI needs Parametres from Request object
+- [x] Client Timeouts
+- [x] Fd leaks body
+- [x] py scipt hang (check access to file or path exist in CGI)
 
 - [ ] Chuncked request is mandatory transfer-encoding header, chunks format:
     - length\r\n
@@ -18,7 +18,31 @@
     - [ ] Single File Upload (Direct Binary)
     - [ ] Multipart Form-Data (Multiple Files)
 
-## HttpResponse (Hamza)
+- [x] 400 Bad Request
+- [ ] 403 Forbidden
+- [ ] 404 Not Found
+- [ ] 405 Method Not Allowed
+- [x] 408 Request Timeout
+- [ ] 411 Length Required
+- [ ] 413 Payload Too Large (Body max size check)
+- [ ] 415 Unsupported Media Type
+- [x] 500 Internal Server Error
+- [ ] 501 Not Implemented
+- [x] 502 Bad Gateway
+- [x] 504 Gateway Timeout
+
+
+## ====================== How to use 42 intra test ======================
+- We already have the `tester` executable in the root directory
+- Also the `cgi-tester` `in cgi-bin/` directory
+- We need two terminals:
+    * launch tester: `./tester http://127.0.0.1:8080`
+    * launch webserv: `./webserv config/tester.config`
+- The teser give instruction to setup folders `YoupiBanane`, and config file `tester.config` [We already have this]
+- press enter, enter, ... to begin testing [We need response to pas tests `wa hamzaaaaaaaaaaaaaaaaa`]
+
+
+## ================================ HttpResponse (Hamza) ================================
 - [ ] Need implementaion
 
 - [ ] You need to manage Correct response, bad response correctly both from normal or CGI request [edge case] `root` folder
