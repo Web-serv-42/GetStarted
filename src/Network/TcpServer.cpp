@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   TcpServer.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/02 14:44:01 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 10:56:32 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ bool	TcpServer::Setup()
 	ss << this->m_Port;
 	if ((status = getaddrinfo(this->m_Host.c_str(), ss.str().c_str(), &hints, &servinfo)))
 	{	
-		ERROR_LOG("getaddrinfo: " + std::string(gai_strerror(status)));
+		ERROR_LOG("Connection error: getaddrinfo: " + std::string(gai_strerror(status)));
 		return (false);
 	}
 
@@ -64,12 +64,12 @@ bool	TcpServer::Setup()
 		if ((status = bind(sockfd, current->ai_addr, current->ai_addrlen)) == 0)
 			break ;
 		if ((status = close(sockfd)) == -1)
-			ERROR_LOG("Failed to close sockfd endpoint");
+			ERROR_LOG("Connection error: Failed to close sockfd endpoint");
 	}
 	// No result in servinfo is valid
 	if (current == NULL)
 	{
-		ERROR_LOG("Failed to setup socket");
+		ERROR_LOG("Connection error: Failed to setup socket");
 		freeaddrinfo(servinfo);
         return (false);
 	}
@@ -78,7 +78,7 @@ bool	TcpServer::Setup()
 
 	if ((status = listen(sockfd, SOMAXCONN)) == -1)
 	{
-		ERROR_LOG("Failed to listening / queue is full");
+		ERROR_LOG("Connection error: Failed to listening / queue is full");
 		close(sockfd);
 		return(false);
 	}
@@ -100,7 +100,7 @@ Client* TcpServer::AcceptNewClient()
     if ((clientFd = accept(this->m_ListenFd,
             (struct sockaddr*)&clientAddr, &addrLen)) == -1)
     {
-        ERROR_LOG("Failed to accept client connection");
+        ERROR_LOG("Connection error: Failed to accept client connection");
         return NULL;
     }
 
@@ -134,7 +134,7 @@ Client* TcpServer::AcceptNewClient()
 
 // 	if ((clientFd = accept(this->m_ListenFd, (struct sockaddr*)&clientAddr, &addrLen)) == -1)
 // 	{
-// 		ERROR_LOG("Failed to accept client connection");
+// 		ERROR_LOG("Connection error: Failed to accept client connection");
 // 		return (NULL);
 // 	}
 // 	// By default, sockets are Blocking. This is the "Wait for me" mode.

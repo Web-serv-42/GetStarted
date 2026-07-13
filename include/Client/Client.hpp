@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:35 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/03 23:04:52 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 12:06:17 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,13 @@
 #include "CGI/CGI.hpp"
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigResolver.hpp"
+#include "Core/HttpStatus.hpp"
+#include "Core/Timer.hpp"
 
 #include <sstream>
-
 #include <unistd.h>
 #include <cstring>
 #include <cerrno>
-
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -31,9 +31,7 @@
 
 enum ClientState {
 	//* Read Phase
-	STATE_READING_HEADERS,
-	STATE_ROUTING_INTERCEPTION,
-	STATE_READING_BODY,
+	STATE_READING_REQUEST,
 	//* Execute Phase
 	STATE_EXECUTING,
 	STATE_WAITING_CGI,
@@ -65,7 +63,8 @@ class Client
 		int						m_ContentFileFd;
 		// infos that we need for Routing
 		std::string m_LocalIp;
-		int         m_LocalPort;	
+		int         m_LocalPort;
+		TimerBenchmark			m_Timer;
 
 	public:
 		Client();
@@ -85,7 +84,7 @@ class Client
 		
 		// Later I will add methods like:
    		void				BuildStaticResponse();
-   		void				BuildStaticErrorResponse();
+   		void				BuildStaticErrorResponse(HttpStatusCode code);
 
 		int					GetClientFd() const;
 		CGI*				GetCGI() const;
@@ -93,6 +92,7 @@ class Client
 		void				DeleteCGI();
 		ClientState			GetState() const;
 		void				SetState(ClientState state);
+		TimerBenchmark		GetTimer() const;
 		void				DisplayClientInfo() const;
 		
 		const std::string&	GetRawRequestString() const;

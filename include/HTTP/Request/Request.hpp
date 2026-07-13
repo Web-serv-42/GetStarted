@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/03 22:50:22 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 10:34:23 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 #include <fcntl.h>
 
 #include "Utils/utils.hpp"
+#include "Core/HttpStatus.hpp"
 
 // Core Enums
 enum HttpMethod { HTTP_GET, HTTP_POST, HTTP_DELETE, HTTP_UNKNOWN };
@@ -41,7 +42,7 @@ class Request {
 
 		ParseState                          m_State;
 		size_t                              m_ContentLength; // setting the content length
-		int                                 m_ErrorCode; // error code
+		HttpStatusCode						m_ErrorCode; // error code
 
 	public:
 		Request();
@@ -49,7 +50,7 @@ class Request {
 		
 		// Setters
 		void	SetState(ParseState s);
-		void	SetErrorCode(int c);
+		void	SetErrorCode(HttpStatusCode c);
 		void	SetMethod(HttpMethod m);
 		void	SetMethodString(std::string& m);
 
@@ -62,7 +63,7 @@ class Request {
 
 		// Getters
 		ParseState			GetState() const;
-		int					GetErrorCode() const;
+		HttpStatusCode		GetErrorCode() const;
 		HttpMethod  		GetMethod() const;
 		const std::string&	GetMethodString() const;
 

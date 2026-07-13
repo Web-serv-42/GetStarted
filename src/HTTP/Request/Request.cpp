@@ -3,38 +3,39 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/03 22:38:20 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 10:31:04 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 
 #include "HTTP/Request/Request.hpp"
+#include "Core/HttpStatus.hpp"
 #include <iostream>
 
 
-Request::Request() : m_Method(HTTP_UNKNOWN), m_BodyFd(-1) , m_BodyReceived(0), m_State(PARSE_REQUEST_LINE),  m_ContentLength(0), m_ErrorCode(0) {}
+Request::Request() : m_Method(HTTP_UNKNOWN), m_BodyFd(-1) , m_BodyReceived(0), m_State(PARSE_REQUEST_LINE),  m_ContentLength(0), m_ErrorCode(NORMAL) {}
 Request::~Request(){}
 
 
 // Setters
-void Request::SetState(ParseState s) { m_State = s; }
-void Request::SetErrorCode(int c) { m_ErrorCode = c; }
-void Request::SetMethod(HttpMethod m) { m_Method = m; }
-void Request::SetMethodString(std::string& m) { m_MethodString = m; }
-void Request::SetPath(const std::string& p) { m_Path = p; }
-void Request::SetQuery(const std::string& q) { m_Query = q; }
-void Request::SetVersion(const std::string& v) { m_Version = v; }
-void Request::AddHeader(const std::string& k, const std::string& v) { m_Headers[k] = v; }
-// void Request::AppendBody(const std::string& d) { m_Body += d; }
-void Request::SetContentLength(size_t l) { m_ContentLength = l; }
+void	Request::SetState(ParseState s) { m_State = s; }
+void	Request::SetErrorCode(HttpStatusCode c) { m_ErrorCode = c; }
+void	Request::SetMethod(HttpMethod m) { m_Method = m; }
+void	Request::SetMethodString(std::string& m) { m_MethodString = m; }
+void	Request::SetPath(const std::string& p) { m_Path = p; }
+void	Request::SetQuery(const std::string& q) { m_Query = q; }
+void	Request::SetVersion(const std::string& v) { m_Version = v; }
+void	Request::AddHeader(const std::string& k, const std::string& v) { m_Headers[k] = v; }
+// void	Request::AppendBody(const std::string& d) { m_Body += d; }
+void	Request::SetContentLength(size_t l) { m_ContentLength = l; }
 
 // Getters
 ParseState  Request::GetState() const { return m_State; }
 
-int         Request::GetErrorCode() const { return m_ErrorCode; }
+HttpStatusCode	Request::GetErrorCode() const { return m_ErrorCode; }
 
 HttpMethod  Request::GetMethod() const { return m_Method; }
 

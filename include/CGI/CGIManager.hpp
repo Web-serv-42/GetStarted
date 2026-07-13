@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 18:37:29 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 18:33:10 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 11:47:01 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,8 +19,6 @@
 
 #include <map>
 
-#define TIMEOUT 5.0
-
 class CGIManager
 {
 	private:
@@ -30,12 +28,9 @@ class CGIManager
 		CGIManager(Multiplexer& poller);
 		~CGIManager();
 
-		void		AttachCGI(Client* client);
-		void		HandleCGI(int pipeFd, int eventIndex);
-		void		DetachPipe(int pipeFd);
-		void		DetachCGI(CGI* cgi);
-		bool		IsCGIPipe(int triggeredFd);
-		void		CheckCGITimeouts();
-
+		HttpStatusCode	AttachCGI(Client* client);
+		void			HandleCGI(int pipeFd, int eventIndex);
+		void			DetachPipe(int pipeFd);
+		void			DetachCGI(CGI* cgi);
+		bool			IsCGIPipe(int triggeredFd);
 };
-

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientManager.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:47 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/03 23:30:43 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 11:54:03 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,8 +17,12 @@
 #include "Network/Multiplexer.hpp"
 #include "Network/TcpServer.hpp"
 #include "CGI/CGIManager.hpp"
+#include "Core/Timer.hpp"
 
 #include <map>
+
+#define CGI_TIMEOUT 5.0
+#define CLIENT_TIMEOUT 5.0
 
 class ClientManager
 {
@@ -34,16 +38,16 @@ class ClientManager
 		ClientManager(Multiplexer& poller, CGIManager& CGIManager,ConfigResolver * resolver);
 		~ClientManager();
 
-		void		ConnectClient(TcpServer* server);
+		void			ConnectClient(TcpServer* server);
 
-		void		ServeClient(int clientFd, int eventIndex);
-		int			HandleInboundData(Client* client);
-		void		DispatchResponse(Client* client);
+		void			ServeClient(int clientFd, int eventIndex);
+		HttpStatusCode	HandleInboundData(Client* client);
+		void			DispatchResponse(Client* client);
 
-		void		DisconnectClient(Client* client);
-		void		CheckClientTimeouts();
+		void			DisconnectClient(Client* client);
+		void			CheckTimeouts(CGIManager& cgiManager);
 
-		void		SetResolver(ConfigResolver *resolver);
-		Client*		GetClient(int clientFd);
-		void 		PrintRoutingInfo(Client* client);
+		void			SetResolver(ConfigResolver *resolver);
+		Client*			GetClient(int clientFd);
+		void 			PrintRoutingInfo(Client* client);
 };

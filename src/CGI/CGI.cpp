@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/23 11:48:12 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 10:51:45 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,12 +77,14 @@ bool	CGI::Run()
     this->m_TmpOutputFileFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
     if (this->m_TmpOutputFileFd == -1)
     {
+		ERROR_LOG("CGI Error: Tmp output file not created" + this->m_TmpOutputFile);
         return (false);
     }
 
 	// Setup pipes
 	if ((pipe(this->m_PipeOutFd) == -1))
 	{
+		ERROR_LOG("CGI Error: chdir failed!");
 		return (false);
 	}
 
@@ -109,13 +111,13 @@ bool	CGI::Run()
 		// run in the correct directory
 		if (chdir(this->m_ScriptPath.c_str()) != 0)
 		{
-			ERROR_LOG("chdir failed!");
+			ERROR_LOG("CGI Error: chdir failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		// Exevce with correct parametres
 		if (execve(this->m_Interpreter.c_str(), this->m_Argv, this->m_Envp) == -1)
 		{
-			ERROR_LOG("execve failed!");
+			ERROR_LOG("CGI Error: execve failed!");
 			std::exit(EXIT_FAILURE);
 		}
 	}
@@ -189,7 +191,7 @@ bool	CGI::ReadOutputFromScript()
 	}
 	else
 	{
-		ERROR_LOG("Error while reading from CGI output");
+		ERROR_LOG("CGI Error: Error while reading from CGI output");
 		return (true);
 	}
 }
@@ -226,13 +228,13 @@ void	CGI::RedirectIO()
 		this->m_TmpBodyFileFd = open(this->m_TmpBodyFile.c_str(), O_RDONLY);
 		if (this->m_TmpBodyFileFd == -1)
 		{
-			ERROR_LOG("open failed!");
+			ERROR_LOG("CGI Error: open failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		// Redirect from stdin to inFd [RequestBody]
 		if (dup2(this->m_TmpBodyFileFd, STDIN_FILENO) == -1)
 		{
-			ERROR_LOG("dup2 failed!");
+			ERROR_LOG("CGI Error: dup2 failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		close(this->m_TmpBodyFileFd);
@@ -242,13 +244,13 @@ void	CGI::RedirectIO()
 		int devNull = open("/dev/null", O_RDONLY);
 		if (devNull == -1)
 		{
-			ERROR_LOG("open failed!");
+			ERROR_LOG("CGI Error: open failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		// Redirect from stdin to /dev/null [RequestBody]
 		if (dup2(devNull, STDIN_FILENO) == -1)
 		{
-			ERROR_LOG("dup2 failed!");
+			ERROR_LOG("CGI Error: dup2 failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		close(devNull);
@@ -257,7 +259,7 @@ void	CGI::RedirectIO()
 	// Redirect from stdout to pipeOut [CgiResponse]
 	if (dup2(this->m_PipeOutFd[1], STDOUT_FILENO) == -1)
 	{
-		ERROR_LOG("dup2 failed!");
+		ERROR_LOG("CGI Error: dup2 failed!");
 		std::exit(EXIT_FAILURE);
 	}
 	close(this->m_PipeOutFd[1]);

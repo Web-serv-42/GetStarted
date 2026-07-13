@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Webserv.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:01:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/03 23:30:38 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 11:45:17 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -132,7 +132,7 @@ void	Webserv::Run()
 				this->m_ClientManager.ServeClient(triggeredFd, eventIndex);
 			}
 		}
-		this->m_CGIManager.CheckCGITimeouts();
+		this->m_ClientManager.CheckTimeouts(this->m_CGIManager);
 		// Shutdown Webserv after 10s
 		// if (Timer::GetServerUptime() > 10.0)
 		// {

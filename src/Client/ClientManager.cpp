@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:36 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/03 23:31:34 by ablabib          ###   ########.fr       */
+/*   Updated: 2026/07/13 12:09:47 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigResolver.hpp"
 #include "Parsing/RequestParser.hpp"
+#include "Core/HttpStatus.hpp"
 
 ClientManager::ClientManager(Multiplexer& poller, CGIManager& CGIManager) : m_Polling(poller), m_CGIManager(CGIManager)
 {
@@ -41,7 +42,7 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 	//1. Safety check for server pointer
 	if (!server)
 	{
-		ERROR_LOG("TCP server dosen't exist");
+		ERROR_LOG("Connection error: TCP server dosen't exist");
 		return;
 	}
 	// 2. Tell the server to accept the connection
@@ -57,7 +58,7 @@ void		ClientManager::ConnectClient(TcpServer*	server)
 	{
 		this->m_Clients.erase(newClient->GetClientFd());
 		delete	newClient;
-		ERROR_LOG("Failed to connect to client");
+		ERROR_LOG("Connection error: Failed to connect to client");
 		return;
 	}
 	SUCCESS_LOG("New client connected");
@@ -245,7 +246,7 @@ void PrintParsedRequest(const Request& req)
 
 void ClientManager::ServeClient(int clientFd, int eventIndex)
 {
-	int     statusCode;
+	HttpStatusCode     statusCode;
 	std::map<int, Client*>::iterator it = m_Clients.find(clientFd);
 
 	if (it == m_Clients.end())
@@ -266,14 +267,14 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 	{
 		DEBUG_LOG("Reading chunk from socket...");
 		statusCode = this->HandleInboundData(client);
-		if (statusCode == -1)
+		if (statusCode == DROP_CONNECTION)
 		{
 			this->DisconnectClient(client);
 			return ;
 		}
-		else if (statusCode != 0)
+		else if (statusCode != NORMAL)
 		{
-			client->BuildStaticErrorResponse(/* statusCode */);
+			client->BuildStaticErrorResponse(statusCode);
 			client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
@@ -293,17 +294,17 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		if (client->GetState() == STATE_RESPONSE_SENT)
 		{
 			//TODO: Not mandatory but it can be a keep-alive request [just reset the client for new request]
-			client->SetState(STATE_READING_HEADERS);
+			client->SetState(STATE_READING_REQUEST);
 			this->DisconnectClient(client);
 		}
 	}
 }
 
-int	ClientManager::HandleInboundData(Client* client)
+HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 {
 	// Read BUFFER_SIZE of coming request
 	if (client->ReadData() == false)
-		return (-1); // Signal an immediate connection drop to the layer above
+		return (DROP_CONNECTION); // Signal an immediate connection drop to the layer above
 
 	// we parse request when we fully parse it we return true else keep on waiting epoll 
 	bool is_request_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
@@ -311,11 +312,11 @@ int	ClientManager::HandleInboundData(Client* client)
 	if (!is_request_fully_parsed)
 	{
 		DEBUG_LOG("Request incomplete. Yielding execution back to epoll loop.");
-		return (0);  // 0 explicitly means: "Nothing to do, keep reading"
+		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
 	PrintParsedRequest(client->GetRequest());
 
-	int	parserError = client->GetRequest().GetErrorCode();
+	HttpStatusCode	parserError = client->GetRequest().GetErrorCode();
 	if (parserError != 0)
 		return (parserError); // e.g., 400 Bad Request
 
@@ -335,27 +336,35 @@ int	ClientManager::HandleInboundData(Client* client)
 		client->GetRequest().GetPath());
 
 	if (routing.server == NULL || routing.location == NULL)
-		return (404); // Not Found
+		return (HTTP_NOT_FOUND);
 	client->SetRouting(routing);
 	PrintRoutingInfo(client);
 
 	client->SetState(STATE_EXECUTING); 
 	this->DispatchResponse(client);
 
-	return (0); // Execution kicked off safely, no errors to report
+	return (NORMAL); // Execution kicked off safely, no errors to report
 }
 
 void	ClientManager::DispatchResponse(Client* client)
 {
 	// At this point the whole request is processed, time to execute it	
 	const Routing& routing = client->GetRouting();
+	HttpStatusCode			statusCode = NORMAL;
 
 	if (!routing.cgiInterpreter.empty())
 	{
 		client->SetState(STATE_WAITING_CGI);
 		//TODO Member 2: CGI parametres input
-		this->m_CGIManager.AttachCGI(client);
-		// STOP HERE. Do not switch the client to EPOLLOUT yet.
+		statusCode = this->m_CGIManager.AttachCGI(client);
+		if (statusCode != NORMAL)
+		{
+			client->BuildStaticErrorResponse(statusCode);
+			// Switch state so we can send an error immediately
+			client->SetState(STATE_SENDING_ERROR_RESPONSE);
+			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+		}
+		// STOP HERE. Do not switch the client to EPOLLOUT yet [CGI runing in background successfuly give it some time].
 		// Let epoll handle the pipes in the background.
 	}
 	else
@@ -391,9 +400,51 @@ void		ClientManager::DisconnectClient(Client* client)
 	INFO_LOG("Client Disconnected Successfully");
 }
 
-void		ClientManager::CheckClientTimeouts()
+void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 {
-	
+	for (std::map<int, Client*>::iterator it = this->m_Clients.begin(); it != this->m_Clients.end();)
+	{
+		Client* client = it->second;
+		
+		// Advance iterator safely BEFORE any potential deletion or state modification
+		std::map<int, Client*>::iterator next = it;
+		++next;
+
+		if (client)
+		{
+			// CASE 1: Client is actively waiting on a CGI script
+			if (client->GetState() == STATE_WAITING_CGI)
+			{
+				CGI* cgi = client->GetCGI();
+				if (cgi && cgi->GetTimer().Elapsed() > CGI_TIMEOUT)
+				{
+					ERROR_LOG("CGI Error: CGI Timeout! Killing process");
+					
+					// Safe to clear pipes because we aren't iterating over the CGI map!
+					cgiManager.DetachCGI(cgi);
+					client->DeleteCGI();
+
+					// Set up the timeout response wrapper
+					client->BuildStaticErrorResponse(HTTP_GATEWAY_TIMEOUT); 
+					client->SetState(STATE_SENDING_ERROR_RESPONSE);
+					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+				}
+			}
+			// CASE 2: Client is just sitting idle (Inbound/Outbound standard traffic)
+			else if (client->GetState() == STATE_READING_REQUEST)
+			{
+				if (client->GetTimer().Elapsed() > CLIENT_TIMEOUT)
+				{
+					ERROR_LOG("Client Error: Client inactivity timeout reached! Dropping connection");
+					// Set up the timeout response wrapper
+					client->BuildStaticErrorResponse(HTTP_REQUEST_TIMEOUT); 
+					client->SetState(STATE_SENDING_ERROR_RESPONSE);
+					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+				}
+			}
+		}
+		it = next;
+	}
 }
 
 Client*		ClientManager::GetClient(int clientFd)
@@ -405,4 +456,3 @@ void ClientManager::SetResolver(ConfigResolver* resolver)
 {
 	m_Resolver = resolver;
 }
-
