@@ -6,7 +6,7 @@
 /*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 18:18:58 by wahmane          ###   ########.fr       */
+/*   Updated: 2026/07/14 15:46:49 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -118,7 +118,6 @@ bool    Client::SendData()
 
 void    Client::BuildStaticResponse()
 {
-    // استدعاء الكلاس ديالك وتمرير الكليان الحالي
     Response myResponse(*this); 
     
     this->m_WriteBuffer = myResponse.getRawResponse();

@@ -38,7 +38,7 @@ Response::Response(Client& client)
         this->handleDelete(client);
     } 
     else {
-        this->generateErrorResponse(405); // Method Not Allowed
+        this->generateErrorResponse(405);
     }
 }
 
@@ -131,7 +131,25 @@ void Response::handleGet(Client& client)
     const Routing& routing = client.GetRouting();
     const Request& request = client.GetRequest();
 
-    std::string fullPath = routing.filePath; // المسار الكامل واجد ناضي!    
+    if (routing.location && routing.location->return_directive.first != 0)
+    {
+        int statusCode = routing.location->return_directive.first;
+        std::string redirectUrl = routing.location->return_directive.second;
+
+        if (redirectUrl.size() >= 2 && 
+            ((redirectUrl[0] == '"' && redirectUrl[redirectUrl.size() - 1] == '"') || 
+             (redirectUrl[0] == '\'' && redirectUrl[redirectUrl.size() - 1] == '\''))) 
+        {
+            redirectUrl = redirectUrl.substr(1, redirectUrl.size() - 2);
+        }
+
+        this->buildStatusLine(statusCode);
+        this->_headers = "Location: " + redirectUrl + "\r\n";
+        this->_headers += "Content-Length: 0\r\n\r\n";
+        return; 
+    }
+
+    std::string fullPath = routing.filePath;
     std::string currentUri = request.GetPath();
 
     struct stat fileStat;
@@ -140,10 +158,8 @@ void Response::handleGet(Client& client)
         return;
     }
 
-    // حالة المجلد
     if (S_ISDIR(fileStat.st_mode)) 
     {
-        // نقدرو نستخدمو الـ index لي جاي من الـ config ديريكت
         std::string indexFile = (routing.location && !routing.location->index.empty()) ? routing.location->index : "index.html";
         std::string indexPath = fullPath + (fullPath[fullPath.length() - 1] == '/' ? "" : "/") + indexFile;
         
@@ -152,7 +168,6 @@ void Response::handleGet(Client& client)
             fullPath = indexPath;
         }
         else {
-            // تشيك الـ autoindex الحقيقي من الـ config
             if (routing.location && routing.location->autoindex == true) {
                 this->_body = this->generateAutoindex(fullPath, currentUri);
                 if (this->_body.empty()) {
@@ -242,7 +257,7 @@ void Response::handlePost(Client& client)
         return;
     }
 
-    std::string uploadPath = (routing.location && !routing.location->upload_file.empty()) ? routing.location->upload_file : "img1"; // ردينا الـ Default هو img1 لي ديجا كاين
+    std::string uploadPath = (routing.location && !routing.location->upload_file.empty()) ? routing.location->upload_file : "img1";
     std::string destFile = uploadPath + "/uploaded_file.txt";
 
     std::cout << "\033[1;33m[POST DEBUG] Trying to open source file: " << request.GetBodyFilePath() << "\033[0m" << std::endl;
