@@ -27,6 +27,31 @@ Response::Response(Client& client)
     }
 
     HttpMethod method = client.GetRequest().GetMethod();
+    const Routing& routing = client.GetRouting();
+
+    if (routing.location != NULL && !routing.location->allow_methods.empty())
+    {
+        std::string methodStr;
+        if (method == HTTP_GET) methodStr = "GET";
+        else if (method == HTTP_POST) methodStr = "POST";
+        else if (method == HTTP_DELETE) methodStr = "DELETE";
+
+        bool isAllowed = false;
+        for (size_t i = 0; i < routing.location->allow_methods.size(); ++i)
+        {
+            if (routing.location->allow_methods[i] == methodStr)
+            {
+                isAllowed = true;
+                break;
+            }
+        }
+
+        if (!isAllowed)
+        {
+            this->generateErrorResponse(405);
+            return;
+        }
+    }
 
     if (method == HTTP_GET) {
         this->handleGet(client);
@@ -131,7 +156,7 @@ void Response::handleGet(Client& client)
     const Routing& routing = client.GetRouting();
     const Request& request = client.GetRequest();
 
-    if (routing.location && routing.location->return_directive.first != 0)
+    if (routing.location != NULL && routing.location->return_directive.first != 0)
     {
         int statusCode = routing.location->return_directive.first;
         std::string redirectUrl = routing.location->return_directive.second;
@@ -145,8 +170,8 @@ void Response::handleGet(Client& client)
 
         this->buildStatusLine(statusCode);
         this->_headers = "Location: " + redirectUrl + "\r\n";
-        this->_headers += "Content-Length: 0\r\n\r\n";
-        return; 
+        this->_headers += "Content-Length: 0\r\n";
+        return;
     }
 
     std::string fullPath = routing.filePath;
@@ -161,6 +186,14 @@ void Response::handleGet(Client& client)
     if (S_ISDIR(fileStat.st_mode)) 
     {
         std::string indexFile = (routing.location && !routing.location->index.empty()) ? routing.location->index : "index.html";
+        
+        if (indexFile.size() >= 2 && 
+            ((indexFile[0] == '"' && indexFile[indexFile.size() - 1] == '"') || 
+             (indexFile[0] == '\'' && indexFile[indexFile.size() - 1] == '\''))) 
+        {
+            indexFile = indexFile.substr(1, indexFile.size() - 2);
+        }
+
         std::string indexPath = fullPath + (fullPath[fullPath.length() - 1] == '/' ? "" : "/") + indexFile;
         
         struct stat indexStat;
@@ -257,10 +290,25 @@ void Response::handlePost(Client& client)
         return;
     }
 
-    std::string uploadPath = (routing.location && !routing.location->upload_file.empty()) ? routing.location->upload_file : "img1";
-    std::string destFile = uploadPath + "/uploaded_file.txt";
+    std::string uploadDir;
+    if (routing.location && !routing.location->upload_file.empty()) {
+        uploadDir = routing.location->upload_file;
+    } else if (routing.location && !routing.location->root.empty()) {
+        uploadDir = routing.location->root;
+    } else {
+        uploadDir = ".";
+    }
 
-    std::cout << "\033[1;33m[POST DEBUG] Trying to open source file: " << request.GetBodyFilePath() << "\033[0m" << std::endl;
+    std::string uri = request.GetPath();
+    size_t lastSlash = uri.find_last_of('/');
+    std::string fileName = "uploaded_file.txt";
+    if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
+        fileName = uri.substr(lastSlash + 1);
+    }
+
+    std::string destFile = uploadDir + "/" + fileName;
+
+    std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
     
     std::ifstream src(request.GetBodyFilePath().c_str(), std::ios::binary);
     if (!src.is_open()) {
@@ -269,10 +317,9 @@ void Response::handlePost(Client& client)
         return;
     }
 
-    std::cout << "\033[1;33m[POST DEBUG] Trying to write to destination: " << destFile << "\033[0m" << std::endl;
     std::ofstream dst(destFile.c_str(), std::ios::binary);
     if (!dst.is_open()) {
-        std::cout << "\033[1;31m[POST DEBUG] Failed to open Destination Upload File!\033[0m" << std::endl;
+        std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << ". Check folder existence!\033[0m" << std::endl;
         src.close();
         this->generateErrorResponse(500);
         return;
