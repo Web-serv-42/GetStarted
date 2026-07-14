@@ -111,6 +111,7 @@ void Response::buildStatusLine(int statusCode)
         case 403: reasonPhrase = "Forbidden"; break;
         case 404: reasonPhrase = "Not Found"; break;
         case 405: reasonPhrase = "Method Not Allowed"; break;
+        case 413: reasonPhrase = "Payload Too Large"; break;
         case 500: reasonPhrase = "Internal Server Error"; break;
         case 505: reasonPhrase = "HTTP Version Not Supported"; break;
         default:  reasonPhrase = "Unknown Status"; break;
@@ -285,7 +286,21 @@ void Response::handlePost(Client& client)
     const Routing& routing = client.GetRouting();
     const Request& request = client.GetRequest();
 
-    if (routing.location && request.GetBodyReceived() > routing.location->client_max_body_size) {
+    size_t limitSize = 0;
+    if (routing.location && routing.location->client_max_body_size > 0) {
+        limitSize = routing.location->client_max_body_size;
+    } else {
+        limitSize = 20;
+    }
+
+    if (limitSize < 1024) {
+        limitSize = limitSize * 1024 * 1024;
+    }
+
+    std::cout << "\033[1;36m[DEBUG POST] limitSize: " << limitSize 
+              << " | GetBodyReceived(): " << request.GetBodyReceived() << "\033[0m" << std::endl;
+
+    if (request.GetBodyReceived() > limitSize) {
         this->generateErrorResponse(413);
         return;
     }
