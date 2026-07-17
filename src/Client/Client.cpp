@@ -6,7 +6,7 @@
 /*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/14 15:46:49 by wahmane          ###   ########.fr       */
+/*   Updated: 2026/07/17 19:52:21 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,6 +116,21 @@ bool    Client::SendData()
     return (true);
 }
 
+// void    Client::BuildStaticResponse()
+// {
+//     this->m_Response = Response(this->m_Routing, this->m_Request); 
+//     HttpStatusCode statusCode = this->m_Response.Run();
+
+    
+//     if (statusCode != NORMAL)
+//     {
+//         // check here if static error page or we need to build a statis error buffer
+//         this->m_Response.handleError(statusCode);
+//     }
+    
+//     // this->m_WriteBuffer = this->m_Response.getRawResponse();
+//     // this->m_ReadBuffer.clear();
+// }
 void    Client::BuildStaticResponse()
 {
     this->m_Response = Response(this->m_Routing, this->m_Request); 
@@ -123,16 +138,16 @@ void    Client::BuildStaticResponse()
 
     if (statusCode != NORMAL)
     {
-
-        // check error pages numbers
-           // case: generate
-            // case : get eror oage ?.html
+        this->m_Response.handleError(statusCode);
     }
-    else
-    {
+    
+    this->m_WriteBuffer = this->m_Response.getRawResponse();
+    this->m_ReadBuffer.clear();
 
-        this->m_WriteBuffer = this->m_Response.getRawResponse();
-        this->m_ReadBuffer.clear();
+    if (!this->m_Response.getFilePath().empty()) {
+        this->m_State = STATE_SENDING_HEADERS; 
+    } else {
+        this->m_State = STATE_SENDING_FULL_RESPONSE; 
     }
 }
 
@@ -145,7 +160,7 @@ void Client::BuildStaticErrorResponse(HttpStatusCode code)
     body << "<html><head><title>" << code << " " << reason << "</title></head>"
         << "<body><center><h1>" << code << " " << reason << "</h1></center>"
         << "<hr><center>Webserv/1.0</center></body></html>";
-         
+
     std::string html = body.str();
     std::ostringstream response;
 
@@ -264,6 +279,7 @@ int Client::PrepareWriteBuffer()
     {
         return (0);
     }
+
     
     if (this->m_CGI != NULL)
     {
@@ -271,7 +287,8 @@ int Client::PrepareWriteBuffer()
     }
     else
     {
-        this->m_FileContentPath = this->m_Routing.filePath;
+        // this->m_FileContentPath = this->m_Routing.filePath;
+        this->m_FileContentPath = this->m_Response.getFilePath();
     }
     
     if (this->m_State == STATE_SENDING_HEADERS)
@@ -316,6 +333,55 @@ int Client::PrepareWriteBuffer()
     }
     return (0);
 }
+
+// int Client::PrepareWriteBuffer()
+// {
+//     if ((this->m_State == STATE_SENDING_ERROR_RESPONSE
+//         || this->m_State == STATE_SENDING_FULL_RESPONSE)
+//         && !this->m_WriteBuffer.empty())
+//     {
+//         return (0);
+//     }
+    
+//     if (this->m_CGI != NULL)
+//     {
+//         this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
+//     }
+//     else
+//     {
+//         this->m_FileContentPath = this->m_Response.getFilePath(); // هاهي خدمات دابا!
+//     }
+    
+//     if (this->m_State == STATE_SENDING_HEADERS)
+//     {
+//         this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
+//         if (this->m_ContentFileFd == -1)
+//         {
+//             ERROR_LOG("File I/O Error: Could not open mock body file"); 
+//             return (HTTP_INTERNAL_SERVER_ERROR);
+//         }
+//         this->m_State = STATE_SENDING_BODY;
+//     }
+//     else if (this->m_State == STATE_SENDING_BODY)
+//     {
+//         if (this->m_WriteBuffer.empty())
+//         {
+//             int res = this->ReadFileContent();
+//             if (res == -1)
+//             {
+//                 close(this->m_ContentFileFd);   
+//                 return (HTTP_INTERNAL_SERVER_ERROR);
+//             }
+            
+//             if (res == 0) // سالينا القراية (EOF)
+//             {
+//                 close(this->m_ContentFileFd);
+//                 this->m_State = STATE_RESPONSE_SENT;
+//             }
+//         }
+//     }
+//     return (0);
+// }
 // =========================================================================
 // GETTERS, SETTERS & BOILERPLATE HELPERS
 // =========================================================================

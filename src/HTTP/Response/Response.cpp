@@ -1,5 +1,9 @@
 #include "HTTP/Response/Response.hpp"
 
+const std::string& Response::getFilePath() const {
+    return this->_filePath;
+}
+
 // void Response::generateErrorResponse(int statusCode, const LocationConfig& config)
 void Response::generateErrorResponse(HttpStatusCode statusCode)
 {
@@ -20,7 +24,7 @@ Response::Response(){}
 
 Response::Response(Routing routing, Request request) : m_Routing(routing), m_Request(request)
 {
-   
+
 }
 
 Response::~Response(){}
@@ -53,19 +57,18 @@ HttpStatusCode Response::Run()
 
         if (!isAllowed)
         {
-            //TODO: return httpCode and later decide (build from function or error file)
             return (HTTP_METHOD_NOT_ALLOWED);
         }
     }
 
     if (method == HTTP_GET) {
-        this->handleGet();
+        return this->handleGet();
     } 
     else if (method == HTTP_POST) {
-        this->handlePost();
+        return this->handlePost();
     } 
     else if (method == HTTP_DELETE) {
-        this->handleDelete();
+        return this->handleDelete();
     } 
     else {
         return (HTTP_METHOD_NOT_ALLOWED);
@@ -73,8 +76,6 @@ HttpStatusCode Response::Run()
 
     return (NORMAL);
 }
-
-
 
 std::string getContentTypeFromPath(const std::string& path)
 {
@@ -117,7 +118,6 @@ void Response::buildStatusLine(HttpStatusCode statusCode)
     this->_statusLine = "HTTP/1.1 " + codeStr + " " + reasonPhrase + "\r\n";
 }
 
-
 // GET ----------------------------------------------------------
 
 std::string Response::generateAutoindex(const std::string& dirPath, const std::string& uri)
@@ -147,23 +147,6 @@ std::string Response::generateAutoindex(const std::string& dirPath, const std::s
 
 HttpStatusCode Response::handleGet()
 {
-    std::cout << std::endl ;
-    std::cout << this->m_Routing.filePath << std::endl ;
-    std::cout << this->m_Routing.location << std::endl ;
-    std::cout << this->m_Routing.server << std::endl ;
-    std::cout << std::endl ;
-    std::cout << std::endl ;
-    std::cout << this->m_Request.GetPath() << std::endl ;
-    std::cout << this->m_Request.GetBodyFd() << std::endl ;
-    std::cout << this->m_Request.GetBodyFilePath() << std::endl ;
-    std::cout << this->m_Request.GetBodyReceived() << std::endl ;
-    std::cout << this->m_Request.GetContentLength() << std::endl ;
-    std::cout << this->m_Request.GetErrorCode() << std::endl ;
-    std::cout << this->m_Request.GetMethod() << std::endl ;
-    std::cout << this->m_Request.GetMethodString() << std::endl ;
-    std::cout << this->m_Request.GetState() << std::endl ;
-    std::cout << std::endl ;
-
     if (this->m_Routing.location != NULL && this->m_Routing.location->return_directive.first != NORMAL)
     {
         HttpStatusCode statusCode = this->m_Routing.location->return_directive.first;
@@ -179,6 +162,8 @@ HttpStatusCode Response::handleGet()
         this->buildStatusLine(statusCode);
         this->_headers = "Location: " + redirectUrl + "\r\n";
         this->_headers += "Content-Length: 0\r\n";
+        
+        return (NORMAL); // <--- FIXED: Stop execution after redirect
     }
 
     std::string fullPath = this->m_Routing.filePath;
@@ -211,17 +196,15 @@ HttpStatusCode Response::handleGet()
                 this->_body = this->generateAutoindex(fullPath, currentUri);
                 if (this->_body.empty()) {
                     return (HTTP_INTERNAL_SERVER_ERROR);
-        
                 }
                 this->buildStatusLine(HTTP_OK);
                 std::stringstream ss;
                 ss << this->_body.length();
                 this->_headers = "Content-Type: text/html\r\n";
                 this->_headers += "Content-Length: " + ss.str() + "\r\n";
-    
+                return (NORMAL); // <--- FIXED: Autoindex returns HTML in memory successfully
             } else {
                 return (HTTP_FORBIDDEN);
-    
             }
         }
     }
@@ -230,22 +213,24 @@ HttpStatusCode Response::handleGet()
         return (HTTP_FORBIDDEN);
     }
 
-    std::ifstream file(fullPath.c_str(), std::ios::binary);
-    if (!file.is_open()) {
+    // <--- BIG ARCHITECTURE FIX: Do NOT read the whole file into RAM! --->
+    struct stat fileStat2;
+    if (stat(fullPath.c_str(), &fileStat2) != 0) {
         return (HTTP_INTERNAL_SERVER_ERROR);
     }
 
-    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    this->_body = content;
-    file.close();
+    this->_filePath = fullPath; // Store path for Client to read chunks
+    this->_body = "";           // Keep body empty
 
     this->buildStatusLine(HTTP_OK);
     std::stringstream ss;
-    ss << this->_body.length();
+    ss << fileStat2.st_size; // Exact file size from stat
 
     std::string contentType = getContentTypeFromPath(fullPath);
     this->_headers = "Content-Type: " + contentType + "\r\n";
     this->_headers += "Content-Length: " + ss.str() + "\r\n";
+    
+    return (NORMAL); // <--- FIXED: End of handleGet
 }
 
 // Delete ----------------------------------------------------------
@@ -274,14 +259,14 @@ HttpStatusCode Response::handleDelete()
     this->buildStatusLine(HTTP_NO_CONTENT);
     this->_headers = "Content-Length: 0\r\n";
     this->_body = "";
-}
 
+    return (NORMAL); // <--- FIXED: Added missing return statement
+}
 
 // Post ----------------------------------------------------------
 
 HttpStatusCode Response::handlePost()
 {
-
     size_t limitSize = 0;
     if (this->m_Routing.location && this->m_Routing.location->client_max_body_size > 0) {
         limitSize = this->m_Routing.location->client_max_body_size;
@@ -320,7 +305,6 @@ HttpStatusCode Response::handlePost()
 
     std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
     
-    // Body path already created, we need just to do a simple rename path (check if file is deleted)
     std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
     if (!src.is_open()) {
         std::cout << "\033[1;31m[POST DEBUG] Failed to open this->m_Request Body File!\033[0m" << std::endl;
@@ -345,5 +329,64 @@ HttpStatusCode Response::handlePost()
     ss << this->_body.length();
     this->_headers = "Content-Type: text/html\r\n";
     this->_headers += "Content-Length: " + ss.str() + "\r\n";
+    
     return (NORMAL);
+}
+
+// Handle Error--------------------------------
+
+void Response::handleError(HttpStatusCode statusCode)
+{
+    std::string errorPageFile = "";
+
+    if (this->m_Routing.location != NULL) {
+        std::map<int, std::string>::const_iterator it = this->m_Routing.location->error_pages.find(statusCode);
+        if (it != this->m_Routing.location->error_pages.end()) {
+            errorPageFile = it->second;
+        }
+    }
+    
+    if (errorPageFile.empty() && this->m_Routing.server != NULL) {
+        std::map<int, std::string>::const_iterator it = this->m_Routing.server->error_pages.find(statusCode);
+        if (it != this->m_Routing.server->error_pages.end()) {
+            errorPageFile = it->second;
+        }
+    }
+
+    if (!errorPageFile.empty())
+    {
+        std::string rootDir = ".";
+        if (this->m_Routing.location && !this->m_Routing.location->root.empty()) {
+            rootDir = this->m_Routing.location->root;
+        } else if (this->m_Routing.server && !this->m_Routing.server->root.empty()) {
+            rootDir = this->m_Routing.server->root;
+        }
+
+        std::string fullPath = rootDir + (errorPageFile[0] == '/' ? "" : "/") + errorPageFile;
+
+        // <--- BIG ARCHITECTURE FIX: Do NOT read the custom error page into RAM! --->
+        struct stat fileStat;
+        if (stat(fullPath.c_str(), &fileStat) == 0 && access(fullPath.c_str(), R_OK) == 0) 
+        {
+            this->_filePath = fullPath; // Store path for Client to read chunks
+            this->_body = "";           // Keep body empty
+
+            this->buildStatusLine(statusCode);
+
+            std::stringstream ss;
+            ss << fileStat.st_size; // Exact file size from stat
+
+            std::string contentType = getContentTypeFromPath(fullPath); 
+            this->_headers = "Content-Type: " + contentType + "\r\n";
+            this->_headers += "Content-Length: " + ss.str() + "\r\n";
+            
+            return;
+        }
+        else {
+            std::cout << "\033[1;31m[ERROR] Custom error page not found on disk: " << fullPath << "\033[0m" << std::endl;
+        }
+    }
+
+    // Fallback: Generate a small string in memory if no file exists
+    this->generateErrorResponse(statusCode);
 }

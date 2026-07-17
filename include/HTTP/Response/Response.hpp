@@ -25,7 +25,8 @@ class Response
         Request    m_Request;
         std::string _statusLine;
         std::string _headers;
-        std::string _body;
+        std::string _body; // headers + body = small fullReponse usage: GET failure, POST succes and failure, DELETE success and failure [failure: samll, error page]
+        std::string _filePath;
         std::string _rawResponse;
 
         static std::map<std::string, std::string> _mimeTypes;
@@ -47,6 +48,9 @@ class Response
 
         void generateErrorResponse(HttpStatusCode statusCode);
         std::string getRawResponse() const;
+
+        void handleError(HttpStatusCode statusCode);
+        const std::string& getFilePath() const;
 };
 
 // #endif   
