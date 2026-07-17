@@ -1,8 +1,7 @@
 #include "HTTP/Response/Response.hpp"
-#include "Client/Client.hpp"
 
 // void Response::generateErrorResponse(int statusCode, const LocationConfig& config)
-void Response::generateErrorResponse(int statusCode)
+void Response::generateErrorResponse(HttpStatusCode statusCode)
 {
     // (void)config;
 
@@ -19,17 +18,23 @@ void Response::generateErrorResponse(int statusCode)
 
 Response::Response(){}
 
-Response::Response(Client& client)
+Response::Response(Routing routing, Request request) : m_Routing(routing), m_Request(request)
 {
-    if (client.GetRequest().GetErrorCode() != 0) {
-        this->generateErrorResponse(client.GetRequest().GetErrorCode());
-        return;
+   
+}
+
+Response::~Response(){}
+
+HttpStatusCode Response::Run()
+{
+    // Optional for safety
+    if (this->m_Request.GetErrorCode() != NORMAL) {
+        return (this->m_Request.GetErrorCode());
     }
 
-    HttpMethod method = client.GetRequest().GetMethod();
-    const Routing& routing = client.GetRouting();
+    HttpMethod method = this->m_Request.GetMethod();
 
-    if (routing.location != NULL && !routing.location->allow_methods.empty())
+    if (this->m_Routing.location != NULL && !this->m_Routing.location->allow_methods.empty())
     {
         std::string methodStr;
         if (method == HTTP_GET) methodStr = "GET";
@@ -37,9 +42,9 @@ Response::Response(Client& client)
         else if (method == HTTP_DELETE) methodStr = "DELETE";
 
         bool isAllowed = false;
-        for (size_t i = 0; i < routing.location->allow_methods.size(); ++i)
+        for (size_t i = 0; i < this->m_Routing.location->allow_methods.size(); ++i)
         {
-            if (routing.location->allow_methods[i] == methodStr)
+            if (this->m_Routing.location->allow_methods[i] == methodStr)
             {
                 isAllowed = true;
                 break;
@@ -48,27 +53,28 @@ Response::Response(Client& client)
 
         if (!isAllowed)
         {
-            this->generateErrorResponse(405);
-            return;
+            //TODO: return httpCode and later decide (build from function or error file)
+            return (HTTP_METHOD_NOT_ALLOWED);
         }
     }
 
     if (method == HTTP_GET) {
-        this->handleGet(client);
+        this->handleGet();
     } 
     else if (method == HTTP_POST) {
-        this->handlePost(client);
+        this->handlePost();
     } 
     else if (method == HTTP_DELETE) {
-        this->handleDelete(client);
+        this->handleDelete();
     } 
     else {
-        this->generateErrorResponse(405);
+        return (HTTP_METHOD_NOT_ALLOWED);
     }
+
+    return (NORMAL);
 }
 
 
-Response::~Response(){}
 
 std::string getContentTypeFromPath(const std::string& path)
 {
@@ -98,24 +104,11 @@ std::string Response::getRawResponse() const
     return fullResponse;
 }
 
-void Response::buildStatusLine(int statusCode)
+void Response::buildStatusLine(HttpStatusCode statusCode)
 {
     std::string reasonPhrase;
-
-    switch (statusCode) {
-        case 200: reasonPhrase = "OK"; break;
-        case 201: reasonPhrase = "Created"; break;
-        case 204: reasonPhrase = "No Content"; break;
-        case 301: reasonPhrase = "Moved Permanently"; break;
-        case 400: reasonPhrase = "Bad Request"; break;
-        case 403: reasonPhrase = "Forbidden"; break;
-        case 404: reasonPhrase = "Not Found"; break;
-        case 405: reasonPhrase = "Method Not Allowed"; break;
-        case 413: reasonPhrase = "Payload Too Large"; break;
-        case 500: reasonPhrase = "Internal Server Error"; break;
-        case 505: reasonPhrase = "HTTP Version Not Supported"; break;
-        default:  reasonPhrase = "Unknown Status"; break;
-    }
+    
+    reasonPhrase = GetHttpStatusReason(statusCode);
 
     std::stringstream ss;
     ss << statusCode;
@@ -152,19 +145,33 @@ std::string Response::generateAutoindex(const std::string& dirPath, const std::s
     return html;
 }
 
-void Response::handleGet(Client& client)
+HttpStatusCode Response::handleGet()
 {
-    const Routing& routing = client.GetRouting();
-    const Request& request = client.GetRequest();
+    std::cout << std::endl ;
+    std::cout << this->m_Routing.filePath << std::endl ;
+    std::cout << this->m_Routing.location << std::endl ;
+    std::cout << this->m_Routing.server << std::endl ;
+    std::cout << std::endl ;
+    std::cout << std::endl ;
+    std::cout << this->m_Request.GetPath() << std::endl ;
+    std::cout << this->m_Request.GetBodyFd() << std::endl ;
+    std::cout << this->m_Request.GetBodyFilePath() << std::endl ;
+    std::cout << this->m_Request.GetBodyReceived() << std::endl ;
+    std::cout << this->m_Request.GetContentLength() << std::endl ;
+    std::cout << this->m_Request.GetErrorCode() << std::endl ;
+    std::cout << this->m_Request.GetMethod() << std::endl ;
+    std::cout << this->m_Request.GetMethodString() << std::endl ;
+    std::cout << this->m_Request.GetState() << std::endl ;
+    std::cout << std::endl ;
 
-    if (routing.location != NULL && routing.location->return_directive.first != 0)
+    if (this->m_Routing.location != NULL && this->m_Routing.location->return_directive.first != NORMAL)
     {
-        int statusCode = routing.location->return_directive.first;
-        std::string redirectUrl = routing.location->return_directive.second;
+        HttpStatusCode statusCode = this->m_Routing.location->return_directive.first;
+        std::string redirectUrl = this->m_Routing.location->return_directive.second;
 
         if (redirectUrl.size() >= 2 && 
             ((redirectUrl[0] == '"' && redirectUrl[redirectUrl.size() - 1] == '"') || 
-             (redirectUrl[0] == '\'' && redirectUrl[redirectUrl.size() - 1] == '\''))) 
+                (redirectUrl[0] == '\'' && redirectUrl[redirectUrl.size() - 1] == '\''))) 
         {
             redirectUrl = redirectUrl.substr(1, redirectUrl.size() - 2);
         }
@@ -172,25 +179,23 @@ void Response::handleGet(Client& client)
         this->buildStatusLine(statusCode);
         this->_headers = "Location: " + redirectUrl + "\r\n";
         this->_headers += "Content-Length: 0\r\n";
-        return;
     }
 
-    std::string fullPath = routing.filePath;
-    std::string currentUri = request.GetPath();
+    std::string fullPath = this->m_Routing.filePath;
+    std::string currentUri = this->m_Request.GetPath();
 
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
-        this->generateErrorResponse(404);
-        return;
+        return (HTTP_NOT_FOUND);
     }
 
     if (S_ISDIR(fileStat.st_mode)) 
     {
-        std::string indexFile = (routing.location && !routing.location->index.empty()) ? routing.location->index : "index.html";
+        std::string indexFile = (this->m_Routing.location && !this->m_Routing.location->index.empty()) ? this->m_Routing.location->index : "index.html";
         
         if (indexFile.size() >= 2 && 
             ((indexFile[0] == '"' && indexFile[indexFile.size() - 1] == '"') || 
-             (indexFile[0] == '\'' && indexFile[indexFile.size() - 1] == '\''))) 
+                (indexFile[0] == '\'' && indexFile[indexFile.size() - 1] == '\''))) 
         {
             indexFile = indexFile.substr(1, indexFile.size() - 2);
         }
@@ -202,41 +207,39 @@ void Response::handleGet(Client& client)
             fullPath = indexPath;
         }
         else {
-            if (routing.location && routing.location->autoindex == true) {
+            if (this->m_Routing.location && this->m_Routing.location->autoindex == true) {
                 this->_body = this->generateAutoindex(fullPath, currentUri);
                 if (this->_body.empty()) {
-                    this->generateErrorResponse(500);
-                    return;
+                    return (HTTP_INTERNAL_SERVER_ERROR);
+        
                 }
-                this->buildStatusLine(200);
+                this->buildStatusLine(HTTP_OK);
                 std::stringstream ss;
                 ss << this->_body.length();
                 this->_headers = "Content-Type: text/html\r\n";
                 this->_headers += "Content-Length: " + ss.str() + "\r\n";
-                return;
+    
             } else {
-                this->generateErrorResponse(403);
-                return;
+                return (HTTP_FORBIDDEN);
+    
             }
         }
     }
 
     if (access(fullPath.c_str(), R_OK) != 0) {
-        this->generateErrorResponse(403);
-        return;
+        return (HTTP_FORBIDDEN);
     }
 
     std::ifstream file(fullPath.c_str(), std::ios::binary);
     if (!file.is_open()) {
-        this->generateErrorResponse(500);
-        return;
+        return (HTTP_INTERNAL_SERVER_ERROR);
     }
 
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     this->_body = content;
     file.close();
 
-    this->buildStatusLine(200);
+    this->buildStatusLine(HTTP_OK);
     std::stringstream ss;
     ss << this->_body.length();
 
@@ -247,33 +250,28 @@ void Response::handleGet(Client& client)
 
 // Delete ----------------------------------------------------------
 
-void Response::handleDelete(Client& client)
+HttpStatusCode Response::handleDelete()
 {
-    const Routing& routing = client.GetRouting();
-    std::string fullPath = routing.filePath;
+    std::string fullPath = this->m_Routing.filePath;
 
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
-        this->generateErrorResponse(404);
-        return;
+        return (HTTP_NOT_FOUND);
     }
 
     if (S_ISDIR(fileStat.st_mode)) {
-        this->generateErrorResponse(403);
-        return;
+        return (HTTP_FORBIDDEN);
     }
 
     if (access(fullPath.c_str(), W_OK) != 0) {
-        this->generateErrorResponse(403);
-        return;
+        return (HTTP_FORBIDDEN);
     }
 
     if (unlink(fullPath.c_str()) != 0) {
-        this->generateErrorResponse(500);
-        return;
+        return (HTTP_INTERNAL_SERVER_ERROR);
     }
 
-    this->buildStatusLine(204);
+    this->buildStatusLine(HTTP_NO_CONTENT);
     this->_headers = "Content-Length: 0\r\n";
     this->_body = "";
 }
@@ -281,14 +279,12 @@ void Response::handleDelete(Client& client)
 
 // Post ----------------------------------------------------------
 
-void Response::handlePost(Client& client)
+HttpStatusCode Response::handlePost()
 {
-    const Routing& routing = client.GetRouting();
-    const Request& request = client.GetRequest();
 
     size_t limitSize = 0;
-    if (routing.location && routing.location->client_max_body_size > 0) {
-        limitSize = routing.location->client_max_body_size;
+    if (this->m_Routing.location && this->m_Routing.location->client_max_body_size > 0) {
+        limitSize = this->m_Routing.location->client_max_body_size;
     } else {
         limitSize = 20;
     }
@@ -298,25 +294,24 @@ void Response::handlePost(Client& client)
     }
 
     std::cout << "\033[1;36m[DEBUG POST] limitSize: " << limitSize 
-              << " | GetBodyReceived(): " << request.GetBodyReceived() << "\033[0m" << std::endl;
+                << " | GetBodyReceived(): " << this->m_Request.GetBodyReceived() << "\033[0m" << std::endl;
 
-    if (request.GetBodyReceived() > limitSize) {
-        this->generateErrorResponse(413);
-        return;
+    if (this->m_Request.GetBodyReceived() > limitSize) {
+        return (HTTP_PAYLOAD_TOO_LARGE);
     }
 
     std::string uploadDir;
-    if (routing.location && !routing.location->upload_file.empty()) {
-        uploadDir = routing.location->upload_file;
-    } else if (routing.location && !routing.location->root.empty()) {
-        uploadDir = routing.location->root;
+    if (this->m_Routing.location && !this->m_Routing.location->upload_file.empty()) {
+        uploadDir = this->m_Routing.location->upload_file;
+    } else if (this->m_Routing.location && !this->m_Routing.location->root.empty()) {
+        uploadDir = this->m_Routing.location->root;
     } else {
         uploadDir = ".";
     }
 
-    std::string uri = request.GetPath();
+    std::string uri = this->m_Request.GetPath();
     size_t lastSlash = uri.find_last_of('/');
-    std::string fileName = "uploaded_file.txt";
+    std::string fileName = "uploaded_file.txt" ;// need dynamic file and extension attrubutes;
     if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
         fileName = uri.substr(lastSlash + 1);
     }
@@ -325,30 +320,30 @@ void Response::handlePost(Client& client)
 
     std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
     
-    std::ifstream src(request.GetBodyFilePath().c_str(), std::ios::binary);
+    // Body path already created, we need just to do a simple rename path (check if file is deleted)
+    std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
     if (!src.is_open()) {
-        std::cout << "\033[1;31m[POST DEBUG] Failed to open Request Body File!\033[0m" << std::endl;
-        this->generateErrorResponse(500);
-        return;
+        std::cout << "\033[1;31m[POST DEBUG] Failed to open this->m_Request Body File!\033[0m" << std::endl;
+        return (HTTP_INTERNAL_SERVER_ERROR);
     }
 
     std::ofstream dst(destFile.c_str(), std::ios::binary);
     if (!dst.is_open()) {
         std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << ". Check folder existence!\033[0m" << std::endl;
         src.close();
-        this->generateErrorResponse(500);
-        return;
+        return (HTTP_INTERNAL_SERVER_ERROR);
     }
 
     dst << src.rdbuf();
     src.close();
     dst.close();
 
-    this->buildStatusLine(201);
+    this->buildStatusLine(HTTP_CREATED);
     this->_body = "<html><body><h1>201 Created: File Uploaded Successfully!</h1></body></html>";
     
     std::stringstream ss;
     ss << this->_body.length();
     this->_headers = "Content-Type: text/html\r\n";
     this->_headers += "Content-Length: " + ss.str() + "\r\n";
+    return (NORMAL);
 }

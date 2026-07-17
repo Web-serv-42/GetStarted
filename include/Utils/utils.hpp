@@ -16,6 +16,7 @@
 #include <string>
 #include <sstream>
 #include "Parsing/ConfigParser.hpp"
+#include "Core/HttpStatus.hpp"
 
 std::string	GenerateTmpFileName(std::string contex);
 std::string toString(int port);

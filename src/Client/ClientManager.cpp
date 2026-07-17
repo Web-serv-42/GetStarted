@@ -274,7 +274,8 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		}
 		else if (statusCode != NORMAL)
 		{
-			client->BuildStaticErrorResponse(statusCode);
+			// client->BuildStaticErrorResponse(statusCode); // Here !!!!!!!!!!!!
+			client->GetResponse().generateErrorResponse(statusCode);
 			client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
@@ -359,7 +360,7 @@ void	ClientManager::DispatchResponse(Client* client)
 		statusCode = this->m_CGIManager.AttachCGI(client);
 		if (statusCode != NORMAL)
 		{
-			client->BuildStaticErrorResponse(statusCode);
+			client->GetResponse().generateErrorResponse(statusCode);
 			// Switch state so we can send an error immediately
 			client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
@@ -370,7 +371,7 @@ void	ClientManager::DispatchResponse(Client* client)
 	else
 	{
 		// It's a static file request (e.g., index.html)
-		client->BuildStaticResponse();
+		client->BuildStaticResponse(); // Here again !!!!!!!!!
 		client->SetState(STATE_SENDING_FULL_RESPONSE);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}

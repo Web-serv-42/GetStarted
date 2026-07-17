@@ -114,7 +114,7 @@ void PrintConfigTree(const ConfigTree& tree)
             }
 
             std::cout << "  Return Directive      : ";
-            if (loc.return_directive.first == 0)
+            if (loc.return_directive.first == NORMAL)
                 std::cout << "(none)\n";
             else
                 std::cout << loc.return_directive.first

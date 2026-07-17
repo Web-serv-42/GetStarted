@@ -1,6 +1,5 @@
 #include "Parsing/ConfigParser.hpp"
-#include "Utils/utils.hpp"
-#include <iostream>
+
 // =========================================================================
 // CONSTRUCTOR & DESTRUCTOR
 // =========================================================================
@@ -422,7 +421,7 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
             // Parse Return Directive (Status Code + URL/Text)
             if (loc.directives.count("return")) {
                 const std::vector<std::string>& ret_vals = loc.directives["return"];
-                loc.return_directive.first = std::atoi(ret_vals[0].c_str());
+                loc.return_directive.first = static_cast<HttpStatusCode>(std::atoi(ret_vals[0].c_str()));
                 if (ret_vals.size() > 1) {
                     loc.return_directive.second = ret_vals[1];
                 }   

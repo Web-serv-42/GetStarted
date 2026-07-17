@@ -1,5 +1,6 @@
-#ifndef RESPONSE_HPP
-#define RESPONSE_HPP
+// #ifndef RESPONSE_HPP
+// #define RESPONSE_HPP
+#pragma once 
 
 #include <dirent.h>
 #include <fstream>
@@ -8,14 +9,20 @@
 #include <sstream>
 #include <string>
 #include <map>
+// #include "Client/Client.hpp"
+#include "HTTP/Request/Request.hpp"
+#include "Parsing/ConfigResolver.hpp"
+#include "Core/HttpStatus.hpp"
 
 class Request;
-class LocationConfig; 
+struct LocationConfig; 
 class Client;
 
 class Response
 {
     private:
+        Routing    m_Routing;
+        Request    m_Request;
         std::string _statusLine;
         std::string _headers;
         std::string _body;
@@ -23,21 +30,23 @@ class Response
 
         static std::map<std::string, std::string> _mimeTypes;
         
-        void buildStatusLine(int statusCode);
+        void buildStatusLine(HttpStatusCode statusCode);
         void initMimeTypes();
         std::string generateAutoindex(const std::string& dirPath, const std::string& uri);
 
-        void handleGet(Client& client);
-        void handleDelete(Client& client);
-        void handlePost(Client& client);
+        HttpStatusCode  handleGet();
+        HttpStatusCode  handleDelete();
+        HttpStatusCode  handlePost();
 
     public:
         Response();
-        Response(Client& client);
+        Response(Routing routing, Request request);
         ~Response();
 
-        void generateErrorResponse(int statusCode);
+        HttpStatusCode Run();
+
+        void generateErrorResponse(HttpStatusCode statusCode);
         std::string getRawResponse() const;
 };
 
-#endif
+// #endif   

@@ -118,10 +118,22 @@ bool    Client::SendData()
 
 void    Client::BuildStaticResponse()
 {
-    Response myResponse(*this); 
-    
-    this->m_WriteBuffer = myResponse.getRawResponse();
-    this->m_ReadBuffer.clear();
+    this->m_Response = Response(this->m_Routing, this->m_Request); 
+    HttpStatusCode statusCode = this->m_Response.Run();
+
+    if (statusCode != NORMAL)
+    {
+
+        // check error pages numbers
+           // case: generate
+            // case : get eror oage ?.html
+    }
+    else
+    {
+
+        this->m_WriteBuffer = this->m_Response.getRawResponse();
+        this->m_ReadBuffer.clear();
+    }
 }
 
 void Client::BuildStaticErrorResponse(HttpStatusCode code)
@@ -131,8 +143,8 @@ void Client::BuildStaticErrorResponse(HttpStatusCode code)
     // Create an explicit error page body
     std::ostringstream body;
     body << "<html><head><title>" << code << " " << reason << "</title></head>"
-         << "<body><center><h1>" << code << " " << reason << "</h1></center>"
-         << "<hr><center>Webserv/1.0</center></body></html>";
+        << "<body><center><h1>" << code << " " << reason << "</h1></center>"
+        << "<hr><center>Webserv/1.0</center></body></html>";
          
     std::string html = body.str();
     std::ostringstream response;
@@ -379,6 +391,16 @@ Request& Client::GetRequest()
 const Request& Client::GetRequest() const
 {
     return m_Request;
+}
+
+Response& Client::GetResponse()
+{
+    return m_Response;
+}
+
+const Response& Client::GetResponse() const
+{
+    return m_Response;
 }
 
 void Client::SetLocalIp(const std::string& ip)
