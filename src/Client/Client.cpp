@@ -6,7 +6,7 @@
 /*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/17 19:52:21 by wahmane          ###   ########.fr       */
+/*   Updated: 2026/07/18 18:09:08 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -198,75 +198,7 @@ int Client::ReadFileContent()
 
 // From here I read the response and i sent it [request first then body]
 // or just the whole response if is it stored in memory : return status code
-// int Client::PrepareWriteBuffer()
-// {
-// 	struct stat 		fileInfo;
-// 	std::stringstream	headerStream;
 
-// 	// 0. Small response stored direclty in memory => std::string this->m_WriteBuffer
-// 	if ((this->m_State == STATE_SENDING_ERROR_RESPONSE
-// 		|| this->m_State == STATE_SENDING_FULL_RESPONSE)
-// 		&& !this->m_WriteBuffer.empty())
-// 	{
-// 		this->m_State = STATE_RESPONSE_SENT;
-// 		return (0);;
-// 	}
-// 	if (this->m_CGI != NULL)
-// 	{
-// 		this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
-// 	}
-// 	else
-// 	{
-// 		this->m_FileContentPath = this->m_Routing.filePath;
-// 	}
-// 	// 1. A base implementaion of building headers before body
-// 	if (this->m_State == STATE_SENDING_HEADERS)
-// 	{
-// 		// Dynamically measure the exact file footprint on disk
-// 		if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
-// 		{
-// 			ERROR_LOG("File I/O Error: Could not find mock body file to measure size");
-// 			return (HTTP_INTERNAL_SERVER_ERROR);
-// 		}
-
-// 		headerStream << "HTTP/1.0 200 OK\r\n"
-// 		<< "Content-Type: text/html\r\n" // Note: can be extended with mime-types later
-// 		<< "Content-Length: " << fileInfo.st_size << "\r\n" // Exact dynamic size!
-// 		<< "\r\n";
-// 		this->m_WriteBuffer = headerStream.str();
-		
-// 		//TODO Member 2: check if the output file containe headers
-// 		this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
-// 		if (this->m_ContentFileFd == -1)
-// 		{
-// 			ERROR_LOG("File I/O Error: Could not open mock body file");	
-// 			return (HTTP_INTERNAL_SERVER_ERROR);
-// 		}
-// 		this->m_State = STATE_SENDING_BODY;
-// 	}
-// 	// 2. Subsequent loop iterations stream chunks smoothly (sent body)
-// 	else if (this->m_State == STATE_SENDING_BODY)
-// 	{
-// 		// Only read more from disk if our socket write buffer has cleared out.
-// 		// This prevents loading a massive file into RAM all at once.
-// 		if (this->m_WriteBuffer.empty())
-// 		{
-// 			int res = this->ReadFileContent();
-// 			if (res == -1)
-// 			{
-// 				close(this->m_ContentFileFd);	
-// 				return (HTTP_INTERNAL_SERVER_ERROR);
-// 			}
-			
-// 			if (res == 0) // EOF reached and buffer is confirmed empty
-// 			{
-// 				close(this->m_ContentFileFd);
-// 				this->m_State = STATE_RESPONSE_SENT;
-// 			}
-// 		}
-// 	}
-// 	return (0);;
-// }
 
 int Client::PrepareWriteBuffer()
 {
@@ -334,54 +266,6 @@ int Client::PrepareWriteBuffer()
     return (0);
 }
 
-// int Client::PrepareWriteBuffer()
-// {
-//     if ((this->m_State == STATE_SENDING_ERROR_RESPONSE
-//         || this->m_State == STATE_SENDING_FULL_RESPONSE)
-//         && !this->m_WriteBuffer.empty())
-//     {
-//         return (0);
-//     }
-    
-//     if (this->m_CGI != NULL)
-//     {
-//         this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
-//     }
-//     else
-//     {
-//         this->m_FileContentPath = this->m_Response.getFilePath(); // هاهي خدمات دابا!
-//     }
-    
-//     if (this->m_State == STATE_SENDING_HEADERS)
-//     {
-//         this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
-//         if (this->m_ContentFileFd == -1)
-//         {
-//             ERROR_LOG("File I/O Error: Could not open mock body file"); 
-//             return (HTTP_INTERNAL_SERVER_ERROR);
-//         }
-//         this->m_State = STATE_SENDING_BODY;
-//     }
-//     else if (this->m_State == STATE_SENDING_BODY)
-//     {
-//         if (this->m_WriteBuffer.empty())
-//         {
-//             int res = this->ReadFileContent();
-//             if (res == -1)
-//             {
-//                 close(this->m_ContentFileFd);   
-//                 return (HTTP_INTERNAL_SERVER_ERROR);
-//             }
-            
-//             if (res == 0) // سالينا القراية (EOF)
-//             {
-//                 close(this->m_ContentFileFd);
-//                 this->m_State = STATE_RESPONSE_SENT;
-//             }
-//         }
-//     }
-//     return (0);
-// }
 // =========================================================================
 // GETTERS, SETTERS & BOILERPLATE HELPERS
 // =========================================================================
