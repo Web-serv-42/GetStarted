@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webserv Native Upload Tester</title>
+    <style>
+        body { font-family: monospace; margin: 40px; background: #1e1e1e; color: #abb2bf; }
+        .container { max-width: 700px; background: #282c34; padding: 30px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        h2 { color: #61afef; border-bottom: 1px solid #3e4451; padding-bottom: 10px; }
+        input[type="file"] { margin: 20px 0; color: #fff; }
+        input[type="submit"] { background: #98c379; color: #282c34; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        input[type="submit"]:hover { background: #e5c07b; }
+        .note { color: #e5c07b; font-size: 12px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>⚙ Webserv Native Upload Page Generator</h2>
+        <p>This page was served via CGI. Submitting below fires a raw POST straight into your C++ Webserv engine handler.</p>
+        
+        <!-- Target your native C++ endpoint here -->
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <!-- Added 'multiple' and changed name to an array layout -->
+            <input type="file" name="test_files[]" multiple required><br>
+            <input type="submit" value="Upload Files Natively to Webserv">
+        </form>
+        
+        <p class="note">Note: When you click submit, your C++ Response class must return its own HTML confirmation page.</p>
+    </div>
+</body>
+</html>

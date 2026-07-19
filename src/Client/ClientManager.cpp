@@ -431,7 +431,8 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 				}
 			}
 			// CASE 2: Client is just sitting idle (Inbound/Outbound standard traffic)
-			else if (client->GetState() == STATE_READING_REQUEST)
+			// else if (client->GetState() == STATE_READING_REQUEST)
+			else if (client->GetRequest().GetState() == PARSE_HEADERS)
 			{
 				if (client->GetTimer().Elapsed() > CLIENT_TIMEOUT)
 				{
