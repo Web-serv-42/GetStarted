@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <map>
+#include <ctime>
 // #include "Client/Client.hpp"
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigResolver.hpp"
@@ -48,6 +49,7 @@ class Response
 
         void generateErrorResponse(HttpStatusCode statusCode);
         std::string getRawResponse() const;
+        HttpStatusCode handleMultipartUpload(const std::string& uploadDir, const std::string& contentType);
 
         void handleError(HttpStatusCode statusCode);
         const std::string& getFilePath() const;

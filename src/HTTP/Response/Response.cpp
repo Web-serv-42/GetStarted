@@ -265,6 +265,73 @@ HttpStatusCode Response::handleDelete()
 
 // Post ----------------------------------------------------------
 
+
+
+// Helper function to parse and save multipart form data
+HttpStatusCode Response::handleMultipartUpload(const std::string& uploadDir, const std::string& contentType)
+{
+    // Extract the boundary string
+    size_t boundaryPos = contentType.find("boundary=");
+    if (boundaryPos == std::string::npos) return HTTP_BAD_REQUEST;
+    
+    std::string boundary = "--" + contentType.substr(boundaryPos + 9);
+    std::string endBoundary = boundary + "--";
+
+    // Open the raw body file that Webserv saved
+    std::ifstream bodyFile(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
+    if (!bodyFile.is_open()) return HTTP_INTERNAL_SERVER_ERROR;
+
+    // Read the entire file into a string (Note: for 1GB+ multipart, this should be chunked, 
+    // but this works perfectly for standard browser uploads)
+    std::stringstream buffer;
+    buffer << bodyFile.rdbuf();
+    std::string bodyContent = buffer.str();
+    bodyFile.close();
+
+    size_t pos = 0;
+    while ((pos = bodyContent.find(boundary, pos)) != std::string::npos)
+    {
+        // Break if we hit the end boundary
+        if (bodyContent.substr(pos, endBoundary.length()) == endBoundary) {
+            break;
+        }
+
+        pos += boundary.length() + 2; // Move past boundary and \r\n
+        size_t headerEnd = bodyContent.find("\r\n\r\n", pos);
+        if (headerEnd == std::string::npos) break;
+
+        std::string headers = bodyContent.substr(pos, headerEnd - pos);
+        
+        // Extract filename
+        size_t filenamePos = headers.find("filename=\"");
+        if (filenamePos != std::string::npos)
+        {
+            filenamePos += 10; // length of 'filename="'
+            size_t filenameEnd = headers.find("\"", filenamePos);
+            std::string extractedFilename = headers.substr(filenamePos, filenameEnd - filenamePos);
+
+            // Find where this file's data ends (the next boundary)
+            size_t dataStart = headerEnd + 4; // Move past \r\n\r\n
+            size_t dataEnd = bodyContent.find("\r\n" + boundary, dataStart);
+            if (dataEnd == std::string::npos) dataEnd = bodyContent.length();
+
+            // Save the extracted file
+            if (!extractedFilename.empty())
+            {
+                std::string destPath = uploadDir + "/" + extractedFilename;
+                std::ofstream outFile(destPath.c_str(), std::ios::binary);
+                if (outFile.is_open()) {
+                    outFile.write(bodyContent.c_str() + dataStart, dataEnd - dataStart);
+                    outFile.close();
+                    std::cout << "\033[1;32m[POST MULTIPART] Saved file: " << destPath << "\033[0m\n";
+                }
+            }
+        }
+        pos = headerEnd + 4; // Move forward to parse the next part
+    }
+    return NORMAL;
+}
+
 HttpStatusCode Response::handlePost()
 {
     size_t limitSize = 0;
@@ -294,34 +361,68 @@ HttpStatusCode Response::handlePost()
         uploadDir = ".";
     }
 
-    std::string uri = this->m_Request.GetPath();
-    size_t lastSlash = uri.find_last_of('/');
-    std::string fileName = "uploaded_file.txt" ;// need dynamic file and extension attrubutes;
-    if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
-        fileName = uri.substr(lastSlash + 1);
-    }
-
-    std::string destFile = uploadDir + "/" + fileName;
-
-    std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
+    // --- CHECK CONTENT TYPE FOR BROWSER FORMS ---
+    std::string contentType = this->m_Request.GetHeader("content-type");
     
-    std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
-    if (!src.is_open()) {
-        std::cout << "\033[1;31m[POST DEBUG] Failed to open this->m_Request Body File!\033[0m" << std::endl;
-        return (HTTP_INTERNAL_SERVER_ERROR);
+    if (contentType.find("multipart/form-data") != std::string::npos) 
+    {
+        std::cout << "\033[1;35m[POST] Multipart upload detected! Parsing boundary...\033[0m\n";
+        HttpStatusCode status = this->handleMultipartUpload(uploadDir, contentType);
+        if (status != NORMAL) {
+            return status;
+        }
     }
+    else 
+    {
+        // --- NORMAL RAW UPLOAD (curl --data-binary) ---
+        std::cout << "\033[1;36m[POST] Raw file upload detected!\033[0m\n";
+        
+        std::string uri = this->m_Request.GetPath();
+        size_t lastSlash = uri.find_last_of('/');
+        std::string fileName = "";
 
-    std::ofstream dst(destFile.c_str(), std::ios::binary);
-    if (!dst.is_open()) {
-        std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << ". Check folder existence!\033[0m" << std::endl;
+        if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
+            fileName = uri.substr(lastSlash + 1);
+        }
+
+        std::string locationPath = "";
+        if (this->m_Routing.location) {
+            locationPath = this->m_Routing.location->path;
+            if (locationPath.length() > 0 && locationPath[0] == '/') {
+                locationPath = locationPath.substr(1);
+            }
+        }
+
+        // Use timestamp if no filename was provided in the URI
+        if (fileName.empty() || fileName == locationPath) {
+            std::stringstream timeStream;
+            timeStream << "file_" << time(NULL) << ".bin";
+            fileName = timeStream.str();
+        }
+
+        std::string destFile = uploadDir + "/" + fileName;
+
+        std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
+        
+        std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
+        if (!src.is_open()) {
+            std::cout << "\033[1;31m[POST DEBUG] Failed to open body file!\033[0m" << std::endl;
+            return (HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        std::ofstream dst(destFile.c_str(), std::ios::binary);
+        if (!dst.is_open()) {
+            std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << "\033[0m" << std::endl;
+            src.close();
+            return (HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        dst << src.rdbuf();
         src.close();
-        return (HTTP_INTERNAL_SERVER_ERROR);
+        dst.close();
     }
 
-    dst << src.rdbuf();
-    src.close();
-    dst.close();
-
+    // --- SUCCESS RESPONSE ---
     this->buildStatusLine(HTTP_CREATED);
     this->_body = "<html><body><h1>201 Created: File Uploaded Successfully!</h1></body></html>";
     
@@ -332,6 +433,74 @@ HttpStatusCode Response::handlePost()
     
     return (NORMAL);
 }
+
+// HttpStatusCode Response::handlePost()
+// {
+//     size_t limitSize = 0;
+//     if (this->m_Routing.location && this->m_Routing.location->client_max_body_size > 0) {
+//         limitSize = this->m_Routing.location->client_max_body_size;
+//     } else {
+//         limitSize = 20;
+//     }
+
+//     if (limitSize < 1024) {
+//         limitSize = limitSize * 1024 * 1024;
+//     }
+
+//     std::cout << "\033[1;36m[DEBUG POST] limitSize: " << limitSize 
+//                 << " | GetBodyReceived(): " << this->m_Request.GetBodyReceived() << "\033[0m" << std::endl;
+
+//     if (this->m_Request.GetBodyReceived() > limitSize) {
+//         return (HTTP_PAYLOAD_TOO_LARGE);
+//     }
+
+//     std::string uploadDir;
+//     if (this->m_Routing.location && !this->m_Routing.location->upload_file.empty()) {
+//         uploadDir = this->m_Routing.location->upload_file;
+//     } else if (this->m_Routing.location && !this->m_Routing.location->root.empty()) {
+//         uploadDir = this->m_Routing.location->root;
+//     } else {
+//         uploadDir = ".";
+//     }
+
+//     std::string uri = this->m_Request.GetPath();
+//     size_t lastSlash = uri.find_last_of('/');
+//     std::string fileName = "uploaded_file.txt" ;// need dynamic file and extension attrubutes;
+//     if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
+//         fileName = uri.substr(lastSlash + 1);
+//     }
+
+//     std::string destFile = uploadDir + "/" + fileName;
+
+//     std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
+    
+//     std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
+//     if (!src.is_open()) {
+//         std::cout << "\033[1;31m[POST DEBUG] Failed to open this->m_Request Body File!\033[0m" << std::endl;
+//         return (HTTP_INTERNAL_SERVER_ERROR);
+//     }
+
+//     std::ofstream dst(destFile.c_str(), std::ios::binary);
+//     if (!dst.is_open()) {
+//         std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << ". Check folder existence!\033[0m" << std::endl;
+//         src.close();
+//         return (HTTP_INTERNAL_SERVER_ERROR);
+//     }
+
+//     dst << src.rdbuf();
+//     src.close();
+//     dst.close();
+
+//     this->buildStatusLine(HTTP_CREATED);
+//     this->_body = "<html><body><h1>201 Created: File Uploaded Successfully!</h1></body></html>";
+    
+//     std::stringstream ss;
+//     ss << this->_body.length();
+//     this->_headers = "Content-Type: text/html\r\n";
+//     this->_headers += "Content-Length: " + ss.str() + "\r\n";
+    
+//     return (NORMAL);
+// }
 
 // Handle Error--------------------------------
 
