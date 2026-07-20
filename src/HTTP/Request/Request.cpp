@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 10:31:04 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/20 16:28:24 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -138,4 +138,78 @@ int Request::GetBodyFd() const
 size_t  Request::GetBodyReceived() const
 {
 	return m_BodyReceived;
+}
+
+// --- Multipart Setters & Getters ---
+
+void Request::SetIsMultipart(bool val) { 
+    m_IsMultipart = val; 
+}
+
+bool Request::IsMultipart() const { 
+    return m_IsMultipart; 
+}
+
+void Request::SetBoundary(const std::string& boundary) { 
+    m_Boundary = boundary; 
+}
+
+const std::string& Request::GetBoundary() const { 
+    return m_Boundary; 
+}
+
+void Request::AddBodyReceived(size_t len) { 
+    m_BodyReceived += len; 
+}
+
+// --- Multipart File Handling ---
+
+bool Request::HasOpenMultipartPart() const {
+    if (m_Parts.empty()) 
+        return false;
+    // Check if the file descriptor of the last part is open
+    return (m_Parts.back().fd != -1);
+}
+
+bool Request::OpenNewMultipartPart(const std::string& filename) {
+    MultipartPart newPart;
+    newPart.realFileName = filename;
+    
+    // If there is no filename, it might be a normal form field (like a text input). 
+    // We still save it as a tmp file just in case.
+    if (newPart.realFileName.empty()) {
+        newPart.realFileName = "unnamed_form_data.txt";
+    }
+
+    // Call your existing GenerateTmpFileName function (e.g., ./tmp/multipart_part_XXXXXX)
+    newPart.tmpFilePath = GenerateTmpFileName("multipart_part");
+    
+    newPart.fd = open(newPart.tmpFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (newPart.fd == -1) {
+        return false;
+    }
+
+    m_Parts.push_back(newPart);
+    return true;
+}
+
+bool Request::WriteToCurrentMultipartPart(const std::string& data) {
+    if (!HasOpenMultipartPart() || data.empty()) 
+        return false;
+
+    int currentFd = m_Parts.back().fd;
+    ssize_t written = write(currentFd, data.c_str(), data.length());
+    
+    return (written == (ssize_t)data.length());
+}
+
+void Request::CloseCurrentMultipartPart() {
+    if (HasOpenMultipartPart()) {
+        close(m_Parts.back().fd);
+        m_Parts.back().fd = -1; // Mark as closed
+    }
+}
+
+const std::vector<MultipartPart>& Request::GetParts() const {
+    return m_Parts;
 }

@@ -101,6 +101,107 @@ void RequestParser::ParseHeader(Request& req, const std::string& line) {
 	req.AddHeader(key, value);
 }
 
+// Helper function to extract the real filename from the Content-Disposition block
+std::string RequestParser::ExtractFilenameFromHeaders(const std::string& headers)
+{
+    // Look for the filename attribute
+    size_t pos = headers.find("filename=\"");
+    
+    if (pos != std::string::npos) {
+        pos += 10; // Jump past 'filename="' (10 characters)
+        size_t endPos = headers.find("\"", pos); // Find the closing quote
+        
+        if (endPos != std::string::npos) {
+            return headers.substr(pos, endPos - pos);
+        }
+    }
+    
+    return ""; // Return empty if it's not a file upload (e.g., just a text field)
+}
+
+bool RequestParser::ParseMultipartBody(Request& req, std::string& rawBuffer)
+{
+    std::string boundary = req.GetBoundary();
+    std::string endBoundary = boundary + "--";
+
+    // Update total received for Content-Length tracking
+    req.AddBodyReceived(rawBuffer.length()); 
+
+    while (!rawBuffer.empty())
+    {
+        size_t boundPos = rawBuffer.find(boundary);
+
+        if (boundPos != std::string::npos) 
+        {
+            // 1. A boundary was found! Write any preceding data to the CURRENT open file
+            if (boundPos > 0 && req.HasOpenMultipartPart()) {
+                size_t writeLen = boundPos;
+                
+                // 🚀 FIX: Strip the preceding \r\n that belongs to the multipart protocol, not the file!
+                if (writeLen >= 2 && rawBuffer[writeLen - 2] == '\r' && rawBuffer[writeLen - 1] == '\n') {
+                    writeLen -= 2;
+                }
+                
+                req.WriteToCurrentMultipartPart(rawBuffer.substr(0, writeLen));
+            }
+            req.CloseCurrentMultipartPart();
+
+            // 2. Check if it's the final ending boundary
+            if (rawBuffer.substr(boundPos, endBoundary.length()) == endBoundary) {
+                req.SetState(PARSE_COMPLETE);
+                rawBuffer.clear(); // We are done!
+                return true;
+            }
+
+            // 3. Skip the boundary and the \r\n to look at the new file's headers
+            size_t headerStart = boundPos + boundary.length() + 2;
+            size_t headerEnd = rawBuffer.find("\r\n\r\n", headerStart);
+
+            if (headerEnd == std::string::npos) {
+                // We have the boundary, but the headers for this file haven't fully arrived yet.
+                // Wait for the next epoll cycle.
+                return false; 
+            }
+
+            // 4. Extract filename from Content-Disposition
+            std::string headers = rawBuffer.substr(headerStart, headerEnd - headerStart);
+            std::string filename = ExtractFilenameFromHeaders(headers); // Write a quick helper for this
+
+            // 5. Open a NEW temp file for this specific part
+            req.OpenNewMultipartPart(filename); // e.g., creates ./tmp/part_XXXX
+
+            // Erase everything processed so far (Boundary + Headers + \r\n\r\n)
+            rawBuffer.erase(0, headerEnd + 4);
+        }
+        else 
+        {
+            // 🛑 THE SLIDING WINDOW: No boundary found. 
+            // We can safely write the buffer to the current file, BUT we must keep the last 
+            // N bytes in case a boundary is cut in half across the network!
+            size_t safeToWrite = 0;
+            if (rawBuffer.length() > boundary.length()) {
+                safeToWrite = rawBuffer.length() - boundary.length();
+            }
+
+            if (safeToWrite > 0 && req.HasOpenMultipartPart()) {
+                req.WriteToCurrentMultipartPart(rawBuffer.substr(0, safeToWrite));
+                rawBuffer.erase(0, safeToWrite);
+            }
+
+            // Break the while loop and tell epoll we need more data
+            return false;
+        }
+    }
+    
+    // Check if total received matches content-length
+    if (req.GetBodyReceived() >= req.GetContentLength()) {
+        req.SetState(PARSE_COMPLETE);
+        return true;
+    }
+
+    return false;
+}
+
 // =========================================================================
 // MAIN PARSER LOOP
 // =========================================================================
@@ -154,6 +255,16 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 						}
 					}
 
+					// 🚀 NEW: Detect Multipart and grab the boundary!
+					std::string contentType = req.GetHeader("content-type");
+					size_t boundPos = contentType.find("boundary=");
+					if (boundPos != std::string::npos) {
+						req.SetIsMultipart(true);
+						req.SetBoundary("--" + contentType.substr(boundPos + 9));
+					} else {
+						req.SetIsMultipart(false);
+					}
+
 					req.SetContentLength(std::atoi(cl.c_str()));
 					// --- FIX: Check for zero-length body immediately ---
 					if (req.GetContentLength() == 0)
@@ -163,7 +274,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 					else
 					{
 						// after we know that we are going to parse the body we open the file
-						if (!req.OpenBodyFile())
+						if (!req.IsMultipart() && !req.OpenBodyFile())
 						{
 							req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
 							req.SetState(PARSE_ERROR);
@@ -194,51 +305,60 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 		// --- PARSE BODY ---
 		else if (req.GetState() == PARSE_BODY)
 		{
-			size_t expected = req.GetContentLength();
-			size_t remaining = expected - req.GetBodyReceived();
-
-			// Extra Safety Check: If we already have what we need, wrap it up immediately
-            if (req.GetBodyReceived() == expected)
-            {
-                req.CloseBodyFile();
-                req.SetState(PARSE_COMPLETE);
-                continue; 
+			if (req.IsMultipart()) {
+                // 🚀 MULTIPART ON-THE-FLY PARSING
+                if (!ParseMultipartBody(req, rawBuffer)) {
+                    return false; // Need more data from epoll
+                }
             }
-
-			// If rawBuffer is empty, drop out and let epoll wait for more network packets
-			if (rawBuffer.empty())
-			{
-				return false;
-			}
-
-			// Determine how much we can write from the current epoll chunk
-			size_t toWrite = rawBuffer.length();
-			if (toWrite > remaining)
-			{
-				toWrite = remaining;
-			}
-
-			// Write this chunk directly to disk
-			if (!req.AppendBody(rawBuffer.data(), toWrite))
-			{
-				req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
-				req.SetState(PARSE_ERROR);
-				req.CloseBodyFile(); // Clean up FD immediately on failure
-				return true;
-			}
-
-			// Erase only what we consumed from the stream buffer
-			rawBuffer.erase(0, toWrite);
-
-			// Check if we finally crossed the finish line
-			if (req.GetBodyReceived() == expected)
-			{
-				req.CloseBodyFile(); // Cleanly close the FD here! No lseek needed.
-				req.SetState(PARSE_COMPLETE);
-			}
 			else
 			{
-				return false; // Body is incomplete, yield back to epoll loop
+				size_t expected = req.GetContentLength();
+				size_t remaining = expected - req.GetBodyReceived();
+
+				// Extra Safety Check: If we already have what we need, wrap it up immediately
+				if (req.GetBodyReceived() == expected)
+				{
+					req.CloseBodyFile();
+					req.SetState(PARSE_COMPLETE);
+					continue; 
+				}
+
+				// If rawBuffer is empty, drop out and let epoll wait for more network packets
+				if (rawBuffer.empty())
+				{
+					return false;
+				}
+
+				// Determine how much we can write from the current epoll chunk
+				size_t toWrite = rawBuffer.length();
+				if (toWrite > remaining)
+				{
+					toWrite = remaining;
+				}
+
+				// Write this chunk directly to disk
+				if (!req.AppendBody(rawBuffer.data(), toWrite))
+				{
+					req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
+					req.SetState(PARSE_ERROR);
+					req.CloseBodyFile(); // Clean up FD immediately on failure
+					return true;
+				}
+
+				// Erase only what we consumed from the stream buffer
+				rawBuffer.erase(0, toWrite);
+
+				// Check if we finally crossed the finish line
+				if (req.GetBodyReceived() == expected)
+				{
+					req.CloseBodyFile(); // Cleanly close the FD here! No lseek needed.
+					req.SetState(PARSE_COMPLETE);
+				}
+				else
+				{
+					return false; // Body is incomplete, yield back to epoll loop
+				}
 			}
 		}
 	}

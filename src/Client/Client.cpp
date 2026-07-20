@@ -6,13 +6,13 @@
 /*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/18 18:09:08 by wahmane          ###   ########.fr       */
+/*   Updated: 2026/07/20 17:13:40 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client/Client.hpp"
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 131072
 
 Client::Client()
     : m_SocketFd(-1), m_CGI(NULL), m_State(STATE_READING_REQUEST), m_LocalPort(-1)
