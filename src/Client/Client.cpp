@@ -71,32 +71,48 @@ bool	Client::ReadData()
 	}
 }
 
-// bool	Client::SendData()
+
+// bool    Client::SendData()
 // {
-// 	ssize_t	bytesSent;
+//     ssize_t bytesSent;
 
-// 	// The response can be stored into a file
-// 	if (this->m_WriteBuffer.empty())
-// 		return(true) ;
-// 	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
-// 	if (bytesSent < 0)
-// 	{
-// 		ERROR_LOG("Socket Error: An error occurred when send() data");
-// 		return (false);
-// 	}
-// 	this->m_WriteBuffer.erase(0, bytesSent);
-// 	std::stringstream	ss;
-// 	ss << bytesSent;
-// 	//TODO Data sent, need static file and CGI logic, need parsing cheks
-// 	return (true);
+//     if (this->m_WriteBuffer.empty())
+//         return (true);
+        
+//     bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
+//     if (bytesSent < 0)
+//     {
+//         ERROR_LOG("Socket Error: An error occurred when send() data");
+//         return (false);
+//     }
+    
+//     this->m_WriteBuffer.erase(0, bytesSent);
+
+//     if (this->m_WriteBuffer.empty() && 
+//         (this->m_State == STATE_SENDING_FULL_RESPONSE || this->m_State == STATE_SENDING_ERROR_RESPONSE))
+//     {
+//         this->m_State = STATE_RESPONSE_SENT;
+//     }
+
+//     return (true);
 // }
-
 bool    Client::SendData()
 {
     ssize_t bytesSent;
 
+    if (this->m_State == STATE_RESPONSE_SENT) {
+        return (false); 
+    }
+
     if (this->m_WriteBuffer.empty())
+    {
+        if (this->m_State == STATE_SENDING_FULL_RESPONSE || this->m_State == STATE_SENDING_ERROR_RESPONSE)
+        {
+            this->m_State = STATE_RESPONSE_SENT;
+            return (false);
+        }
         return (true);
+    }
         
     bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
     if (bytesSent < 0)
@@ -116,21 +132,6 @@ bool    Client::SendData()
     return (true);
 }
 
-// void    Client::BuildStaticResponse()
-// {
-//     this->m_Response = Response(this->m_Routing, this->m_Request); 
-//     HttpStatusCode statusCode = this->m_Response.Run();
-
-    
-//     if (statusCode != NORMAL)
-//     {
-//         // check here if static error page or we need to build a statis error buffer
-//         this->m_Response.handleError(statusCode);
-//     }
-    
-//     // this->m_WriteBuffer = this->m_Response.getRawResponse();
-//     // this->m_ReadBuffer.clear();
-// }
 void    Client::BuildStaticResponse()
 {
     this->m_Response = Response(this->m_Routing, this->m_Request); 
