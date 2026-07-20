@@ -10,6 +10,7 @@
 #include <string>
 #include <map>
 #include <ctime>
+#include <cstdio>
 // #include "Client/Client.hpp"
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigResolver.hpp"

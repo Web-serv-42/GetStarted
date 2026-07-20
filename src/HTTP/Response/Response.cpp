@@ -404,22 +404,27 @@ HttpStatusCode Response::handlePost()
 
         std::cout << "\033[1;33m[POST DEBUG] Destination file path: " << destFile << "\033[0m" << std::endl;
         
-        std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
-        if (!src.is_open()) {
-            std::cout << "\033[1;31m[POST DEBUG] Failed to open body file!\033[0m" << std::endl;
+        if (std::rename(this->m_Request.GetBodyFilePath().c_str(), destFile.c_str()) != 0) {
+            std::cout << "\033[1;31m[POST DEBUG] Failed to move file to: " << destFile << "\033[0m" << std::endl;
             return (HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        std::ofstream dst(destFile.c_str(), std::ios::binary);
-        if (!dst.is_open()) {
-            std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << "\033[0m" << std::endl;
-            src.close();
-            return (HTTP_INTERNAL_SERVER_ERROR);
-        }
+        // std::ifstream src(this->m_Request.GetBodyFilePath().c_str(), std::ios::binary);
+        // if (!src.is_open()) {
+        //     std::cout << "\033[1;31m[POST DEBUG] Failed to open body file!\033[0m" << std::endl;
+        //     return (HTTP_INTERNAL_SERVER_ERROR);
+        // }
 
-        dst << src.rdbuf();
-        src.close();
-        dst.close();
+        // std::ofstream dst(destFile.c_str(), std::ios::binary);
+        // if (!dst.is_open()) {
+        //     std::cout << "\033[1;31m[POST DEBUG] Failed to write to: " << destFile << "\033[0m" << std::endl;
+        //     src.close();
+        //     return (HTTP_INTERNAL_SERVER_ERROR);
+        // }
+
+        // dst << src.rdbuf();
+        // src.close();
+        // dst.close();
     }
 
     // --- SUCCESS RESPONSE ---
