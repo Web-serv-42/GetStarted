@@ -41,8 +41,9 @@ enum HttpStatusCode
     HTTP_INTERNAL_SERVER_ERROR = 500,
     HTTP_NOT_IMPLEMENTED       = 501,
     HTTP_BAD_GATEWAY           = 502,
-    HTTP_GATEWAY_TIMEOUT       = 504
+    HTTP_GATEWAY_TIMEOUT       = 504,
+    HTTP_VERSION_NOT_SUPPORTED = 505
 };
 
 // Helper function to get the RFC reason phrase string
-std::string GetHttpStatusReason(HttpStatusCode code);
+std::string GetHttpStatusReason(HttpStatusCode statusCode);

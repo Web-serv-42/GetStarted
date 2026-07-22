@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:36 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 17:52:53 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/17 19:45:39 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -298,7 +298,8 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		}
 		else if (statusCode != NORMAL)
 		{
-			client->BuildStaticErrorResponse(statusCode);
+			// client->BuildStaticErrorResponse(statusCode); // Here !!!!!!!!!!!!
+			client->GetResponse().generateErrorResponse(statusCode);
 			client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
@@ -415,7 +416,7 @@ void	ClientManager::DispatchResponse(Client* client)
 		statusCode = this->m_CGIManager.AttachCGI(client);
 		if (statusCode != NORMAL)
 		{
-			client->BuildStaticErrorResponse(statusCode);
+			client->GetResponse().generateErrorResponse(statusCode);
 			// Switch state so we can send an error immediately
 			client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
@@ -426,8 +427,7 @@ void	ClientManager::DispatchResponse(Client* client)
 	else
 	{
 		// It's a static file request (e.g., index.html)
-		client->BuildStaticResponse();
-		client->SetState(STATE_SENDING_FULL_RESPONSE);
+		client->BuildStaticResponse(); // Here again !!!!!!!!!
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
@@ -482,7 +482,8 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 				}
 			}
 			// CASE 2: Client is just sitting idle (Inbound/Outbound standard traffic)
-			else if (client->GetState() == STATE_READING_REQUEST)
+			// else if (client->GetState() == STATE_READING_REQUEST)
+			else if (client->GetRequest().GetState() == PARSE_HEADERS)
 			{
 				if (client->GetTimer().Elapsed() > CLIENT_TIMEOUT)
 				{

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/17 23:06:16 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 16:02:45 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/20 16:28:07 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,6 +26,13 @@
 enum HttpMethod { HTTP_GET, HTTP_POST, HTTP_DELETE, HTTP_UNKNOWN };
 enum ParseState { PARSE_REQUEST_LINE, PARSE_HEADERS, PARSE_BODY, PARSE_COMPLETE, PARSE_ERROR };
 
+// A struct to hold the temp file paths and their real filenames
+struct MultipartPart {
+    std::string realFileName;
+    std::string tmpFilePath;
+    int         fd;
+};
+
 class Request {
 	private:
 		HttpMethod                          m_Method;
@@ -44,6 +51,11 @@ class Request {
 		ParseState                          m_State;
 		size_t                              m_ContentLength; // setting the content length
 		HttpStatusCode						m_ErrorCode; // error code
+
+		// Multipart file upload
+		std::string							m_Boundary;
+		bool        						m_IsMultipart;
+		std::vector<MultipartPart>			m_Parts;
 
 	public:
 		Request();
@@ -87,6 +99,20 @@ class Request {
 		void        CloseBodyFile();
 		int         GetBodyFd() const;
 		size_t      GetBodyReceived() const;
+
+		// Multipart Setters & Getters
+		void                SetIsMultipart(bool val);
+		bool                IsMultipart() const;
+		void                SetBoundary(const std::string& boundary);
+		const std::string&  GetBoundary() const;
+		void                AddBodyReceived(size_t len);
+
+		// Multipart File Handling
+		bool                HasOpenMultipartPart() const;
+		bool                OpenNewMultipartPart(const std::string& filename);
+		bool                WriteToCurrentMultipartPart(const std::string& data);
+		void                CloseCurrentMultipartPart();
+		const std::vector<MultipartPart>& GetParts() const;
 
 
 };

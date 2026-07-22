@@ -12,8 +12,8 @@
 
 #include "Core/HttpStatus.hpp"
 
-std::string GetHttpStatusReason(HttpStatusCode code) {
-    switch (code) {
+std::string GetHttpStatusReason(HttpStatusCode statusCode) {
+    switch (statusCode) {
         case HTTP_OK:                     return "OK";
         case HTTP_CREATED:                return "Created";
         case HTTP_NO_CONTENT:             return "No Content";
@@ -34,6 +34,7 @@ std::string GetHttpStatusReason(HttpStatusCode code) {
         case HTTP_NOT_IMPLEMENTED:       return "Not Implemented";
         case HTTP_BAD_GATEWAY:           return "Bad Gateway";
         case HTTP_GATEWAY_TIMEOUT:       return "Gateway Timeout";
+        case HTTP_VERSION_NOT_SUPPORTED: return "HTTP Version Not Supported";
         
         default:                         return "Unknown Status Code";
     }

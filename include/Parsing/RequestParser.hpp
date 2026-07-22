@@ -19,6 +19,10 @@ class RequestParser {
         static void ParseHeader(Request& req, const std::string& line);
         static void ParseCookies(Request& req, const std::string& line);
 
+        static std::string  ExtractFilenameFromHeaders(const std::string& headers);
+        static bool         ParseMultipartBody(Request& req, std::string& rawBuffer);
+
+
     public:
         // main func
         static bool Parse(Request& req, std::string& rawBuffer);

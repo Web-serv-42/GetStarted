@@ -6,6 +6,9 @@
 #include <map>
 #include <stdexcept>
 #include <cstdlib>
+// #include "Utils/utils.hpp"
+#include "Core/HttpStatus.hpp"
+#include <iostream>
 
 
 struct ListenConfig
@@ -31,7 +34,7 @@ struct LocationConfig {
     std::map<std::string, std::string> cgis; 
     
     // Return: <status_code, url/text> (0 means no return directive)
-    std::pair<int, std::string> return_directive; 
+    std::pair<HttpStatusCode, std::string> return_directive; 
     
     // Error pages: map of status code to file path (e.g., {404: "/404.html"})
     std::map<int, std::string>  error_pages; 
@@ -40,7 +43,7 @@ struct LocationConfig {
 
     // default constructor for safe fallbacks | 1M default client_max_body_size
     LocationConfig() : autoindex(false), client_max_body_size(1048576) {
-        return_directive.first = 0;
+        return_directive.first = NORMAL;
     }
 };
 

@@ -1,22 +1,59 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   Response.hpp                                       :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/05/17 23:05:45 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/17 23:08:27 by abnsila          ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+// #ifndef RESPONSE_HPP
+// #define RESPONSE_HPP
+#pragma once 
 
-#pragma once
+#include <dirent.h>
+#include <fstream>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sstream>
+#include <string>
+#include <map>
+#include <ctime>
+#include <cstdio>
+// #include "Client/Client.hpp"
+#include "HTTP/Request/Request.hpp"
+#include "Parsing/ConfigResolver.hpp"
+#include "Core/HttpStatus.hpp"
+
+class Request;
+struct LocationConfig; 
+class Client;
 
 class Response
 {
-private:
-	/* data */
-public:
-	Response(/* args */);
-	~Response();
+    private:
+        Routing    m_Routing;
+        Request    m_Request;
+        std::string _statusLine;
+        std::string _headers;
+        std::string _body; // headers + body = small fullReponse usage: GET failure, POST succes and failure, DELETE success and failure [failure: samll, error page]
+        std::string _filePath;
+        std::string _rawResponse;
+
+        static std::map<std::string, std::string> _mimeTypes;
+        
+        void buildStatusLine(HttpStatusCode statusCode);
+        void initMimeTypes();
+        std::string generateAutoindex(const std::string& dirPath, const std::string& uri);
+
+        HttpStatusCode  handleGet();
+        HttpStatusCode  handleDelete();
+        HttpStatusCode  handlePost();
+
+    public:
+        Response();
+        Response(Routing routing, Request request);
+        ~Response();
+
+        HttpStatusCode Run();
+
+        void generateErrorResponse(HttpStatusCode statusCode);
+        std::string getRawResponse() const;
+        HttpStatusCode handleMultipartUpload(const std::string& uploadDir, const std::string& contentType);
+
+        void handleError(HttpStatusCode statusCode);
+        const std::string& getFilePath() const;
 };
+
+// #endif   

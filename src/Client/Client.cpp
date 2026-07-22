@@ -3,16 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   Client.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/25 16:57:53 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 17:20:29 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/20 17:13:40 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Client/Client.hpp"
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 131072
 
 Client::Client()
     : m_SocketFd(-1), m_CGI(NULL), m_State(STATE_READING_REQUEST), m_LocalPort(-1)
@@ -71,68 +71,85 @@ bool	Client::ReadData()
 	}
 }
 
-bool	Client::SendData()
-{
-	ssize_t	bytesSent;
 
-	// The response can be stored into a file
-	if (this->m_WriteBuffer.empty())
-		return(true) ;
-	bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
-	if (bytesSent < 0)
-	{
-		ERROR_LOG("Socket Error: An error occurred when send() data");
-		return (false);
-	}
-	this->m_WriteBuffer.erase(0, bytesSent);
-	std::stringstream	ss;
-	ss << bytesSent;
-	//TODO Data sent, need static file and CGI logic, need parsing cheks
-	return (true);
-}
-
-// void    Client::BuildStaticResponse()
+// bool    Client::SendData()
 // {
-//     std::string html = "<html><body><h1>Hello from Webserv Engine!</h1></body></html>";
-//     std::ostringstream oss;
+//     ssize_t bytesSent;
 
-//     // 1. Standard HTTP/1.0 Status line
-//     oss << "HTTP/1.0 200 OK\r\n";
-//     // 2. Dynamic dynamic calculations for content length
-//     oss << "Content-Type: text/html\r\n";
-//     oss << "Content-Length: " << html.length() << "\r\n";
-//     // 3. Keep connection active if needed (HTTP/1.0 explicitly flags this)
-//     oss << "Connection: keep-alive\r\n";
-//     oss << "\r\n";
-//     oss << html;
+//     if (this->m_WriteBuffer.empty())
+//         return (true);
+        
+//     bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
+//     if (bytesSent < 0)
+//     {
+//         ERROR_LOG("Socket Error: An error occurred when send() data");
+//         return (false);
+//     }
     
-//     this->m_WriteBuffer = oss.str();
-//     // REMOVED: this->m_ReadBuffer.clear() to preserve pipelined headers!
+//     this->m_WriteBuffer.erase(0, bytesSent);
+
+//     if (this->m_WriteBuffer.empty() && 
+//         (this->m_State == STATE_SENDING_FULL_RESPONSE || this->m_State == STATE_SENDING_ERROR_RESPONSE))
+//     {
+//         this->m_State = STATE_RESPONSE_SENT;
+//     }
+
+//     return (true);
 // }
+bool    Client::SendData()
+{
+    ssize_t bytesSent;
+
+    if (this->m_State == STATE_RESPONSE_SENT) {
+        return (false); 
+    }
+
+    if (this->m_WriteBuffer.empty())
+    {
+        if (this->m_State == STATE_SENDING_FULL_RESPONSE || this->m_State == STATE_SENDING_ERROR_RESPONSE)
+        {
+            this->m_State = STATE_RESPONSE_SENT;
+            return (false);
+        }
+        return (true);
+    }
+        
+    bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
+    if (bytesSent < 0)
+    {
+        ERROR_LOG("Socket Error: An error occurred when send() data");
+        return (false);
+    }
+    
+    this->m_WriteBuffer.erase(0, bytesSent);
+
+    if (this->m_WriteBuffer.empty() && 
+        (this->m_State == STATE_SENDING_FULL_RESPONSE || this->m_State == STATE_SENDING_ERROR_RESPONSE))
+    {
+        this->m_State = STATE_RESPONSE_SENT;
+    }
+
+    return (true);
+}
 
 void    Client::BuildStaticResponse()
 {
-    // Create an explicit response page body
-    std::ostringstream body;
-    body << "<html><head><title>200 OK</title></head>"
-         << "<body><center><h1>Hello from Webserv Engine!</h1></center>"
-         << "<hr><center>Webserv/1.0</center></body></html>";
-         
-    std::string html = body.str();
-    std::ostringstream response;
+    this->m_Response = Response(this->m_Routing, this->m_Request); 
+    HttpStatusCode statusCode = this->m_Response.Run();
 
-    // Assemble dynamic status line and headers (HTTP/1.0 explicitly drops connection)
-    response << "HTTP/1.0 200 OK\r\n";
-    response << "Content-Type: text/html\r\n";
-    response << "Content-Length: " << html.length() << "\r\n";
-  	for (std::map<std::string, std::string>::iterator it = this->m_OutboundCookies.begin(); it != this->m_OutboundCookies.end(); ++it)
-	{
-  	  response << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
-	}
-    response << "Connection: close\r\n\r\n";
-    response << html;
+    if (statusCode != NORMAL)
+    {
+        this->m_Response.handleError(statusCode);
+    }
+    
+    this->m_WriteBuffer = this->m_Response.getRawResponse();
+    this->m_ReadBuffer.clear();
 
-    this->m_WriteBuffer = response.str();
+    if (!this->m_Response.getFilePath().empty()) {
+        this->m_State = STATE_SENDING_HEADERS; 
+    } else {
+        this->m_State = STATE_SENDING_FULL_RESPONSE; 
+    }
 }
 
 void Client::BuildStaticErrorResponse(HttpStatusCode code)
@@ -142,9 +159,9 @@ void Client::BuildStaticErrorResponse(HttpStatusCode code)
     // Create an explicit error page body
     std::ostringstream body;
     body << "<html><head><title>" << code << " " << reason << "</title></head>"
-         << "<body><center><h1>" << code << " " << reason << "</h1></center>"
-         << "<hr><center>Webserv/1.0</center></body></html>";
-         
+        << "<body><center><h1>" << code << " " << reason << "</h1></center>"
+        << "<hr><center>Webserv/1.0</center></body></html>";
+
     std::string html = body.str();
     std::ostringstream response;
 
@@ -182,74 +199,72 @@ int Client::ReadFileContent()
 
 // From here I read the response and i sent it [request first then body]
 // or just the whole response if is it stored in memory : return status code
+
+
 int Client::PrepareWriteBuffer()
 {
-	struct stat 		fileInfo;
-	std::stringstream	headerStream;
+    struct stat         fileInfo;
+    std::stringstream   headerStream;
 
-	// 0. Small response stored direclty in memory => std::string this->m_WriteBuffer
-	if ((this->m_State == STATE_SENDING_ERROR_RESPONSE
-		|| this->m_State == STATE_SENDING_FULL_RESPONSE)
-		&& !this->m_WriteBuffer.empty())
-	{
-		this->m_State = STATE_RESPONSE_SENT;
-		return (0);;
-	}
-	if (this->m_CGI != NULL)
-	{
-		this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
-	}
-	else
-	{
-		this->m_FileContentPath = this->m_Routing.filePath;
-	}
-	// 1. A base implementaion of building headers before body
-	if (this->m_State == STATE_SENDING_HEADERS)
-	{
-		// Dynamically measure the exact file footprint on disk
-		if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
-		{
-			ERROR_LOG("File I/O Error: Could not find mock body file to measure size");
-			return (HTTP_INTERNAL_SERVER_ERROR);
-		}
+    if ((this->m_State == STATE_SENDING_ERROR_RESPONSE
+        || this->m_State == STATE_SENDING_FULL_RESPONSE)
+        && !this->m_WriteBuffer.empty())
+    {
+        return (0);
+    }
 
-		headerStream << "HTTP/1.0 200 OK\r\n"
-		<< "Content-Type: text/html\r\n" // Note: can be extended with mime-types later
-		<< "Content-Length: " << fileInfo.st_size << "\r\n" // Exact dynamic size!
-		<< "\r\n";
-		this->m_WriteBuffer = headerStream.str();
-		
-		//TODO Member 2: check if the output file containe headers
-		this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
-		if (this->m_ContentFileFd == -1)
-		{
-			ERROR_LOG("File I/O Error: Could not open mock body file");	
-			return (HTTP_INTERNAL_SERVER_ERROR);
-		}
-		this->m_State = STATE_SENDING_BODY;
-	}
-	// 2. Subsequent loop iterations stream chunks smoothly (sent body)
-	else if (this->m_State == STATE_SENDING_BODY)
-	{
-		// Only read more from disk if our socket write buffer has cleared out.
-		// This prevents loading a massive file into RAM all at once.
-		if (this->m_WriteBuffer.empty())
-		{
-			int res = this->ReadFileContent();
-			if (res == -1)
-			{
-				close(this->m_ContentFileFd);	
-				return (HTTP_INTERNAL_SERVER_ERROR);
-			}
-			
-			if (res == 0) // EOF reached and buffer is confirmed empty
-			{
-				close(this->m_ContentFileFd);
-				this->m_State = STATE_RESPONSE_SENT;
-			}
-		}
-	}
-	return (0);;
+    
+    if (this->m_CGI != NULL)
+    {
+        this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
+    }
+    else
+    {
+        // this->m_FileContentPath = this->m_Routing.filePath;
+        this->m_FileContentPath = this->m_Response.getFilePath();
+    }
+    
+    if (this->m_State == STATE_SENDING_HEADERS)
+    {
+        if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
+        {
+            ERROR_LOG("File I/O Error: Could not find mock body file to measure size");
+            return (HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        headerStream << "HTTP/1.0 200 OK\r\n"
+        << "Content-Type: text/html\r\n" 
+        << "Content-Length: " << fileInfo.st_size << "\r\n" 
+        << "\r\n";
+        this->m_WriteBuffer = headerStream.str();
+        
+        this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
+        if (this->m_ContentFileFd == -1)
+        {
+            ERROR_LOG("File I/O Error: Could not open mock body file"); 
+            return (HTTP_INTERNAL_SERVER_ERROR);
+        }
+        this->m_State = STATE_SENDING_BODY;
+    }
+    else if (this->m_State == STATE_SENDING_BODY)
+    {
+        if (this->m_WriteBuffer.empty())
+        {
+            int res = this->ReadFileContent();
+            if (res == -1)
+            {
+                close(this->m_ContentFileFd);   
+                return (HTTP_INTERNAL_SERVER_ERROR);
+            }
+            
+            if (res == 0)
+            {
+                close(this->m_ContentFileFd);
+                this->m_State = STATE_RESPONSE_SENT;
+            }
+        }
+    }
+    return (0);
 }
 
 // =========================================================================
@@ -353,6 +368,16 @@ Request& Client::GetRequest()
 const Request& Client::GetRequest() const
 {
     return m_Request;
+}
+
+Response& Client::GetResponse()
+{
+    return m_Response;
+}
+
+const Response& Client::GetResponse() const
+{
+    return m_Response;
 }
 
 void Client::SetLocalIp(const std::string& ip)
