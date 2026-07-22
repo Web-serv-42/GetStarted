@@ -337,7 +337,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
 	Request&	request = client->GetRequest();
-	PrintParsedRequest(request);
+	// PrintParsedRequest(request);
 
 	this->TrackSession(client, request);
 
@@ -360,8 +360,6 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		host,
 		request.GetPath());
 
-	if (routing.server == NULL || routing.location == NULL)
-		return (HTTP_NOT_FOUND);
 	client->SetRouting(routing);
 	PrintRoutingInfo(client);
 
