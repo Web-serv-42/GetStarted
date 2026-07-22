@@ -29,6 +29,7 @@ void	Request::SetPath(const std::string& p) { m_Path = p; }
 void	Request::SetQuery(const std::string& q) { m_Query = q; }
 void	Request::SetVersion(const std::string& v) { m_Version = v; }
 void	Request::AddHeader(const std::string& k, const std::string& v) { m_Headers[k] = v; }
+void	Request::AddCookie(const std::string& k, const std::string& v) { m_Cookies[k] = v; }
 // void	Request::AppendBody(const std::string& d) { m_Body += d; }
 void	Request::SetContentLength(size_t l) { m_ContentLength = l; }
 
@@ -49,9 +50,9 @@ const std::string& Request::GetQuery() const { return m_Query; }
 
 const std::string& Request::GetVesrion() const { return m_Version;}
 
-const std::map<std::string, std::string>& Request::GetHeaders() const {
-	return m_Headers;
-}
+const std::map<std::string, std::string>& Request::GetHeaders() const { return m_Headers; }
+
+const std::map<std::string, std::string>& Request::GetCookies() const { return m_Cookies; }
 
 size_t      Request::GetContentLength() const { return m_ContentLength; }
 
@@ -61,6 +62,14 @@ std::string Request::GetHeader(const std::string& key) const {
 		return it->second;
 	}
 	return ""; // return empty string if header doesnt exist , we could check it after 
+}
+
+std::string	Request::GetCookie(const std::string& key) const
+{
+    std::map<std::string, std::string>::const_iterator it = this->m_Cookies.find(key);
+    if (it != this->m_Cookies.end())
+        return it->second;
+    return "";
 }
 
 // (Forbidden)  body appending to file

@@ -308,6 +308,32 @@ TimerBenchmark	Client::GetTimer() const
 	return (this->m_Timer);
 }
 
+Session*	Client::GetSession()
+{
+	return (this->m_Session);
+}
+
+void		Client::SetSession(Session* session)
+{
+	this->m_Session = session;
+}
+
+void	Client::SetOutboundCookie(const std::string& name, const std::string& value, const std::string& attributes)
+{
+	std::string	fullValue = value;
+
+	if (!attributes.empty())
+	{
+		fullValue += "; " + attributes;
+	}
+	this->m_OutboundCookies[name] = fullValue;
+	// How Member 2 will use your system later:
+	// for (std::map<std::string, std::string>::iterator it = m_OutboundCookies.begin(); it != m_OutboundCookies.end(); ++it)
+	// {
+  	//   response << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+	// }
+}
+
 void	Client::DisplayClientInfo() const
 {
 	char 					str[INET6_ADDRSTRLEN];

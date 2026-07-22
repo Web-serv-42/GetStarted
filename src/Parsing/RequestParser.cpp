@@ -98,7 +98,43 @@ void RequestParser::ParseHeader(Request& req, const std::string& line) {
 		return;
 	}
 
+	if (key == "cookie")
+    {
+        ParseCookies(req, value);
+    }
+
 	req.AddHeader(key, value);
+}
+
+void	RequestParser::ParseCookies(Request& req, const std::string& line) {
+    size_t start = 0;
+
+    while (start < line.length()) {
+        // Find the next cookie pair separator
+        size_t end = line.find(';', start);
+        std::string pair = line.substr(start, (end == std::string::npos) ? std::string::npos : (end - start));
+
+        // Trim leading space if present (browsers send: "cookie1=a; cookie2=b")
+        size_t firstNotSpace = pair.find_first_not_of(" \t");
+        if (firstNotSpace != std::string::npos) {
+            pair = pair.substr(firstNotSpace);
+        }
+
+        // Split key and value by '='
+        size_t equalSign = pair.find('=');
+        if (equalSign != std::string::npos) {
+            std::string key = pair.substr(0, equalSign);
+            std::string value = pair.substr(equalSign + 1);
+            
+            if (!key.empty()) {
+				req.AddCookie(key, value);
+            }
+        }
+
+        if (end == std::string::npos)
+            break;
+        start = end + 1;
+    }
 }
 
 // Helper function to extract the real filename from the Content-Disposition block
@@ -175,7 +211,7 @@ bool RequestParser::ParseMultipartBody(Request& req, std::string& rawBuffer)
         }
         else 
         {
-            // 🛑 THE SLIDING WINDOW: No boundary found. 
+            // THE SLIDING WINDOW: No boundary found. 
             // We can safely write the buffer to the current file, BUT we must keep the last 
             // N bytes in case a boundary is cut in half across the network!
             size_t safeToWrite = 0;
@@ -255,7 +291,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 						}
 					}
 
-					// 🚀 NEW: Detect Multipart and grab the boundary!
+					// Detect Multipart and grab the boundary!
 					std::string contentType = req.GetHeader("content-type");
 					size_t boundPos = contentType.find("boundary=");
 					if (boundPos != std::string::npos) {
