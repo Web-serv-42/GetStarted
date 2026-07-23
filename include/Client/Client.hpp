@@ -99,6 +99,7 @@ class Client
 		
 		// Later I will add methods like:
    		void				BuildStaticResponse();
+		void    HandleError(HttpStatusCode statusCode);
    		void				BuildStaticErrorResponse(HttpStatusCode code);
 
 		int					GetClientFd() const;

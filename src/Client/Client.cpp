@@ -64,8 +64,8 @@ bool	Client::ReadData()
 	}
 	else
 	{
-		std::string receivedStr(buffer, receivedBytes);
-		SUCCESS_LOG("Server received: " + receivedStr);
+		// std::string receivedStr(buffer, receivedBytes);
+		// SUCCESS_LOG("Server received: " + receivedStr);
 		this->m_ReadBuffer.append(buffer, receivedBytes); // Safe append!
 		return (true);
 	}
@@ -137,6 +137,23 @@ void    Client::BuildStaticResponse()
     this->m_Response = Response(this->m_Routing, this->m_Request); 
     HttpStatusCode statusCode = this->m_Response.Run();
 
+    if (statusCode != NORMAL)
+    {
+        this->m_Response.handleError(statusCode);
+    }
+    
+    this->m_WriteBuffer = this->m_Response.getRawResponse();
+    this->m_ReadBuffer.clear();
+
+    if (!this->m_Response.getFilePath().empty()) {
+        this->m_State = STATE_SENDING_HEADERS; 
+    } else {
+        this->m_State = STATE_SENDING_FULL_RESPONSE; 
+    }
+}
+
+void    Client::HandleError(HttpStatusCode statusCode)
+{
     if (statusCode != NORMAL)
     {
         this->m_Response.handleError(statusCode);

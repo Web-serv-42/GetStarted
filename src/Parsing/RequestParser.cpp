@@ -204,7 +204,12 @@ bool RequestParser::ParseMultipartBody(Request& req, std::string& rawBuffer)
             std::string filename = ExtractFilenameFromHeaders(headers); // Write a quick helper for this
 
             // 5. Open a NEW temp file for this specific part
-            req.OpenNewMultipartPart(filename); // e.g., creates ./tmp/part_XXXX
+            if (req.OpenNewMultipartPart(filename) == false) // e.g., creates ./tmp/part_XXXX
+			{
+				req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
+				req.SetState(PARSE_COMPLETE);
+				return (true);
+			}
 
             // Erase everything processed so far (Boundary + Headers + \r\n\r\n)
             rawBuffer.erase(0, headerEnd + 4);
@@ -310,7 +315,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 					else
 					{
 						// after we know that we are going to parse the body we open the file
-						if (!req.IsMultipart() && !req.OpenBodyFile())
+						if (!req.IsMultipart() && !req.OpenBodyFile()) // well this should be ||   , or we split them each  on with its check cuz normal post body it doesnt detect it 
 						{
 							req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
 							req.SetState(PARSE_ERROR);
@@ -342,7 +347,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 		else if (req.GetState() == PARSE_BODY)
 		{
 			if (req.IsMultipart()) {
-                // 🚀 MULTIPART ON-THE-FLY PARSING
+                // MULTIPART ON-THE-FLY PARSING
                 if (!ParseMultipartBody(req, rawBuffer)) {
                     return false; // Need more data from epoll
                 }
