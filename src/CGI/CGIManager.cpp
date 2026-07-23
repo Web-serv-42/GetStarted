@@ -29,8 +29,18 @@ HttpStatusCode      CGIManager::AttachCGI(Client* client)
 
     const Request& request = client->GetRequest();
     const Routing& routing = client->GetRouting();
+    size_t limitInMB = routing.location->client_max_body_size;
+    size_t limitInBytes = limitInMB * 1024 * 1024;
     std::vector<std::string> envVars;
 
+    // Check limit (assuming 0 means unlimited)
+    if (limitInMB > 0 && request.GetBodyReceived() > limitInBytes)
+    {
+        // ERROR_LOG("CGI Error: Body size exceeds limit (" + 
+        //           std::to_string(request.GetBodyReceived()) + " > " + 
+        //           std::to_string(limitInBytes) + " bytes)");
+        return (HTTP_PAYLOAD_TOO_LARGE);
+    }
     // 1. Verify the CGI interpreter binary exists and can be executed
     if (access(routing.cgiInterpreter.c_str(), F_OK | X_OK) != 0)
     {
@@ -119,9 +129,7 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 		this->DetachCGI(cgi); // Remove pipe from epoll and map
 		client->DeleteCGI();  // Fire destructor to clean up process/files
 		
-		// client->BuildStaticErrorResponse(HTTP_INTERNAL_SERVER_ERROR);
-        client->GetResponse().generateErrorResponse(HTTP_INTERNAL_SERVER_ERROR);
-		client->SetState(STATE_SENDING_ERROR_RESPONSE);
+        client->HandleError(HTTP_INTERNAL_SERVER_ERROR);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		return;
 	}

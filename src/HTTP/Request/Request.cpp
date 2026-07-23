@@ -186,7 +186,7 @@ bool Request::OpenNewMultipartPart(const std::string& extension) {
     // Call your existing GenerateTmpFileName function (e.g., ./tmp/multipart_part_XXXXXX)
     // newPart.extension = extension;
     newPart.fileName = GenerateTmpFileName("mutipartFile_") + extension;
-    newPart.tmpFilePath = "./tmp/" + newPart.fileName + extension;
+    newPart.tmpFilePath = "./tmp/" + newPart.fileName;
     // std::cout << newPart.tmpFilePath << std::endl;
 
     newPart.fd = open(newPart.tmpFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);

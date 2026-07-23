@@ -339,7 +339,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
 	Request&	request = client->GetRequest();
-	// PrintParsedRequest(request);
+	PrintParsedRequest(request);
 
 	this->TrackSession(client, request);
 
@@ -416,9 +416,7 @@ void	ClientManager::DispatchResponse(Client* client)
 		statusCode = this->m_CGIManager.AttachCGI(client);
 		if (statusCode != NORMAL)
 		{
-			client->GetResponse().generateErrorResponse(statusCode);
-			// Switch state so we can send an error immediately
-			client->SetState(STATE_SENDING_ERROR_RESPONSE);
+			client->HandleError(statusCode);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
 		// STOP HERE. Do not switch the client to EPOLLOUT yet [CGI runing in background successfuly give it some time].
@@ -476,7 +474,7 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 					client->DeleteCGI();
 
 					// Set up the timeout response wrapper
-					client->BuildStaticErrorResponse(HTTP_GATEWAY_TIMEOUT); 
+					client->HandleError(HTTP_GATEWAY_TIMEOUT); 
 					client->SetState(STATE_SENDING_ERROR_RESPONSE);
 					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 				}
@@ -489,7 +487,7 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 				{
 					ERROR_LOG("Client Error: Client inactivity timeout reached! Dropping connection");
 					// Set up the timeout response wrapper
-					client->BuildStaticErrorResponse(HTTP_REQUEST_TIMEOUT); 
+					client->HandleError(HTTP_REQUEST_TIMEOUT); 
 					client->SetState(STATE_SENDING_ERROR_RESPONSE);
 					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 				}

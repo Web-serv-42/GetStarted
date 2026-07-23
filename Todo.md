@@ -131,3 +131,4 @@ int Client::PrepareWriteBuffer()
 }
 ``` 
 - [ ] bad name for upload files [space parsing]
+- [ ] At vuild time => create /tmp folder, fclean => delete /tmp
