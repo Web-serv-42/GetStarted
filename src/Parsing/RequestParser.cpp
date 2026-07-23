@@ -138,21 +138,35 @@ void	RequestParser::ParseCookies(Request& req, const std::string& line) {
 }
 
 // Helper function to extract the real filename from the Content-Disposition block
-std::string RequestParser::ExtractFilenameFromHeaders(const std::string& headers)
+std::string RequestParser::ExtractExtensionFromHeaders(const std::string& headers)
 {
-    // Look for the filename attribute
-    size_t pos = headers.find("filename=\"");
-    
-    if (pos != std::string::npos) {
-        pos += 10; // Jump past 'filename="' (10 characters)
-        size_t endPos = headers.find("\"", pos); // Find the closing quote
-        
-        if (endPos != std::string::npos) {
-            return headers.substr(pos, endPos - pos);
-        }
+    const std::string key = "filename=\"";
+
+    size_t start = headers.find(key);
+    if (start == std::string::npos)
+        return "";
+
+    start += key.length();
+
+    size_t end = headers.find('"', start);
+    if (end == std::string::npos)
+        return "";
+
+    std::string filename = headers.substr(start, end - start);
+
+	std::string extension = ".txt";
+
+    // Find the last '.'
+    size_t dot = filename.rfind('.');
+
+    if (dot != std::string::npos &&
+        dot != 0 &&
+        dot != filename.length() - 1)
+    {
+        extension = filename.substr(dot);
     }
-    
-    return ""; // Return empty if it's not a file upload (e.g., just a text field)
+	
+    return extension;
 }
 
 bool RequestParser::ParseMultipartBody(Request& req, std::string& rawBuffer)
@@ -173,7 +187,7 @@ bool RequestParser::ParseMultipartBody(Request& req, std::string& rawBuffer)
             if (boundPos > 0 && req.HasOpenMultipartPart()) {
                 size_t writeLen = boundPos;
                 
-                // 🚀 FIX: Strip the preceding \r\n that belongs to the multipart protocol, not the file!
+                // FIX: Strip the preceding \r\n that belongs to the multipart protocol, not the file!
                 if (writeLen >= 2 && rawBuffer[writeLen - 2] == '\r' && rawBuffer[writeLen - 1] == '\n') {
                     writeLen -= 2;
                 }
@@ -201,10 +215,10 @@ bool RequestParser::ParseMultipartBody(Request& req, std::string& rawBuffer)
 
             // 4. Extract filename from Content-Disposition
             std::string headers = rawBuffer.substr(headerStart, headerEnd - headerStart);
-            std::string filename = ExtractFilenameFromHeaders(headers); // Write a quick helper for this
-
+            std::string extension = ExtractExtensionFromHeaders(headers); // Write a quick helper for this
+			
             // 5. Open a NEW temp file for this specific part
-            if (req.OpenNewMultipartPart(filename) == false) // e.g., creates ./tmp/part_XXXX
+            if (req.OpenNewMultipartPart(extension) == false) // e.g., creates ./tmp/part_XXXX
 			{
 				req.SetErrorCode(HTTP_INTERNAL_SERVER_ERROR);
 				req.SetState(PARSE_COMPLETE);
@@ -354,6 +368,7 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
             }
 			else
 			{
+				std::cout << "ARE WE HERE" << std::endl;
 				size_t expected = req.GetContentLength();
 				size_t remaining = expected - req.GetBodyReceived();
 

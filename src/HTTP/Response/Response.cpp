@@ -22,12 +22,13 @@ void Response::generateErrorResponse(HttpStatusCode statusCode)
 
 Response::Response(){}
 
-Response::Response(Routing routing, Request request) : m_Routing(routing), m_Request(request)
-{
-
-}
-
 Response::~Response(){}
+
+void    Response::Init(Routing routing, Request request)
+{
+    this->m_Request = request;
+    this->m_Routing = routing;
+}
 
 HttpStatusCode Response::Run()
 {
@@ -115,7 +116,7 @@ void Response::buildStatusLine(HttpStatusCode statusCode)
     ss << statusCode;
     std::string codeStr = ss.str();
 
-    this->_statusLine = "HTTP/1.1 " + codeStr + " " + reasonPhrase + "\r\n";
+    this->_statusLine = "HTTP/1.0 " + codeStr + " " + reasonPhrase + "\r\n";
 }
 
 // GET ----------------------------------------------------------
@@ -267,18 +268,11 @@ HttpStatusCode Response::handleDelete()
 
 HttpStatusCode Response::handlePost()
 {
-    // 1. Size Limit Checks
-    size_t limitSize = 0;
-    if (this->m_Routing.location && this->m_Routing.location->client_max_body_size > 0) {
-        limitSize = this->m_Routing.location->client_max_body_size;
-    } else {
-        limitSize = 20; // Default 20MB
-    }
-    if (limitSize < 1024) {
-        limitSize = limitSize * 1024 * 1024;
-    }
+    size_t limitInMB = m_Routing.location->client_max_body_size;
+    size_t limitInBytes = limitInMB * 1024 * 1024;
 
-    if (this->m_Request.GetBodyReceived() > limitSize) {
+    if (limitInMB > 0 && m_Request.GetBodyReceived() > limitInBytes)
+    {
         return (HTTP_PAYLOAD_TOO_LARGE);
     }
 
@@ -299,45 +293,23 @@ HttpStatusCode Response::handlePost()
         
         for (size_t i = 0; i < parts.size(); ++i) {
             // Skip empty parts (common in multipart forms)
-            if (parts[i].realFileName.empty()) continue;
+            if (parts[i].fileName.empty()) continue;
 
-            std::string destPath = uploadDir + "/" + parts[i].realFileName;
+            std::string destPath = uploadDir + "/" + parts[i].fileName;
             if (std::rename(parts[i].tmpFilePath.c_str(), destPath.c_str()) != 0) {
-                std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].realFileName << "\033[0m\n";
+                std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].fileName << "\033[0m\n";
                 return (HTTP_INTERNAL_SERVER_ERROR);
-            }
+            }   
         }
+        this->buildStatusLine(HTTP_CREATED);
+        this->_body = "<html><body><h1>201 Created: Upload Successful</h1></body></html>";
     }
-    else 
+    else
     {
-        // --- NORMAL RAW UPLOAD ---
-        std::string uri = this->m_Request.GetPath();
-        size_t lastSlash = uri.find_last_of('/');
-        std::string fileName = "";
-
-        if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
-            fileName = uri.substr(lastSlash + 1);
-        }
-
-        // Fallback for timestamped filenames
-        if (fileName.empty() || (this->m_Routing.location && fileName == this->m_Routing.location->path.substr(1))) {
-            std::stringstream timeStream;
-            timeStream << "file_" << time(NULL) << ".bin";
-            fileName = timeStream.str();
-        }
-
-        std::string destFile = uploadDir + "/" + fileName;
-        // Zero-copy move
-        if (std::rename(this->m_Request.GetBodyFilePath().c_str(), destFile.c_str()) != 0) {
-            std::cout << "\033[1;31m[POST] Failed to move raw file!\033[0m\n";
-            return (HTTP_INTERNAL_SERVER_ERROR);
-        }
+        this->buildStatusLine(HTTP_OK);
+        this->_body = "<html><body><h1>200 OK: Request Body Received Successfully</h1></body></html>";
     }
 
-    // 4. Success Response
-    this->buildStatusLine(HTTP_CREATED);
-    this->_body = "<html><body><h1>201 Created: Uploaded Successfully!</h1></body></html>";
-    
     std::stringstream ss;
     ss << this->_body.length();
     this->_headers = "Content-Type: text/html\r\n";

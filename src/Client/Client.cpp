@@ -134,22 +134,11 @@ bool    Client::SendData()
 
 void    Client::BuildStaticResponse()
 {
-    this->m_Response = Response(this->m_Routing, this->m_Request); 
+    this->m_Response.Init(this->m_Routing, this->m_Request); 
+
     HttpStatusCode statusCode = this->m_Response.Run();
 
-    if (statusCode != NORMAL)
-    {
-        this->m_Response.handleError(statusCode);
-    }
-    
-    this->m_WriteBuffer = this->m_Response.getRawResponse();
-    this->m_ReadBuffer.clear();
-
-    if (!this->m_Response.getFilePath().empty()) {
-        this->m_State = STATE_SENDING_HEADERS; 
-    } else {
-        this->m_State = STATE_SENDING_FULL_RESPONSE; 
-    }
+    this->HandleError(statusCode);
 }
 
 void    Client::HandleError(HttpStatusCode statusCode)
@@ -169,6 +158,7 @@ void    Client::HandleError(HttpStatusCode statusCode)
     }
 }
 
+// Inspiration
 void Client::BuildStaticErrorResponse(HttpStatusCode code)
 {
     std::string reason = GetHttpStatusReason(code);
@@ -192,7 +182,6 @@ void Client::BuildStaticErrorResponse(HttpStatusCode code)
     this->m_WriteBuffer = response.str();
 }
 
-// Returns: -1 on error, 0 on EOF, or positive bytes read
 int Client::ReadFileContent()
 {
 	char    buffer[BUFFER_SIZE];
@@ -214,10 +203,6 @@ int Client::ReadFileContent()
 	return (bytesRead);
 }
 
-// From here I read the response and i sent it [request first then body]
-// or just the whole response if is it stored in memory : return status code
-
-
 int Client::PrepareWriteBuffer()
 {
     struct stat         fileInfo;
@@ -230,7 +215,6 @@ int Client::PrepareWriteBuffer()
         return (0);
     }
 
-    
     if (this->m_CGI != NULL)
     {
         this->m_FileContentPath = this->m_CGI->GetTmpOutputFile();
@@ -248,12 +232,16 @@ int Client::PrepareWriteBuffer()
             ERROR_LOG("File I/O Error: Could not find mock body file to measure size");
             return (HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        headerStream << "HTTP/1.0 200 OK\r\n"
-        << "Content-Type: text/html\r\n" 
-        << "Content-Length: " << fileInfo.st_size << "\r\n" 
-        << "\r\n";
-        this->m_WriteBuffer = headerStream.str();
+        if (this->m_CGI != NULL)
+        {
+            headerStream << "HTTP/1.0 200 OK\r\n"
+            << "Content-Type: text/html\r\n" 
+            << "Content-Length: " << fileInfo.st_size << "\r\n" 
+            << "\r\n";
+            this->m_WriteBuffer = headerStream.str();
+        }
+        else
+            this->m_WriteBuffer = this->m_Response.getRawResponse();
         
         this->m_ContentFileFd = open(this->m_FileContentPath.c_str(), O_RDONLY);
         if (this->m_ContentFileFd == -1)

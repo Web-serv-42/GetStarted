@@ -28,7 +28,8 @@ enum ParseState { PARSE_REQUEST_LINE, PARSE_HEADERS, PARSE_BODY, PARSE_COMPLETE,
 
 // A struct to hold the temp file paths and their real filenames
 struct MultipartPart {
-    std::string realFileName;
+	// std::string extension;
+	std::string fileName;
     std::string tmpFilePath;
     int         fd;
 };
@@ -109,7 +110,7 @@ class Request {
 
 		// Multipart File Handling
 		bool                HasOpenMultipartPart() const;
-		bool                OpenNewMultipartPart(const std::string& filename);
+		bool                OpenNewMultipartPart(const std::string& extension);
 		bool                WriteToCurrentMultipartPart(const std::string& data);
 		void                CloseCurrentMultipartPart();
 		const std::vector<MultipartPart>& GetParts() const;

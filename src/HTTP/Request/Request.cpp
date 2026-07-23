@@ -101,7 +101,7 @@ bool Request::OpenBodyFile()
 		return true;
 
 	// Use your custom function instead of mkstemp
-	m_BodyFilePath = GenerateTmpFileName("request_body");
+	m_BodyFilePath = "./tmp/" + GenerateTmpFileName("request_body");
 
 	// Open using allowed syscall (read/write, create if missing, truncate if exists)
 	m_BodyFd = open(m_BodyFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
@@ -181,19 +181,13 @@ bool Request::HasOpenMultipartPart() const {
     return (m_Parts.back().fd != -1);
 }
 
-bool Request::OpenNewMultipartPart(const std::string& filename) {
+bool Request::OpenNewMultipartPart(const std::string& extension) {
     MultipartPart newPart;
-    newPart.realFileName = filename;
-    
-    // If there is no filename, it might be a normal form field (like a text input). 
-    // We still save it as a tmp file just in case.
-    if (newPart.realFileName.empty()) {
-        newPart.realFileName = "unnamed_form_data.txt";
-    }
-
     // Call your existing GenerateTmpFileName function (e.g., ./tmp/multipart_part_XXXXXX)
-    newPart.tmpFilePath = GenerateTmpFileName("multipart_part");
-    std::cout << newPart.tmpFilePath << std::endl;
+    // newPart.extension = extension;
+    newPart.fileName = GenerateTmpFileName("mutipartFile_") + extension;
+    newPart.tmpFilePath = "./tmp/" + newPart.fileName;
+    // std::cout << newPart.tmpFilePath << std::endl;
 
     newPart.fd = open(newPart.tmpFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (newPart.fd == -1) {

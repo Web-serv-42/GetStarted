@@ -43,14 +43,16 @@ class Response
 
     public:
         Response();
-        Response(Routing routing, Request request);
         ~Response();
 
-        HttpStatusCode Run();
+        HttpStatusCode  Run();
+        void            Init(Routing routing, Request request);
+
 
         void generateErrorResponse(HttpStatusCode statusCode);
         std::string getRawResponse() const;
         HttpStatusCode handleMultipartUpload(const std::string& uploadDir, const std::string& contentType);
+
 
         void handleError(HttpStatusCode statusCode);
         const std::string& getFilePath() const;
