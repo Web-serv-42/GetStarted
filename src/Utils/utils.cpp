@@ -12,6 +12,20 @@
 
 #include "Utils/utils.hpp"
 
+// std::string GenerateTmpFileNamePath(std::string contex)
+// {
+//     static int counter = 0; // This will increment across multiple calls
+//     char buf[100];
+//     struct tm tm = Timer::GetTime();
+    
+//     std::strftime(buf, sizeof(buf), "_%s", &tm);
+    
+//     std::stringstream ss;
+//     ss << "./tmp/" << contex << std::string(buf) << "_" << counter++;
+    
+//     return ss.str();
+// }
+
 std::string GenerateTmpFileName(std::string contex)
 {
     static int counter = 0; // This will increment across multiple calls
@@ -21,11 +35,10 @@ std::string GenerateTmpFileName(std::string contex)
     std::strftime(buf, sizeof(buf), "_%s", &tm);
     
     std::stringstream ss;
-    ss << "./tmp/" << contex << std::string(buf) << "_" << counter++ << ".tmp";
+    ss << contex << std::string(buf) << "_" << counter++;
     
     return ss.str();
 }
-
 
 std::string toString(int port)
 {

@@ -3,6 +3,7 @@
 
 #include "HTTP/Request/Request.hpp"
 #include "Core/HttpStatus.hpp"
+#include "Utils/utils.hpp"
 
 #include <string>
 #include <sstream>
@@ -19,7 +20,7 @@ class RequestParser {
         static void ParseHeader(Request& req, const std::string& line);
         static void ParseCookies(Request& req, const std::string& line);
 
-        static std::string  ExtractFilenameFromHeaders(const std::string& headers);
+        static std::string  ExtractExtensionFromHeaders(const std::string& headers);
         static bool         ParseMultipartBody(Request& req, std::string& rawBuffer);
 
 

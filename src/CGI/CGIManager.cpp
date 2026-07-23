@@ -70,7 +70,7 @@ HttpStatusCode      CGIManager::AttachCGI(Client* client)
     }
 
     // The file hasn't been created yet—let your cgi->Run() loop handle creating it safely.
-    std::string tmpFileOutput = GenerateTmpFileName("cgi_out");
+    std::string tmpFileOutput = "./tmp/" + GenerateTmpFileName("cgi_out");
 
     // 5. Build Environment Block
     envVars.push_back("REQUEST_METHOD=" + request.GetMethodString());

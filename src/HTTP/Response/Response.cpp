@@ -299,45 +299,47 @@ HttpStatusCode Response::handlePost()
         
         for (size_t i = 0; i < parts.size(); ++i) {
             // Skip empty parts (common in multipart forms)
-            if (parts[i].realFileName.empty()) continue;
+            if (parts[i].fileName.empty()) continue;
 
-            std::string destPath = uploadDir + "/" + parts[i].realFileName;
+            std::string destPath = uploadDir + "/" + parts[i].fileName;
             if (std::rename(parts[i].tmpFilePath.c_str(), destPath.c_str()) != 0) {
-                std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].realFileName << "\033[0m\n";
+                std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].fileName << "\033[0m\n";
                 return (HTTP_INTERNAL_SERVER_ERROR);
-            }
+            }   
         }
+        this->buildStatusLine(HTTP_CREATED);
+        this->_body = "<html><body><h1>201 Created: Upload Successful</h1></body></html>";
     }
-    else 
+    else
     {
-        // --- NORMAL RAW UPLOAD ---
-        std::string uri = this->m_Request.GetPath();
-        size_t lastSlash = uri.find_last_of('/');
-        std::string fileName = "";
-
-        if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
-            fileName = uri.substr(lastSlash + 1);
-        }
-
-        // Fallback for timestamped filenames
-        if (fileName.empty() || (this->m_Routing.location && fileName == this->m_Routing.location->path.substr(1))) {
-            std::stringstream timeStream;
-            timeStream << "file_" << time(NULL) << ".bin";
-            fileName = timeStream.str();
-        }
-
-        std::string destFile = uploadDir + "/" + fileName;
-        // Zero-copy move
-        if (std::rename(this->m_Request.GetBodyFilePath().c_str(), destFile.c_str()) != 0) {
-            std::cout << "\033[1;31m[POST] Failed to move raw file!\033[0m\n";
-            return (HTTP_INTERNAL_SERVER_ERROR);
-        }
+        this->buildStatusLine(HTTP_OK);
+        this->_body = "<html><body><h1>200 OK: Request Body Received Successfully</h1></body></html>";
     }
+    //     // --- NORMAL RAW UPLOAD ---
+        
+    //     std::string uri = this->m_Request.GetPath();
+    //     size_t lastSlash = uri.find_last_of('/');
+    //     std::string fileName = "";
 
-    // 4. Success Response
-    this->buildStatusLine(HTTP_CREATED);
-    this->_body = "<html><body><h1>201 Created: Uploaded Successfully!</h1></body></html>";
-    
+    //     if (lastSlash != std::string::npos && lastSlash + 1 < uri.size()) {
+    //         fileName = uri.substr(lastSlash + 1);
+    //     }
+
+    //     // Fallback for timestamped filenames
+    //     if (fileName.empty() || (this->m_Routing.location && fileName == this->m_Routing.location->path.substr(1))) {
+    //         std::stringstream timeStream;
+    //         timeStream << "file_" << time(NULL) << ".bin";
+    //         fileName = timeStream.str();
+    //     }
+
+    //     std::string destFile = uploadDir + "/" + fileName;
+    //     // Zero-copy move
+    //     if (std::rename(this->m_Request.GetBodyFilePath().c_str(), destFile.c_str()) != 0) {
+    //         std::cout << "\033[1;31m[POST] Failed to move raw file!\033[0m\n";
+    //         return (HTTP_INTERNAL_SERVER_ERROR);
+    //     }
+    // }
+
     std::stringstream ss;
     ss << this->_body.length();
     this->_headers = "Content-Type: text/html\r\n";
