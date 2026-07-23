@@ -387,7 +387,8 @@ void	ClientManager::TrackSession(Client* client, Request& request)
         currentSession->data["visit_count"] = "1";
 		
 		// Queue up the Set-Cookie header so the outbound pipeline drops it down the socket
-		client->SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
+		// client->SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
+		request.SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
 		DEBUG_LOG("Created new server session ID: " + currentSession->sessionId);
 	}
 	else

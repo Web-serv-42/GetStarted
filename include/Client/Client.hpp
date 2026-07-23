@@ -76,8 +76,7 @@ class Client
 		int         			m_LocalPort;
 		TimerBenchmark			m_Timer;
 		Session*				m_Session;
-		// Holds cookies to be sent out: Key -> Value (with optional settings like Path, Max-Age)
-    	std::map<std::string, std::string>	m_OutboundCookies;
+
 
 	public:
 		Client();

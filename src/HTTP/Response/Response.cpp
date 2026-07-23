@@ -100,10 +100,37 @@ std::string getContentTypeFromPath(const std::string& path)
     return "application/octet-stream";
 }
 
+// std::string Response::getRawResponse() const
+// {
+//     std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
+//     if (!cookies.empty())
+//     {
+//         for (std::map<std::string, std::string>::const_iterator  it = cookies.begin(); it != cookies.end(); ++it)
+//         {
+//             this->_headers += "Set-Cookie: " + std::string(it->first) + "=" + std::string(it->second) + "\r\n";
+//         }
+//     }
+//     std::string fullResponse = _statusLine + _headers + "\r\n" + _body;
+//     return fullResponse;
+// }
+
 std::string Response::getRawResponse() const
 {
-    std::string fullResponse = _statusLine + _headers + "\r\n" + _body;
-    return fullResponse;
+    std::string headers = this->_headers;
+
+    std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
+    // Assuming m_OutboundCookies is a member map in Response (or retrieved via m_Request)
+    if (!cookies.empty())
+    {
+        for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); 
+             it != cookies.end(); 
+             ++it)
+        {
+            headers += "Set-Cookie: " + it->first + "=" + it->second + "\r\n";
+        }
+    }
+
+    return (this->_statusLine + headers + "\r\n" + this->_body);
 }
 
 void Response::buildStatusLine(HttpStatusCode statusCode)
@@ -260,7 +287,6 @@ HttpStatusCode Response::handleDelete()
     this->buildStatusLine(HTTP_NO_CONTENT);
     this->_headers = "Content-Length: 0\r\n";
     this->_body = "";
-
     return (NORMAL); // <--- FIXED: Added missing return statement
 }
 
@@ -276,7 +302,6 @@ HttpStatusCode Response::handlePost()
         return (HTTP_PAYLOAD_TOO_LARGE);
     }
 
-    // 2. Determine Upload Directory
     std::string uploadDir = ".";
     if (this->m_Routing.location) {
         if (!this->m_Routing.location->upload_file.empty())
@@ -285,34 +310,55 @@ HttpStatusCode Response::handlePost()
             uploadDir = this->m_Routing.location->root;
     }
 
-    // 3. Handle Multipart (Already split by Parser) vs Raw Upload
+    std::string createdResourceUrl = "";
+
     if (this->m_Request.IsMultipart()) 
     {
-        std::cout << "\033[1;35m[POST] Multipart detected, renaming split parts...\033[0m\n";
         const std::vector<MultipartPart>& parts = this->m_Request.GetParts();
         
         for (size_t i = 0; i < parts.size(); ++i) {
-            // Skip empty parts (common in multipart forms)
             if (parts[i].fileName.empty()) continue;
 
             std::string destPath = uploadDir + "/" + parts[i].fileName;
+            
             if (std::rename(parts[i].tmpFilePath.c_str(), destPath.c_str()) != 0) {
                 std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].fileName << "\033[0m\n";
                 return (HTTP_INTERNAL_SERVER_ERROR);
-            }   
+            }
+
+            // Track the client-facing HTTP URL path of the first created file
+            if (createdResourceUrl.empty()) {
+                std::string reqPath = this->m_Request.GetPath();
+                if (!reqPath.empty() && reqPath[reqPath.length() - 1] == '/')
+                    createdResourceUrl = reqPath + parts[i].fileName;
+                else
+                    createdResourceUrl = reqPath + "/" + parts[i].fileName;
+            }
         }
+
         this->buildStatusLine(HTTP_CREATED);
-        this->_body = "<html><body><h1>201 Created: Upload Successful</h1></body></html>";
+        this->_body = "";
     }
     else
     {
+        // Non-multipart POST request
         this->buildStatusLine(HTTP_OK);
-        this->_body = "<html><body><h1>200 OK: Request Body Received Successfully</h1></body></html>";
+        this->_body = "";
+    }
+
+    this->_headers = "";
+
+    if (!createdResourceUrl.empty()) {
+        this->_headers += "Location: " + createdResourceUrl + "\r\n";
     }
 
     std::stringstream ss;
     ss << this->_body.length();
-    this->_headers = "Content-Type: text/html\r\n";
+    
+    if (!this->_body.empty()) {
+        this->_headers += "Content-Type: text/html\r\n";
+    }
+    
     this->_headers += "Content-Length: " + ss.str() + "\r\n";
     
     return (NORMAL);

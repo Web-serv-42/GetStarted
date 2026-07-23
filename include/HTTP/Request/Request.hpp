@@ -58,6 +58,9 @@ class Request {
 		bool        						m_IsMultipart;
 		std::vector<MultipartPart>			m_Parts;
 
+		// Holds cookies to be sent out: Key -> Value (with optional settings like Path, Max-Age)
+    	std::map<std::string, std::string>	m_OutboundCookies;
+
 	public:
 		Request();
 		~Request();
@@ -92,6 +95,11 @@ class Request {
 		size_t              GetContentLength() const;
 		std::string         GetHeader(const std::string& key) const;
 		std::string			GetCookie(const std::string& key) const;
+		void				SetOutboundCookie(const std::string& name, const std::string& value, const std::string& attributes);
+		const std::map<std::string, std::string>	GetOutboundCookie() const
+		{
+			return m_OutboundCookies;
+		}
 		const std::string&  GetBodyFilePath() const;
 		// handling boddy 
 
