@@ -298,9 +298,11 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		}
 		else if (statusCode != NORMAL)
 		{
+			std::cout << ("PARSING ERROR DETECTED !!!!!!!!!!!!!!!!!!!!!!!!!!!! ") << statusCode << std::endl ;
 			// client->BuildStaticErrorResponse(statusCode); // Here !!!!!!!!!!!!
-			client->GetResponse().generateErrorResponse(statusCode);
-			client->SetState(STATE_SENDING_ERROR_RESPONSE);
+			client->HandleError(statusCode);
+			// client->GetResponse().generateErrorResponse(statusCode);
+			// client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
 	}
@@ -343,7 +345,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 
 	HttpStatusCode	parserError = request.GetErrorCode();
 	if (parserError != 0)
-		return (parserError); // e.g., 400 Bad Request
+		return (parserError); // could be  400 or 500 
 
 	// -------------------------------------------------
 	// Resolve routing.

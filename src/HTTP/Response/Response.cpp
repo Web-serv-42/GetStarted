@@ -327,7 +327,6 @@ HttpStatusCode Response::handlePost()
         }
 
         std::string destFile = uploadDir + "/" + fileName;
-        
         // Zero-copy move
         if (std::rename(this->m_Request.GetBodyFilePath().c_str(), destFile.c_str()) != 0) {
             std::cout << "\033[1;31m[POST] Failed to move raw file!\033[0m\n";

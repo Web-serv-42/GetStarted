@@ -106,7 +106,8 @@ bool Request::OpenBodyFile()
 	// Open using allowed syscall (read/write, create if missing, truncate if exists)
 	m_BodyFd = open(m_BodyFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
 
-	return (m_BodyFd != -1);
+    
+    return (m_BodyFd != -1);
 }
 
 bool Request::AppendBody(const char* buffer, size_t len)
@@ -192,11 +193,15 @@ bool Request::OpenNewMultipartPart(const std::string& filename) {
 
     // Call your existing GenerateTmpFileName function (e.g., ./tmp/multipart_part_XXXXXX)
     newPart.tmpFilePath = GenerateTmpFileName("multipart_part");
-    
+    std::cout << newPart.tmpFilePath << std::endl;
+
     newPart.fd = open(newPart.tmpFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (newPart.fd == -1) {
         return false;
     }
+    // int error = -1;
+    // if ((error = access(newPart.tmpFilePath.c_str(), F_OK | R_OK)) != 0)
+    //     return (false);
 
     m_Parts.push_back(newPart);
     return true;
