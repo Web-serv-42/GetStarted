@@ -58,6 +58,7 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line)
 	if (hashPos != std::string::npos) rawUri = rawUri.substr(0, hashPos);
 
 	// 3. Split Path and Query String
+	// std::string extractedPath;
 	size_t questionPos = rawUri.find('?');
 	if (questionPos != std::string::npos) {
 		req.SetPath(rawUri.substr(0, questionPos));
@@ -67,8 +68,20 @@ void RequestParser::ParseRequestLine(Request& req, const std::string& line)
 		req.SetQuery("");
 	}
 	
+	// we need to extract the uri here meaning we remove the ".." if the user tried to go above root 
+	// we check if the URI request is inside the root path 
+	// std::string safePath = is_SafePath(extractedPath);
+	// req.SetPath(safePath);
+
 	req.SetVersion(version);
 }
+
+// std::string  RequestParser::is_SafePath(const std::string& URI)
+// {
+
+
+// }
+
 
 void RequestParser::ParseHeader(Request& req, const std::string& line) {
 	size_t colonPos = line.find(':');
@@ -271,7 +284,10 @@ bool RequestParser::Parse(Request& req, std::string& rawBuffer) {
 			ParseRequestLine(req, rawBuffer.substr(0, pos));
 			rawBuffer.erase(0, pos + 2);
 			
-			if (req.GetState() != PARSE_ERROR) req.SetState(PARSE_HEADERS);
+			if (req.GetState() != PARSE_ERROR) 
+				req.SetState(PARSE_HEADERS);
+			else
+				return true;
 		}
 		
 		// --- PARSE HEADERS ---

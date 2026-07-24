@@ -132,16 +132,16 @@ bool    Client::SendData()
     return (true);
 }
 
-void    Client::BuildStaticResponse()
+void    Client::BuildResponse()
 {
     this->m_Response.Init(this->m_Routing, this->m_Request); 
 
     HttpStatusCode statusCode = this->m_Response.Run();
 
-    this->HandleError(statusCode);
+    this->BuildErrorResponse(statusCode);
 }
 
-void    Client::HandleError(HttpStatusCode statusCode)
+void    Client::BuildErrorResponse(HttpStatusCode statusCode)
 {
     if (statusCode != NORMAL)
     {

@@ -60,6 +60,88 @@ static void PrintStringVector(const std::vector<std::string>& vec)
     std::cout << " ]";
 }
 
+// Helper function to visualize the parsed Abstract Syntax Tree (AST)
+void PrintParsedConfig(const ConfigTree& tree)
+{
+    std::cout << "\n\033[1;35m"
+              << std::string(60, '=')
+              << "\033[0m\n";
+
+    std::cout << "\033[1;33m[+] PARSER OUTPUT ("
+              << tree.servers.size()
+              << " Servers Found) [+]\033[0m\n";
+
+    std::cout << "\033[1;35m"
+              << std::string(60, '-')
+              << "\033[0m\n\n";
+
+    for (size_t i = 0; i < tree.servers.size(); ++i)
+    {
+        std::cout << "\033[1;32m=== SERVER "
+                  << (i + 1)
+                  << " ===\033[0m\n";
+
+        // ================= Server Directives =================
+        std::map<std::string, std::vector<std::string> >::const_iterator sIt;
+
+        for (sIt = tree.servers[i].directives.begin();
+             sIt != tree.servers[i].directives.end();
+             ++sIt)
+        {
+            std::cout << "  "
+                      << sIt->first
+                      << " : \033[0;36m";
+
+            for (size_t j = 0; j < sIt->second.size(); ++j)
+            {
+                std::cout << sIt->second[j];
+
+                if (j + 1 != sIt->second.size())
+                    std::cout << " ";
+            }
+
+            std::cout << "\033[0m\n";
+        }
+
+        // ================= Location Blocks =================
+        for (size_t j = 0; j < tree.servers[i].locations.size(); ++j)
+        {
+            const LocationConfig& loc = tree.servers[i].locations[j];
+
+            std::cout << "\n  \033[1;34m--- Location: "
+                      << loc.path
+                      << " ---\033[0m\n";
+
+            std::map<std::string,
+                     std::vector<std::string> >::const_iterator lIt;
+
+            for (lIt = loc.directives.begin();
+                 lIt != loc.directives.end();
+                 ++lIt)
+            {
+                std::cout << "      "
+                          << lIt->first
+                          << " : \033[0;36m";
+
+                for (size_t k = 0; k < lIt->second.size(); ++k)
+                {
+                    std::cout << lIt->second[k];
+
+                    if (k + 1 != lIt->second.size())
+                        std::cout << " ";
+                }
+
+                std::cout << "\033[0m\n";
+            }
+        }
+
+        std::cout << "\n";
+    }
+
+    std::cout << "\033[1;35m"
+              << std::string(60, '=')
+              << "\033[0m\n\n";
+}
 
 void PrintConfigTree(const ConfigTree& tree)
 {

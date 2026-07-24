@@ -14,7 +14,6 @@
 #include "Utils/utils.hpp"
 #include "Parsing/ConfigParser.hpp"
 #include "Parsing/ConfigResolver.hpp"
-#include <stdexcept>
 
 volatile bool Webserv::m_IsRunning = true;
 
@@ -39,34 +38,16 @@ Webserv::~Webserv()
 
 bool Webserv::Init(const ConfigTree& config)
 {
-	// we run config resolver as a runtime to resolve listen so we dont have dangling servers
 	m_Resolver = new ConfigResolver(config);
-
 	m_ClientManager.SetResolver(m_Resolver);
-	
 	const std::vector<ResolvedListen>& runtime = m_Resolver->GetRuntimeListens();
-	
-	// std::cout << "=== Runtime Servers ===\n";
-
-// for (size_t i = 0; i < runtime.size(); ++i)
-// {
-//     std::cout << "[" << i << "] "
-//               << runtime[i].listen.host
-//               << ":" << runtime[i].listen.port
-//               << '\n';
-// }
 
     INFO_LOG("Initializing Webserv Engine...");
 	std::srand(static_cast<unsigned int>(std::time(NULL)));
     Timer::Init();
-
     this->SetupSignals();
-
     this->m_Polling.Init();
 
-   int successful_binds = 0; // Track how many servers actually started
-
-    // 3. Setup the TCP Servers
     for (size_t i = 0; i < runtime.size(); ++i)
     {
         TcpServer* server = new TcpServer(
@@ -76,12 +57,11 @@ bool Webserv::Init(const ConfigTree& config)
         
         if (!server->Setup())
         {
-            std::cerr << "Warning: Failed to bind to " 
-                      << runtime[i].listen.host << ":" 
-                      << runtime[i].listen.port << std::endl;
+			std::stringstream	ss;
+			ss << runtime[i].listen.port;
+			ERROR_LOG("Fatal Error: Failed to bind to http://" + runtime[i].listen.host + ":" + ss.str());
             delete server;
-            continue; // if we failed to bind we should break and stop 
-			// its a binding problem 
+            return false;
         }
 
         this->m_Servers.push_back(server);
@@ -90,18 +70,8 @@ bool Webserv::Init(const ConfigTree& config)
             server->GetListenFd(),
             EPOLLIN
         );
-        
-        successful_binds++;
-    }
-
-    // 4. Final Verification: Did we successfully bind to AT LEAST one port?
-    if (successful_binds == 0)
-    {
-        std::cerr << "Fatal Error: Could not bind to any configured ports. Shutting down." << std::endl;
-        return false;
     }
     INFO_LOG("Webserv successfully initialized.");
-
     return true;
 }
 
@@ -133,12 +103,6 @@ void	Webserv::Run()
 			}
 		}
 		this->m_ClientManager.CheckTimeouts(this->m_CGIManager);
-		// Shutdown Webserv after 10s
-		// if (Timer::GetServerUptime() > 10.0)
-		// {
-		// 	INFO_LOG("Stoping Webserv ...");
-		// 	break ;
-		// }
 	}
 }
 
@@ -146,7 +110,6 @@ void	Webserv::Shutdown()
 {
 	INFO_LOG("Shutting down Webserv Engine...");
 	this->m_IsRunning = false;
-	// Clean recources
 }
 
 // ======================= Helpers =======================

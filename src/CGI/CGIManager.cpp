@@ -129,7 +129,7 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 		this->DetachCGI(cgi); // Remove pipe from epoll and map
 		client->DeleteCGI();  // Fire destructor to clean up process/files
 		
-        client->HandleError(HTTP_INTERNAL_SERVER_ERROR);
+        client->BuildErrorResponse(HTTP_INTERNAL_SERVER_ERROR);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		return;
 	}

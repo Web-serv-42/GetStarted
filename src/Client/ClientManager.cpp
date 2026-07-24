@@ -298,9 +298,9 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		}
 		else if (statusCode != NORMAL)
 		{
-			std::cout << ("PARSING ERROR DETECTED !!!!!!!!!!!!!!!!!!!!!!!!!!!! ") << statusCode << std::endl ;
-			// client->BuildStaticErrorResponse(statusCode); // Here !!!!!!!!!!!!
-			client->HandleError(statusCode);
+			// std::cout << ("PARSING ERROR DETECTED !!!!!!!!!!!!!!!!!!!!!!!!!!!! ") << statusCode << std::endl ;
+			// client->BuildResponse(); // Here !!!!!!!!!!!!
+			client->BuildErrorResponse(statusCode);
 			// client->GetResponse().generateErrorResponse(statusCode);
 			// client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
@@ -333,6 +333,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		return (DROP_CONNECTION); // Signal an immediate connection drop to the layer above
 
 	bool is_request_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
+	// std::cout << (is_request_fully_parsed ?"TRUE" : "FALSE") << std::endl;
 	if (!is_request_fully_parsed)
 	{
 		DEBUG_LOG("Request incomplete. Yielding execution back to epoll loop.");
@@ -341,11 +342,9 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 	Request&	request = client->GetRequest();
 	PrintParsedRequest(request);
 
-	this->TrackSession(client, request);
-
 	HttpStatusCode	parserError = request.GetErrorCode();
-	if (parserError != 0)
-		return (parserError); // could be  400 or 500 
+	if (parserError != NORMAL)
+		return (parserError);
 
 	// -------------------------------------------------
 	// Resolve routing.
@@ -365,10 +364,12 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 	client->SetRouting(routing);
 	PrintRoutingInfo(client);
 
+	this->TrackSession(client, request);
+
 	client->SetState(STATE_EXECUTING); 
 	this->DispatchResponse(client);
 
-	return (NORMAL); // Execution kicked off safely, no errors to report
+	return (NORMAL);
 }
 
 void	ClientManager::TrackSession(Client* client, Request& request)
@@ -447,27 +448,22 @@ void	ClientManager::TrackCookies(Request& request, Session* currentSession)
 
 void	ClientManager::DispatchResponse(Client* client)
 {
-	// At this point the whole request is processed, time to execute it	
 	const Routing& routing = client->GetRouting();
 	HttpStatusCode			statusCode = NORMAL;
 
-	if (!routing.cgiInterpreter.empty())
+	if (routing.isCgi)
 	{
 		client->SetState(STATE_WAITING_CGI);
-		//TODO Member 2: CGI parametres input
 		statusCode = this->m_CGIManager.AttachCGI(client);
 		if (statusCode != NORMAL)
 		{
-			client->HandleError(statusCode);
+			client->BuildErrorResponse(statusCode);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
-		// STOP HERE. Do not switch the client to EPOLLOUT yet [CGI runing in background successfuly give it some time].
-		// Let epoll handle the pipes in the background.
 	}
 	else
 	{
-		// It's a static file request (e.g., index.html)
-		client->BuildStaticResponse(); // Here again !!!!!!!!!
+		client->BuildResponse();
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
@@ -516,7 +512,7 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 					client->DeleteCGI();
 
 					// Set up the timeout response wrapper
-					client->HandleError(HTTP_GATEWAY_TIMEOUT); 
+					client->BuildErrorResponse(HTTP_GATEWAY_TIMEOUT); 
 					client->SetState(STATE_SENDING_ERROR_RESPONSE);
 					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 				}
@@ -529,7 +525,7 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 				{
 					ERROR_LOG("Client Error: Client inactivity timeout reached! Dropping connection");
 					// Set up the timeout response wrapper
-					client->HandleError(HTTP_REQUEST_TIMEOUT); 
+					client->BuildErrorResponse(HTTP_REQUEST_TIMEOUT); 
 					client->SetState(STATE_SENDING_ERROR_RESPONSE);
 					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 				}

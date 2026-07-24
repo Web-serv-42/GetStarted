@@ -21,3 +21,4 @@
 std::string	GenerateTmpFileName(std::string contex);
 std::string toString(int port);
 void PrintConfigTree(const ConfigTree& tree);
+void PrintParsedConfig(const ConfigTree& tree);

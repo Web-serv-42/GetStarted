@@ -178,7 +178,6 @@ bool	CGI::ReadOutputFromScript()
 	else if (bytesRead == 0)
 	{
 		DEBUG_LOG("CGI Output ready");
-		// 💡 Fix: Close the output file descriptor here!
 		if (this->m_TmpOutputFileFd != -1)
 		{
 			close(this->m_TmpOutputFileFd);

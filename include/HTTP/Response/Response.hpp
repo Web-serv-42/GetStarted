@@ -4,6 +4,7 @@
 
 #include <dirent.h>
 #include <fstream>
+
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sstream>
@@ -15,6 +16,12 @@
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigResolver.hpp"
 #include "Core/HttpStatus.hpp"
+
+
+// for linux 
+#define PATH_MAX 4096
+// for macos 1024
+// #define PATH_MAX 1024
 
 class Request;
 struct LocationConfig; 

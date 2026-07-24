@@ -1,24 +1,25 @@
 #include "HTTP/Response/Response.hpp"
+#include <cstdlib>
+#include <linux/limits.h>
 
 const std::string& Response::getFilePath() const {
     return this->_filePath;
 }
 
-// void Response::generateErrorResponse(int statusCode, const LocationConfig& config)
-void Response::generateErrorResponse(HttpStatusCode statusCode)
-{
-    // (void)config;
+// void Response::generateErrorResponse(HttpStatusCode statusCode)
+// {
+//     // (void)config;
 
-    this->buildStatusLine(statusCode);
+//     this->buildStatusLine(statusCode);
 
-    this->_body = "<html><body><h1>Error " + this->_statusLine.substr(9) + "</h1></body></html>";
+//     this->_body = "<html><body><h1>Error " + this->_statusLine.substr(9) + "</h1></body></html>";
 
-    std::stringstream ss;
-    ss << this->_body.length();
+//     std::stringstream ss;
+//     ss << this->_body.length();
 
-    this->_headers = "Content-Type: text/html\r\n";
-    this->_headers += "Content-Length: " + ss.str() + "\r\n";
-}
+//     this->_headers = "Content-Type: text/html\r\n";
+//     this->_headers += "Content-Length: " + ss.str() + "\r\n";
+// }
 
 Response::Response(){}
 
@@ -33,7 +34,8 @@ void    Response::Init(Routing routing, Request request)
 HttpStatusCode Response::Run()
 {
     // Optional for safety
-    if (this->m_Request.GetErrorCode() != NORMAL) {
+    if (this->m_Request.GetErrorCode() != NORMAL)
+    {
         return (this->m_Request.GetErrorCode());
     }
 
@@ -100,26 +102,11 @@ std::string getContentTypeFromPath(const std::string& path)
     return "application/octet-stream";
 }
 
-// std::string Response::getRawResponse() const
-// {
-//     std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
-//     if (!cookies.empty())
-//     {
-//         for (std::map<std::string, std::string>::const_iterator  it = cookies.begin(); it != cookies.end(); ++it)
-//         {
-//             this->_headers += "Set-Cookie: " + std::string(it->first) + "=" + std::string(it->second) + "\r\n";
-//         }
-//     }
-//     std::string fullResponse = _statusLine + _headers + "\r\n" + _body;
-//     return fullResponse;
-// }
-
 std::string Response::getRawResponse() const
 {
     std::string headers = this->_headers;
-
     std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
-    // Assuming m_OutboundCookies is a member map in Response (or retrieved via m_Request)
+
     if (!cookies.empty())
     {
         for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); 
@@ -145,6 +132,29 @@ void Response::buildStatusLine(HttpStatusCode statusCode)
 
     this->_statusLine = "HTTP/1.0 " + codeStr + " " + reasonPhrase + "\r\n";
 }
+
+
+void Response::generateErrorResponse(HttpStatusCode statusCode)
+{
+    this->buildStatusLine(statusCode);
+
+    int code = static_cast<int>(statusCode);
+    std::string reason = GetHttpStatusReason(statusCode);
+    
+    std::ostringstream body;
+    body << "<html><head><title>" << code << " " << reason << "</title></head>\n"
+         << "<body><center><h1>" << code << " " << reason << "</h1></center>\n"
+         << "<hr><center>Webserv/1.0</center></body></html>";
+
+    this->_body = body.str();
+
+    std::stringstream ss;
+    ss << this->_body.length();
+
+    this->_headers = "Content-Type: text/html\r\n";
+    this->_headers += "Content-Length: " + ss.str() + "\r\n";
+}
+
 
 // GET ----------------------------------------------------------
 
@@ -266,6 +276,7 @@ HttpStatusCode Response::handleGet()
 HttpStatusCode Response::handleDelete()
 {
     std::string fullPath = this->m_Routing.filePath;
+    std::string rootDir = this->m_Routing.location->root;
 
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
@@ -276,7 +287,25 @@ HttpStatusCode Response::handleDelete()
         return (HTTP_FORBIDDEN);
     }
 
-    if (access(fullPath.c_str(), W_OK) != 0) {
+    // here we check if the URI escaped the ROOT dir 
+    char resolvedRoot[PATH_MAX];
+    char resolvedTarget[PATH_MAX];
+    // we check  if the full path have the rootdir path else 
+    // http not found meaning we dont delete anything out of scop of the root dir
+
+    if (realpath(rootDir.c_str(), resolvedRoot) == NULL)
+        return  (HTTP_INTERNAL_SERVER_ERROR);
+    if (realpath(fullPath.c_str(), resolvedTarget) == NULL)
+        return  (HTTP_NOT_FOUND);
+
+    std::string checkRoot(resolvedRoot);
+    std::string checkTarget(resolvedTarget);
+    // we dont delete what we cant acceess
+    if (checkTarget.find(checkRoot) != 0)
+        return (HTTP_FORBIDDEN);
+
+
+    if (access(fullPath.c_str(), F_OK) != 0) {
         return (HTTP_FORBIDDEN);
     }
 

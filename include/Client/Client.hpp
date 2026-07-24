@@ -97,8 +97,8 @@ class Client
 		int					ParseAndFinalizeCgiResponse();
 		
 		// Later I will add methods like:
-   		void				BuildStaticResponse();
-		void    HandleError(HttpStatusCode statusCode);
+   		void				BuildResponse();
+		void    BuildErrorResponse(HttpStatusCode statusCode);
    		void				BuildStaticErrorResponse(HttpStatusCode code);
 
 		int					GetClientFd() const;

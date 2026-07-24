@@ -38,8 +38,9 @@ struct Routing
 	const LocationConfig*	location;
 	std::string				filePath;
 	std::string				cgiInterpreter;	
+	bool					isCgi;
 	
-	Routing() : server(NULL), location(NULL) {}
+	Routing() : server(NULL), location(NULL), isCgi(false) {}
 };
 
 

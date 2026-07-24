@@ -127,8 +127,12 @@ int Client::PrepareWriteBuffer()
             }
         }
     }
-    return (0);;
+    return (0);
 }
 ``` 
+
 - [ ] bad name for upload files [space parsing]
 - [ ] At vuild time => create /tmp folder, fclean => delete /tmp
+- [ ] same buildResponse just add a cgi flag and we auto handle errors at the begining
+- [ ] change html UI
+valgrind --leak-check=full --track-fds=yes --track-origins=yes --trace-children=yes ./webserv config/mandarory.conf
