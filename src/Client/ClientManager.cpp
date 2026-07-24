@@ -400,8 +400,49 @@ void	ClientManager::TrackSession(Client* client, Request& request)
         
         DEBUG_LOG("Welcome back session ID: " + currentSession->sessionId + " | Visits: " + oss.str());
 	}
+    
+	this->TrackCookies(request, currentSession);
+
 	// Attach the session reference directly to the client object so your application handles it
     client->SetSession(currentSession);
+}
+
+void	ClientManager::TrackCookies(Request& request, Session* currentSession)
+{
+    const std::map<std::string, std::string>& incomingCookies = request.GetCookies();
+
+    // Step A: Update Session with any cookies the browser sent
+    for (std::map<std::string, std::string>::const_iterator it = incomingCookies.begin(); 
+         it != incomingCookies.end(); ++it)
+    {
+        // We don't need to save the session ID itself into the session data
+        if (it->first == "webserv_sid") 
+            continue;
+
+        // Prefix with "cookie_" to separate it from internal data like 'user_tier'
+        std::string sessionKey = "cookie_" + it->first;
+        currentSession->data[sessionKey] = it->second;
+    }
+
+    // Step B: Heal any cookies the browser forgot/deleted
+    for (std::map<std::string, std::string>::iterator it = currentSession->data.begin(); 
+         it != currentSession->data.end(); ++it)
+    {
+        // Only process keys that start with "cookie_"
+        if (it->first.find("cookie_") == 0)
+        {
+            std::string actualCookieName = it->first.substr(7); // Remove "cookie_" prefix
+            std::string cookieValue = it->second;
+
+            // If this cookie is NOT in the incoming request, the browser lost it!
+            if (request.GetCookie(actualCookieName).empty())
+            {
+                // Send it back to the browser to heal it
+                request.SetOutboundCookie(actualCookieName, cookieValue, "Path=/; Max-Age=3600");
+                DEBUG_LOG("Healed missing cookie dynamically: " + actualCookieName);
+            }
+        }
+    }
 }
 
 void	ClientManager::DispatchResponse(Client* client)
