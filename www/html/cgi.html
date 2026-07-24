@@ -143,7 +143,7 @@ button:hover {
 <header>
 
   <div class="logo">
-    nginx-1.29.6 <span>/ media tester</span>
+    Hmida Sarbay <span>/ media tester</span>
   </div>
 
   <nav>
@@ -229,27 +229,26 @@ async function uploadCGI() {
         return;
     }
 
-    let contentType = "";
-
-    if (file.name.endsWith(".py")) {
-        contentType = "text/x-python";
-    }
-    else if (file.name.endsWith(".php")) {
-        contentType = "application/x-httpd-php";
-    }
-    else {
+    // Strictly validate that it's a script file
+    if (!file.name.endsWith(".py") && !file.name.endsWith(".php")) {
         showResult("Only .py and .php files are allowed.");
         return;
     }
 
+    // Create a standard multi-part container
+    const formData = new FormData();
+    
+    // "scriptFile" is the field name; your C++ multipart parser can read this key if needed
+    formData.append("scriptFile", file, file.name);
+
     try {
+        // Send POST directly to the execution/upload endpoint route
         const response = await fetch("/cgi-bin", {
             method: "POST",
-            headers: {
-                "Content-Type": contentType,
-                "X-Filename": file.name
-            },
-            body: file
+            // NOTE: Do NOT set the 'Content-Type' header manually here.
+            // Leaving it blank allows the browser to automatically generate 
+            // 'multipart/form-data' along with the exact, unique boundary string.
+            body: formData
         });
 
         const text = await response.text();
@@ -257,14 +256,14 @@ async function uploadCGI() {
         showResult(
             "UPLOAD CGI\n" +
             "Status: " + response.status + "\n" +
-            "Content-Type: " + contentType + "\n\n" +
-            text
+            "Response:\n\n" + text
         );
     }
     catch (error) {
         showResult("Upload failed:\n" + error);
     }
 }
+
 
 // =========================
 // Delete CGI

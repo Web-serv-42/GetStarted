@@ -451,7 +451,7 @@ void	ClientManager::DispatchResponse(Client* client)
 	const Routing& routing = client->GetRouting();
 	HttpStatusCode			statusCode = NORMAL;
 
-	if (routing.isCgi)
+	if (routing.isCgi && client->GetRequest().GetMethod() != HTTP_DELETE)
 	{
 		client->SetState(STATE_WAITING_CGI);
 		statusCode = this->m_CGIManager.AttachCGI(client);

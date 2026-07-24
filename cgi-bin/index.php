@@ -26,13 +26,7 @@ $response = "<!DOCTYPE html>
 </body>
 </html>";
 
-// While true loop for timeout testing (uncomment if needed)
 // while (true) { usleep(100000); }
-
-// Send headers (commented out to match your Python script)
-// echo "Content-Type: text/html; charset=utf-8\r\n";
-// echo "Content-Length: " . strlen($response) . "\r\n";
-// echo "\r\n";
 
 // Send body
 echo $response;

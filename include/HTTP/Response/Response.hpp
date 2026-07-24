@@ -3,15 +3,13 @@
 #pragma once 
 
 #include <dirent.h>
-#include <fstream>
-
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sstream>
 #include <string>
 #include <map>
 #include <ctime>
 #include <cstdio>
+#include <cctype>
 // #include "Client/Client.hpp"
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigResolver.hpp"

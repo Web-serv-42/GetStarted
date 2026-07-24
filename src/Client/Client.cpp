@@ -158,30 +158,6 @@ void    Client::BuildErrorResponse(HttpStatusCode statusCode)
     }
 }
 
-// Inspiration
-void Client::BuildStaticErrorResponse(HttpStatusCode code)
-{
-    std::string reason = GetHttpStatusReason(code);
-    
-    // Create an explicit error page body
-    std::ostringstream body;
-    body << "<html><head><title>" << code << " " << reason << "</title></head>"
-        << "<body><center><h1>" << code << " " << reason << "</h1></center>"
-        << "<hr><center>Webserv/1.0</center></body></html>";
-
-    std::string html = body.str();
-    std::ostringstream response;
-
-    // Assemble dynamic status line and headers
-    response << "HTTP/1.0 " << code << " " << reason << "\r\n";
-    response << "Content-Type: text/html\r\n";
-    response << "Content-Length: " << html.length() << "\r\n";
-    response << "Connection: close\r\n\r\n";
-    response << html;
-
-    this->m_WriteBuffer = response.str();
-}
-
 int Client::ReadFileContent()
 {
 	char    buffer[BUFFER_SIZE];
@@ -236,15 +212,20 @@ int Client::PrepareWriteBuffer()
         {
             headerStream << "HTTP/1.0 200 OK\r\n"
             << "Content-Type: text/html\r\n" 
-            << "Content-Length: " << fileInfo.st_size << "\r\n" 
-            << "\r\n";
-            // if (!this->m_Request.GetOutboundCookie().empty())
-            // {
-            //     for (std::map<std::string, std::string>::iterator it = m_OutboundCookies.begin(); it != m_OutboundCookies.end(); ++it)
-            //     {
-            //     this->_headers += "Set-Cookie: " + it->first + "=" + it->second + "\r\n";
-            //     }
-            // }
+            << "Content-Length: " << fileInfo.st_size << "\r\n";
+
+            std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
+            if (!cookies.empty())
+            {
+                for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); 
+                    it != cookies.end(); 
+                    ++it)
+                {
+                    headerStream << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+                }
+            }
+            headerStream << "\r\n";
+
             this->m_WriteBuffer = headerStream.str();
         }
         else

@@ -6,21 +6,6 @@ const std::string& Response::getFilePath() const {
     return this->_filePath;
 }
 
-// void Response::generateErrorResponse(HttpStatusCode statusCode)
-// {
-//     // (void)config;
-
-//     this->buildStatusLine(statusCode);
-
-//     this->_body = "<html><body><h1>Error " + this->_statusLine.substr(9) + "</h1></body></html>";
-
-//     std::stringstream ss;
-//     ss << this->_body.length();
-
-//     this->_headers = "Content-Type: text/html\r\n";
-//     this->_headers += "Content-Length: " + ss.str() + "\r\n";
-// }
-
 Response::Response(){}
 
 Response::~Response(){}
@@ -88,17 +73,40 @@ std::string getContentTypeFromPath(const std::string& path)
     }
     
     std::string ext = path.substr(dotPos);
+    for (size_t i = 0; i < ext.length(); ++i) {
+        ext[i] = std::tolower(ext[i]);
+    }
 
+    // Web Text / Code
     if (ext == ".html" || ext == ".htm") return "text/html";
     if (ext == ".css") return "text/css";
     if (ext == ".js") return "text/javascript";
+    if (ext == ".json") return "application/json";
+    if (ext == ".xml") return "application/xml";
+    if (ext == ".txt") return "text/plain";
+    if (ext == ".csv") return "text/csv";
+    
+    // Images
     if (ext == ".png") return "image/png";
     if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
     if (ext == ".gif") return "image/gif";
-    if (ext == ".txt") return "text/plain";
     if (ext == ".ico") return "image/x-icon";
+    if (ext == ".svg") return "image/svg+xml";
+    if (ext == ".webp") return "image/webp";
+    if (ext == ".bmp") return "image/bmp";
+    
+    // Audio / Video
+    if (ext == ".mp4") return "video/mp4";
+    if (ext == ".webm") return "video/webm";
+    if (ext == ".mpeg" || ext == ".mpg") return "video/mpeg";
+    if (ext == ".mp3") return "audio/mpeg";
+    if (ext == ".wav") return "audio/wav";
+
+    
+    // Documents & Archives
     if (ext == ".pdf") return "application/pdf";
 
+    // Default for unknown binary files
     return "application/octet-stream";
 }
 
@@ -132,7 +140,6 @@ void Response::buildStatusLine(HttpStatusCode statusCode)
 
     this->_statusLine = "HTTP/1.0 " + codeStr + " " + reasonPhrase + "\r\n";
 }
-
 
 void Response::generateErrorResponse(HttpStatusCode statusCode)
 {
