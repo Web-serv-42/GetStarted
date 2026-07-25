@@ -36,9 +36,6 @@ HttpStatusCode      CGIManager::AttachCGI(Client* client)
     // Check limit (assuming 0 means unlimited)
     if (limitInMB > 0 && request.GetBodyReceived() > limitInBytes)
     {
-        // ERROR_LOG("CGI Error: Body size exceeds limit (" + 
-        //           std::to_string(request.GetBodyReceived()) + " > " + 
-        //           std::to_string(limitInBytes) + " bytes)");
         return (HTTP_PAYLOAD_TOO_LARGE);
     }
     // 1. Verify the CGI interpreter binary exists and can be executed
@@ -62,11 +59,11 @@ HttpStatusCode      CGIManager::AttachCGI(Client* client)
     size_t lastSlashPos = fullPath.find_last_of('/');
     if (lastSlashPos != std::string::npos)
     {
-        scriptPath = fullPath.substr(0, lastSlashPos + 1); // e.g., "./cgi-bin/"
-        scriptName = fullPath.substr(lastSlashPos + 1);    // e.g., "info.php"
+        scriptPath = fullPath.substr(0, lastSlashPos + 1); // , "./cgi-bin/"
+        scriptName = fullPath.substr(lastSlashPos + 1);    // , "info.php"
     }
 
-    // 3. FIX: Only validate the body path if the request actually contains a body payload!
+    // 3. Only validate the body path if the request actually contains a body payload!
     bool hasBody = (request.GetContentLength() > 0); 
     std::string tmpFileBody = "";
     if (hasBody)
@@ -129,22 +126,30 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 		this->DetachCGI(cgi); // Remove pipe from epoll and map
 		client->DeleteCGI();  // Fire destructor to clean up process/files
 		
-        client->HandleError(HTTP_INTERNAL_SERVER_ERROR);
+        client->BuildErrorResponse(HTTP_INTERNAL_SERVER_ERROR);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		return;
 	}
 	// Read output from the CGI script via read()
-	if (cgi->ReadOutputFromScript())
+    int status = cgi->ReadOutputFromScript();
+	if (status == 1)
 	{
-		//TODO Member 2: HttpResponse Builder For CGI
-		// Stop watching the read pipe so it doesn't trigger anymore
 		this->DetachPipe(pipeFd);
-		cgi->ClosePipeOut(); // Safely close and set to -1
+		cgi->ClosePipeOut();
 		// 4. Wake the client socket back up in epoll to send the data
-		client->SetState(STATE_SENDING_HEADERS); ///////////
+		client->SetState(STATE_SENDING_HEADERS);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		INFO_LOG("CGI Terminated and Response Ready");
 	}
+    else if (status == -1) // CRASH / FAILURE
+    {
+        this->DetachPipe(pipeFd);
+        cgi->ClosePipeOut();
+        // Use your existing error builder so it serves standard error pages
+		client->SetState(STATE_SENDING_CGI_ERROR_RESPONSE);
+        this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+        INFO_LOG("CGI Failed - Sending 502 Bad Gateway");
+    }
 }
 
 void		CGIManager::DetachPipe(int pipeFd)
@@ -172,39 +177,3 @@ bool	CGIManager::IsCGIPipe(int triggeredFd)
 		return (true);
 	return (false);
 }
-
-// void		CGIManager::CheckCGITimeouts()
-// {
-// 	// Iterate through all active clients/CGIs
-//     for (std::map<int, Client*>::iterator it = this->m_CgiFdToClient.begin(); it != this->m_CgiFdToClient.end();)
-//     {
-// 		Client*	client = it->second;
-// 		CGI*	cgi = client->GetCGI();
-// 		if (client && client->GetState() == STATE_WAITING_CGI)
-// 		{
-// 			if (cgi && cgi->GetTimer().Elapsed() > CGI_TIMEOUT)
-// 			{
-// 				std::map<int, Client*>::iterator next = it;
-//         		++next;
-// 				ERROR_LOG("CGI Error: CGI Timeout! Killing process");
-// 				// 1. Delete the CGI and clean up the pipes safely
-//                 this->DetachCGI(cgi);
-//                 client->DeleteCGI();
-
-//                 // 2. Build a 504 Gateway Timeout response
-//                 // You will need to implement this so BuildStaticErrorResponse takes an arg
-//                 client->BuildStaticErrorResponse(HTTP_GATEWAY_TIMEOUT); 
-
-//                 // 3. Switch the client state to send the error
-//                 client->SetState(STATE_SENDING_ERROR_RESPONSE);
-//                 this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-                
-//                 // Let the next iteration of the epoll loop handle sending 
-//                 // the data via ServeClient(). DO NOT disconnect here.
-// 				it = next;
-//         		continue;
-// 			}
-// 		}
-// 		++it;
-// 	}
-// }

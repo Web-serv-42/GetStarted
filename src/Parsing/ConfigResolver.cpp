@@ -242,6 +242,7 @@ Routing ConfigResolver::ResolveRequest(
             {
                 // Extension found! Save the interpreter path to your routing object
                 routing.cgiInterpreter = it->second; // "/usr/bin/php-cgi"
+                routing.isCgi = true;
             }
         }
     }

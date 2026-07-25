@@ -46,6 +46,7 @@ class ClientManager
 		void			ServeClient(int clientFd, int eventIndex);
 		HttpStatusCode	HandleInboundData(Client* client);
 		void			TrackSession(Client* client, Request& request);
+		void			TrackCookies(Request& request, Session* currentSession);
 		void			DispatchResponse(Client* client);
 
 		void			DisconnectClient(Client* client);
@@ -54,4 +55,6 @@ class ClientManager
 		void			SetResolver(ConfigResolver *resolver);
 		Client*			GetClient(int clientFd);
 		void 			PrintRoutingInfo(Client* client);
+
+		SessionManager&	GetSessionManager();
 };

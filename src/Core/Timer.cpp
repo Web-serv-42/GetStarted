@@ -62,7 +62,6 @@ struct tm	Timer::GetTime()
 	return	(tm);
 }
 
-
 // Nginx-style timestamp: [day/month/year:hour:minute:second]
 std::string	Timer::GetLogTime()
 {

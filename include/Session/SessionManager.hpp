@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <ctime>
 #include "Core/Timer.hpp"
+#include "Core/Log.hpp"
 
 struct Session
 {
@@ -26,5 +27,5 @@ class SessionManager
 		std::string	GenerateRandomId();
 		Session*	CreateSession();
 		Session*	GetSession(const std::string& sessionId);
-		void		DestroySession(const std::string& sessionId);
+		void		CleanupExpiredSessions(int maxIdleSeconds);
 };

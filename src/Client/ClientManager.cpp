@@ -298,9 +298,8 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		}
 		else if (statusCode != NORMAL)
 		{
-			std::cout << ("PARSING ERROR DETECTED !!!!!!!!!!!!!!!!!!!!!!!!!!!! ") << statusCode << std::endl ;
-			// client->BuildStaticErrorResponse(statusCode); // Here !!!!!!!!!!!!
-			client->HandleError(statusCode);
+			// client->BuildResponse(); // Here !!!!!!!!!!!!
+			client->BuildErrorResponse(statusCode);
 			// client->GetResponse().generateErrorResponse(statusCode);
 			// client->SetState(STATE_SENDING_ERROR_RESPONSE);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
@@ -333,19 +332,18 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		return (DROP_CONNECTION); // Signal an immediate connection drop to the layer above
 
 	bool is_request_fully_parsed = RequestParser::Parse(client->GetRequest(), client->GetRawRequestString());
+	// std::cout << (is_request_fully_parsed ?"TRUE" : "FALSE") << std::endl;
 	if (!is_request_fully_parsed)
 	{
 		DEBUG_LOG("Request incomplete. Yielding execution back to epoll loop.");
 		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
 	Request&	request = client->GetRequest();
-	PrintParsedRequest(request);
-
-	this->TrackSession(client, request);
+	// PrintParsedRequest(request);
 
 	HttpStatusCode	parserError = request.GetErrorCode();
-	if (parserError != 0)
-		return (parserError); // could be  400 or 500 
+	if (parserError != NORMAL)
+		return (parserError);
 
 	// -------------------------------------------------
 	// Resolve routing.
@@ -363,12 +361,14 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		request.GetPath());
 
 	client->SetRouting(routing);
-	PrintRoutingInfo(client);
+	// PrintRoutingInfo(client);
+
+	this->TrackSession(client, request);
 
 	client->SetState(STATE_EXECUTING); 
 	this->DispatchResponse(client);
 
-	return (NORMAL); // Execution kicked off safely, no errors to report
+	return (NORMAL);
 }
 
 void	ClientManager::TrackSession(Client* client, Request& request)
@@ -386,8 +386,7 @@ void	ClientManager::TrackSession(Client* client, Request& request)
         currentSession->data["user_tier"] = "guest_account";
         currentSession->data["visit_count"] = "1";
 		
-		// Queue up the Set-Cookie header so the outbound pipeline drops it down the socket
-		client->SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
+		request.SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
 		DEBUG_LOG("Created new server session ID: " + currentSession->sessionId);
 	}
 	else
@@ -399,33 +398,66 @@ void	ClientManager::TrackSession(Client* client, Request& request)
         
         DEBUG_LOG("Welcome back session ID: " + currentSession->sessionId + " | Visits: " + oss.str());
 	}
-	// Attach the session reference directly to the client object so your application handles it
+    
+	currentSession->lastAccessed = time(NULL);
+	this->TrackCookies(request, currentSession);
+
     client->SetSession(currentSession);
+}
+
+void	ClientManager::TrackCookies(Request& request, Session* currentSession)
+{
+    const std::map<std::string, std::string>& incomingCookies = request.GetCookies();
+
+    for (std::map<std::string, std::string>::const_iterator it = incomingCookies.begin(); 
+         it != incomingCookies.end(); ++it)
+    {
+        // We don't need to save the session ID itself into the session data
+        if (it->first == "webserv_sid") 
+            continue;
+
+        // Prefix with "cookie_" to separate it from internal data like 'user_tier'
+        std::string sessionKey = "cookie_" + it->first;
+        currentSession->data[sessionKey] = it->second;
+    }
+
+    std::map<std::string, std::string>::iterator it = currentSession->data.begin();
+    while (it != currentSession->data.end())
+    {
+        if (it->first.find("cookie_") == 0)
+        {
+            std::string actualCookieName = it->first.substr(7);
+            
+            // If the browser stopped sending it, delete it from our session memory too!
+            if (request.GetCookie(actualCookieName).empty())
+            {
+                DEBUG_LOG("Client deleted cookie: " + actualCookieName + ". Removing from session.");
+                currentSession->data.erase(it++);
+                continue;
+            }
+        }
+        ++it;
+    }
 }
 
 void	ClientManager::DispatchResponse(Client* client)
 {
-	// At this point the whole request is processed, time to execute it	
 	const Routing& routing = client->GetRouting();
 	HttpStatusCode			statusCode = NORMAL;
 
-	if (!routing.cgiInterpreter.empty())
+	if (routing.isCgi && client->GetRequest().GetMethod() != HTTP_DELETE)
 	{
 		client->SetState(STATE_WAITING_CGI);
-		//TODO Member 2: CGI parametres input
 		statusCode = this->m_CGIManager.AttachCGI(client);
 		if (statusCode != NORMAL)
 		{
-			client->HandleError(statusCode);
+			client->BuildErrorResponse(statusCode);
 			this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		}
-		// STOP HERE. Do not switch the client to EPOLLOUT yet [CGI runing in background successfuly give it some time].
-		// Let epoll handle the pipes in the background.
 	}
 	else
 	{
-		// It's a static file request (e.g., index.html)
-		client->BuildStaticResponse(); // Here again !!!!!!!!!
+		client->BuildResponse();
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 	}
 }
@@ -474,7 +506,7 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 					client->DeleteCGI();
 
 					// Set up the timeout response wrapper
-					client->HandleError(HTTP_GATEWAY_TIMEOUT); 
+					client->BuildErrorResponse(HTTP_GATEWAY_TIMEOUT); 
 					client->SetState(STATE_SENDING_ERROR_RESPONSE);
 					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 				}
@@ -487,7 +519,7 @@ void	ClientManager::CheckTimeouts(CGIManager& cgiManager)
 				{
 					ERROR_LOG("Client Error: Client inactivity timeout reached! Dropping connection");
 					// Set up the timeout response wrapper
-					client->HandleError(HTTP_REQUEST_TIMEOUT); 
+					client->BuildErrorResponse(HTTP_REQUEST_TIMEOUT); 
 					client->SetState(STATE_SENDING_ERROR_RESPONSE);
 					this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 				}
@@ -506,3 +538,9 @@ void ClientManager::SetResolver(ConfigResolver* resolver)
 {
 	m_Resolver = resolver;
 }
+
+SessionManager&	ClientManager::GetSessionManager()
+{
+	return (this->m_SessionManager);
+}
+

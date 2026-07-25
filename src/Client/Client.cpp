@@ -50,7 +50,6 @@ bool	Client::ReadData()
 	ssize_t	receivedBytes;
 	char	buffer[BUFFER_SIZE];
 
-	//TODO Member 2: Max Body Size check
 	receivedBytes = recv(this->m_SocketFd, buffer, BUFFER_SIZE, 0);
 	if (receivedBytes == 0)
 	{
@@ -64,38 +63,12 @@ bool	Client::ReadData()
 	}
 	else
 	{
-		// std::string receivedStr(buffer, receivedBytes);
 		// SUCCESS_LOG("Server received: " + receivedStr);
 		this->m_ReadBuffer.append(buffer, receivedBytes); // Safe append!
 		return (true);
 	}
 }
 
-
-// bool    Client::SendData()
-// {
-//     ssize_t bytesSent;
-
-//     if (this->m_WriteBuffer.empty())
-//         return (true);
-        
-//     bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
-//     if (bytesSent < 0)
-//     {
-//         ERROR_LOG("Socket Error: An error occurred when send() data");
-//         return (false);
-//     }
-    
-//     this->m_WriteBuffer.erase(0, bytesSent);
-
-//     if (this->m_WriteBuffer.empty() && 
-//         (this->m_State == STATE_SENDING_FULL_RESPONSE || this->m_State == STATE_SENDING_ERROR_RESPONSE))
-//     {
-//         this->m_State = STATE_RESPONSE_SENT;
-//     }
-
-//     return (true);
-// }
 bool    Client::SendData()
 {
     ssize_t bytesSent;
@@ -112,7 +85,7 @@ bool    Client::SendData()
             return (false);
         }
         return (true);
-    }
+    }   
         
     bytesSent = send(this->m_SocketFd, this->m_WriteBuffer.c_str(), this->m_WriteBuffer.length(), MSG_NOSIGNAL);
     if (bytesSent < 0)
@@ -132,16 +105,16 @@ bool    Client::SendData()
     return (true);
 }
 
-void    Client::BuildStaticResponse()
+void    Client::BuildResponse()
 {
     this->m_Response.Init(this->m_Routing, this->m_Request); 
 
     HttpStatusCode statusCode = this->m_Response.Run();
 
-    this->HandleError(statusCode);
+    this->BuildErrorResponse(statusCode);
 }
 
-void    Client::HandleError(HttpStatusCode statusCode)
+void    Client::BuildErrorResponse(HttpStatusCode statusCode)
 {
     if (statusCode != NORMAL)
     {
@@ -156,30 +129,6 @@ void    Client::HandleError(HttpStatusCode statusCode)
     } else {
         this->m_State = STATE_SENDING_FULL_RESPONSE; 
     }
-}
-
-// Inspiration
-void Client::BuildStaticErrorResponse(HttpStatusCode code)
-{
-    std::string reason = GetHttpStatusReason(code);
-    
-    // Create an explicit error page body
-    std::ostringstream body;
-    body << "<html><head><title>" << code << " " << reason << "</title></head>"
-        << "<body><center><h1>" << code << " " << reason << "</h1></center>"
-        << "<hr><center>Webserv/1.0</center></body></html>";
-
-    std::string html = body.str();
-    std::ostringstream response;
-
-    // Assemble dynamic status line and headers
-    response << "HTTP/1.0 " << code << " " << reason << "\r\n";
-    response << "Content-Type: text/html\r\n";
-    response << "Content-Length: " << html.length() << "\r\n";
-    response << "Connection: close\r\n\r\n";
-    response << html;
-
-    this->m_WriteBuffer = response.str();
 }
 
 int Client::ReadFileContent()
@@ -198,7 +147,6 @@ int Client::ReadFileContent()
 		return (0); 
 	}
 	
-	// SAFE: Appends exactly bytesRead from the raw char array
 	this->m_WriteBuffer.append(buffer, bytesRead);
 	return (bytesRead);
 }
@@ -221,11 +169,10 @@ int Client::PrepareWriteBuffer()
     }
     else
     {
-        // this->m_FileContentPath = this->m_Routing.filePath;
         this->m_FileContentPath = this->m_Response.getFilePath();
     }
     
-    if (this->m_State == STATE_SENDING_HEADERS)
+    if (this->m_State == STATE_SENDING_HEADERS || this->m_State == STATE_SENDING_CGI_ERROR_RESPONSE)
     {
         if (stat(this->m_FileContentPath.c_str(), &fileInfo) != 0)
         {
@@ -234,10 +181,27 @@ int Client::PrepareWriteBuffer()
         }
         if (this->m_CGI != NULL)
         {
-            headerStream << "HTTP/1.0 200 OK\r\n"
+            HttpStatusCode statusCode = HTTP_OK;
+
+            if (this->GetState() == STATE_SENDING_CGI_ERROR_RESPONSE)
+                statusCode = HTTP_BAD_GATEWAY;
+            std::string reason = GetHttpStatusReason(statusCode);
+            headerStream << "HTTP/1.0 " << statusCode << " " << reason << "\r\n"
             << "Content-Type: text/html\r\n" 
-            << "Content-Length: " << fileInfo.st_size << "\r\n" 
-            << "\r\n";
+            << "Content-Length: " << fileInfo.st_size << "\r\n";
+
+            std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
+            if (!cookies.empty())
+            {
+                for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); 
+                    it != cookies.end(); 
+                    ++it)
+                {
+                    headerStream << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+                }
+            }
+            headerStream << "\r\n";
+
             this->m_WriteBuffer = headerStream.str();
         }
         else
@@ -321,22 +285,6 @@ Session*	Client::GetSession()
 void		Client::SetSession(Session* session)
 {
 	this->m_Session = session;
-}
-
-void	Client::SetOutboundCookie(const std::string& name, const std::string& value, const std::string& attributes)
-{
-	std::string	fullValue = value;
-
-	if (!attributes.empty())
-	{
-		fullValue += "; " + attributes;
-	}
-	this->m_OutboundCookies[name] = fullValue;
-	// How Member 2 will use your system later:
-	// for (std::map<std::string, std::string>::iterator it = m_OutboundCookies.begin(); it != m_OutboundCookies.end(); ++it)
-	// {
-  	//   response << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
-	// }
 }
 
 void	Client::DisplayClientInfo() const

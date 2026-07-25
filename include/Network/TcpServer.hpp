@@ -15,7 +15,6 @@
 #include "Core/Log.hpp"
 #include "Client/Client.hpp"
 
-#include <sstream>
 #include <unistd.h>
 #include <cstring>
 

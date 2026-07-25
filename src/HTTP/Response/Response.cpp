@@ -1,23 +1,9 @@
 #include "HTTP/Response/Response.hpp"
+#include <cstdlib>
+#include <linux/limits.h>
 
 const std::string& Response::getFilePath() const {
     return this->_filePath;
-}
-
-// void Response::generateErrorResponse(int statusCode, const LocationConfig& config)
-void Response::generateErrorResponse(HttpStatusCode statusCode)
-{
-    // (void)config;
-
-    this->buildStatusLine(statusCode);
-
-    this->_body = "<html><body><h1>Error " + this->_statusLine.substr(9) + "</h1></body></html>";
-
-    std::stringstream ss;
-    ss << this->_body.length();
-
-    this->_headers = "Content-Type: text/html\r\n";
-    this->_headers += "Content-Length: " + ss.str() + "\r\n";
 }
 
 Response::Response(){}
@@ -33,7 +19,8 @@ void    Response::Init(Routing routing, Request request)
 HttpStatusCode Response::Run()
 {
     // Optional for safety
-    if (this->m_Request.GetErrorCode() != NORMAL) {
+    if (this->m_Request.GetErrorCode() != NORMAL)
+    {
         return (this->m_Request.GetErrorCode());
     }
 
@@ -86,24 +73,59 @@ std::string getContentTypeFromPath(const std::string& path)
     }
     
     std::string ext = path.substr(dotPos);
+    for (size_t i = 0; i < ext.length(); ++i) {
+        ext[i] = std::tolower(ext[i]);
+    }
 
+    // Web Text / Code
     if (ext == ".html" || ext == ".htm") return "text/html";
     if (ext == ".css") return "text/css";
     if (ext == ".js") return "text/javascript";
+    if (ext == ".json") return "application/json";
+    if (ext == ".xml") return "application/xml";
+    if (ext == ".txt") return "text/plain";
+    if (ext == ".csv") return "text/csv";
+    
+    // Images
     if (ext == ".png") return "image/png";
     if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
     if (ext == ".gif") return "image/gif";
-    if (ext == ".txt") return "text/plain";
     if (ext == ".ico") return "image/x-icon";
+    if (ext == ".svg") return "image/svg+xml";
+    if (ext == ".webp") return "image/webp";
+    if (ext == ".bmp") return "image/bmp";
+    
+    // Audio / Video
+    if (ext == ".mp4") return "video/mp4";
+    if (ext == ".webm") return "video/webm";
+    if (ext == ".mpeg" || ext == ".mpg") return "video/mpeg";
+    if (ext == ".mp3") return "audio/mpeg";
+    if (ext == ".wav") return "audio/wav";
+
+    
+    // Documents & Archives
     if (ext == ".pdf") return "application/pdf";
 
+    // Default for unknown binary files
     return "application/octet-stream";
 }
 
 std::string Response::getRawResponse() const
 {
-    std::string fullResponse = _statusLine + _headers + "\r\n" + _body;
-    return fullResponse;
+    std::string headers = this->_headers;
+    std::map<std::string, std::string>  cookies = this->m_Request.GetOutboundCookie();
+
+    if (!cookies.empty())
+    {
+        for (std::map<std::string, std::string>::const_iterator it = cookies.begin(); 
+             it != cookies.end(); 
+             ++it)
+        {
+            headers += "Set-Cookie: " + it->first + "=" + it->second + "\r\n";
+        }
+    }
+
+    return (this->_statusLine + headers + "\r\n" + this->_body);
 }
 
 void Response::buildStatusLine(HttpStatusCode statusCode)
@@ -118,6 +140,28 @@ void Response::buildStatusLine(HttpStatusCode statusCode)
 
     this->_statusLine = "HTTP/1.0 " + codeStr + " " + reasonPhrase + "\r\n";
 }
+
+void Response::generateErrorResponse(HttpStatusCode statusCode)
+{
+    this->buildStatusLine(statusCode);
+
+    int code = static_cast<int>(statusCode);
+    std::string reason = GetHttpStatusReason(statusCode);
+    
+    std::ostringstream body;
+    body << "<html><head><title>" << code << " " << reason << "</title></head>\n"
+         << "<body><center><h1>" << code << " " << reason << "</h1></center>\n"
+         << "<hr><center>Webserv/1.0</center></body></html>";
+
+    this->_body = body.str();
+
+    std::stringstream ss;
+    ss << this->_body.length();
+
+    this->_headers = "Content-Type: text/html\r\n";
+    this->_headers += "Content-Length: " + ss.str() + "\r\n";
+}
+
 
 // GET ----------------------------------------------------------
 
@@ -239,6 +283,7 @@ HttpStatusCode Response::handleGet()
 HttpStatusCode Response::handleDelete()
 {
     std::string fullPath = this->m_Routing.filePath;
+    std::string rootDir = this->m_Routing.location->root;
 
     struct stat fileStat;
     if (stat(fullPath.c_str(), &fileStat) != 0) {
@@ -249,7 +294,25 @@ HttpStatusCode Response::handleDelete()
         return (HTTP_FORBIDDEN);
     }
 
-    if (access(fullPath.c_str(), W_OK) != 0) {
+    // here we check if the URI escaped the ROOT dir 
+    char resolvedRoot[PATH_MAX];
+    char resolvedTarget[PATH_MAX];
+    // we check  if the full path have the rootdir path else 
+    // http not found meaning we dont delete anything out of scop of the root dir
+
+    if (realpath(rootDir.c_str(), resolvedRoot) == NULL)
+        return  (HTTP_INTERNAL_SERVER_ERROR);
+    if (realpath(fullPath.c_str(), resolvedTarget) == NULL)
+        return  (HTTP_NOT_FOUND);
+
+    std::string checkRoot(resolvedRoot);
+    std::string checkTarget(resolvedTarget);
+    // we dont delete what we cant acceess
+    if (checkTarget.find(checkRoot) != 0)
+        return (HTTP_FORBIDDEN);
+
+
+    if (access(fullPath.c_str(), F_OK) != 0) {
         return (HTTP_FORBIDDEN);
     }
 
@@ -260,7 +323,6 @@ HttpStatusCode Response::handleDelete()
     this->buildStatusLine(HTTP_NO_CONTENT);
     this->_headers = "Content-Length: 0\r\n";
     this->_body = "";
-
     return (NORMAL); // <--- FIXED: Added missing return statement
 }
 
@@ -276,7 +338,6 @@ HttpStatusCode Response::handlePost()
         return (HTTP_PAYLOAD_TOO_LARGE);
     }
 
-    // 2. Determine Upload Directory
     std::string uploadDir = ".";
     if (this->m_Routing.location) {
         if (!this->m_Routing.location->upload_file.empty())
@@ -285,34 +346,55 @@ HttpStatusCode Response::handlePost()
             uploadDir = this->m_Routing.location->root;
     }
 
-    // 3. Handle Multipart (Already split by Parser) vs Raw Upload
+    std::string createdResourceUrl = "";
+
     if (this->m_Request.IsMultipart()) 
     {
-        std::cout << "\033[1;35m[POST] Multipart detected, renaming split parts...\033[0m\n";
         const std::vector<MultipartPart>& parts = this->m_Request.GetParts();
         
         for (size_t i = 0; i < parts.size(); ++i) {
-            // Skip empty parts (common in multipart forms)
             if (parts[i].fileName.empty()) continue;
 
             std::string destPath = uploadDir + "/" + parts[i].fileName;
+            
             if (std::rename(parts[i].tmpFilePath.c_str(), destPath.c_str()) != 0) {
                 std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].fileName << "\033[0m\n";
                 return (HTTP_INTERNAL_SERVER_ERROR);
-            }   
+            }
+
+            // Track the client-facing HTTP URL path of the first created file
+            if (createdResourceUrl.empty()) {
+                std::string reqPath = this->m_Request.GetPath();
+                if (!reqPath.empty() && reqPath[reqPath.length() - 1] == '/')
+                    createdResourceUrl = reqPath + parts[i].fileName;
+                else
+                    createdResourceUrl = reqPath + "/" + parts[i].fileName;
+            }
         }
+
         this->buildStatusLine(HTTP_CREATED);
-        this->_body = "<html><body><h1>201 Created: Upload Successful</h1></body></html>";
+        this->_body = "";
     }
     else
     {
+        // Non-multipart POST request
         this->buildStatusLine(HTTP_OK);
-        this->_body = "<html><body><h1>200 OK: Request Body Received Successfully</h1></body></html>";
+        this->_body = "";
+    }
+
+    this->_headers = "";
+
+    if (!createdResourceUrl.empty()) {
+        this->_headers += "Location: " + createdResourceUrl + "\r\n";
     }
 
     std::stringstream ss;
     ss << this->_body.length();
-    this->_headers = "Content-Type: text/html\r\n";
+    
+    if (!this->_body.empty()) {
+        this->_headers += "Content-Type: text/html\r\n";
+    }
+    
     this->_headers += "Content-Length: " + ss.str() + "\r\n";
     
     return (NORMAL);

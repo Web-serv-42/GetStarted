@@ -1,4 +1,5 @@
 #include "Parsing/ConfigParser.hpp"
+#include <stdexcept>
 
 // =========================================================================
 // CONSTRUCTOR & DESTRUCTOR
@@ -337,6 +338,14 @@ ConfigTree ConfigParser::Parse()
     return tree;
 }
 
+static bool check_directory_exists(const std::string& path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0) {
+        return false;
+    }
+    return S_ISDIR(info.st_mode); 
+}
+
 // =========================================================================
 // PARSING FINALIZER  
 // =========================================================================
@@ -348,12 +357,23 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
         ServerConfig& srv = tree.servers[i];
 
         // 1. EXTRACT SERVER-LEVEL DEFAULTS
-        srv.root = srv.directives.count("root") ? srv.directives["root"][0] : "/var/www/html";
+        srv.root = srv.directives.count("root") ? srv.directives["root"][0] : "./www/html";
+        // we check if the root path exist else we drop 
+        if (!check_directory_exists(srv.root)) {
+            throw std::runtime_error("Configuration Error: Server block 'root' path \"" + 
+                                     srv.root + "\" does not exist or is not a folder.");
+        }
+
         srv.index = srv.directives.count("index") ? srv.directives["index"][0] : "index.html";
         srv.autoindex = srv.directives.count("autoindex") && srv.directives["autoindex"][0] == "on";
-        
+        // added a checker for max body size 
         if (srv.directives.count("client_max_body_size"))
-            srv.client_max_body_size = std::atoi(srv.directives["client_max_body_size"][0].c_str());
+        {
+            long long tmp = std::atoll(srv.directives["client_max_body_size"][0].c_str());
+            if (tmp < 0)
+                throw std::runtime_error("Configuration Error: client_max_body_size cannot be negative");
+            srv.client_max_body_size = static_cast<size_t>(tmp);
+        }
         else
             srv.client_max_body_size = 1048576; // 1MB default
 
@@ -373,30 +393,41 @@ void ConfigParser::FinalizeAndInherit(ConfigTree& tree)
             }
         }
 
+        // here we handle the location duplication before inheritance
+        for (size_t j = 0; j < srv.locations.size(); ++j)
+        {
+            for (size_t k = j + 1; k < srv.locations.size(); ++k)
+            {
+                if (srv.locations[j].path == srv.locations[k].path)
+                    throw std::runtime_error(
+                        "Configuration Error: duplicate location \"" +
+                        srv.locations[j].path + "\"");
+            }
+        }
         // 2. INHERIT TO LOCATIONS
         for (size_t j = 0; j < srv.locations.size(); ++j) 
         {
             LocationConfig& loc = srv.locations[j];
-
-            // here we handle the location duplication before inheritance
-            for (size_t j = 0; j < srv.locations.size(); ++j)
-            {
-                for (size_t k = j + 1; k < srv.locations.size(); ++k)
-                {
-                    if (srv.locations[j].path == srv.locations[k].path)
-                        throw std::runtime_error(
-                            "Configuration Error: duplicate location \"" +
-                            srv.locations[j].path + "\"");
-                }
-            }
             
             // Inherit standard directives
             loc.root = loc.directives.count("root") ? loc.directives["root"][0] : srv.root;
+            if (!check_directory_exists(loc.root)) {
+            throw std::runtime_error("Configuration Error: Server block 'root' path \"" + 
+                                     loc.root + "\" does not exist or is not a folder.");
+            }
             loc.index = loc.directives.count("index") ? loc.directives["index"][0] : srv.index;
             loc.autoindex = loc.directives.count("autoindex") ? (loc.directives["autoindex"][0] == "on") : srv.autoindex;
-            loc.client_max_body_size = loc.directives.count("client_max_body_size") ? std::atoi(loc.directives["client_max_body_size"][0].c_str()) : srv.client_max_body_size;
-            
-             loc.upload_file = loc.directives.count("upload_file") ? loc.directives["upload_file"][0] : "";
+           
+            if (loc.directives.count("client_max_body_size")) {
+                long long loc_temp = std::atoll(loc.directives["client_max_body_size"][0].c_str());
+                if (loc_temp < 0)
+                    throw std::runtime_error("Configuration Error: location client_max_body_size cannot be negative");
+                loc.client_max_body_size = static_cast<size_t>(loc_temp);
+            } else {
+                loc.client_max_body_size = srv.client_max_body_size;
+            }
+
+            loc.upload_file = loc.directives.count("upload_file") ? loc.directives["upload_file"][0] : "";
             // Allow Methods (Will automatically contain ["GET", "POST", "DELETE"])
             if (loc.directives.count("allow_methods")) {
                 loc.allow_methods = loc.directives["allow_methods"];

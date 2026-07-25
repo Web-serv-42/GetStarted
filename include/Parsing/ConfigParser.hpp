@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <stdexcept>
+#include <sys/stat.h>
 #include <cstdlib>
 // #include "Utils/utils.hpp"
 #include "Core/HttpStatus.hpp"
@@ -57,7 +58,7 @@ struct ServerConfig {
     std::vector<ListenConfig> listens;
     std::string  server_name; // forcing only one server_name per server
 
-    // we give default since we dont have http{} and that would locaion inherit from
+    // we give default since we dont have http{} and that would location inherit from
     std::string root;
     std::string index;
     std::map<int, std::string>  error_pages; 

@@ -21,9 +21,9 @@
 #include "HTTP/Request/Request.hpp"
 #include "HTTP/Response/Response.hpp"
 #include "Core/Timer.hpp"
+#include "Core/HttpStatus.hpp"
 #include "Session/SessionManager.hpp"
 
-#include <sstream>
 #include <unistd.h>
 #include <cstring>
 #include <cerrno>
@@ -41,6 +41,7 @@ enum ClientState {
 	STATE_WAITING_CGI,
 	//* Send Phase
 	STATE_SENDING_ERROR_RESPONSE,
+	STATE_SENDING_CGI_ERROR_RESPONSE,
 	STATE_SENDING_FULL_RESPONSE,
 
 	STATE_RESPONSE_DONE,        // Response is fully built/file is fully read
@@ -60,8 +61,8 @@ class Client
 		int						m_SocketFd;
 		struct sockaddr_storage	m_ClientAddr;
 		CGI*					m_CGI;
-		Request  				m_Request;   //<-- Later: HTTP Request Parser
-		Response 				m_Response;  // <-- Later: HTTP Response Builder
+		Request  				m_Request;   
+		Response 				m_Response;  
 		ClientState				m_State;
 		Routing					m_Routing;
 		// Buffers to hold data if recv/send are interrupted (Non-blocking)
@@ -76,8 +77,7 @@ class Client
 		int         			m_LocalPort;
 		TimerBenchmark			m_Timer;
 		Session*				m_Session;
-		// Holds cookies to be sent out: Key -> Value (with optional settings like Path, Max-Age)
-    	std::map<std::string, std::string>	m_OutboundCookies;
+
 
 	public:
 		Client();
@@ -98,8 +98,8 @@ class Client
 		int					ParseAndFinalizeCgiResponse();
 		
 		// Later I will add methods like:
-   		void				BuildStaticResponse();
-		void    HandleError(HttpStatusCode statusCode);
+   		void				BuildResponse();
+		void    BuildErrorResponse(HttpStatusCode statusCode);
    		void				BuildStaticErrorResponse(HttpStatusCode code);
 
 		int					GetClientFd() const;

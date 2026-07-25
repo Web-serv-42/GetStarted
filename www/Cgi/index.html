@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hmida Sarbay media upload</title>
+    <title>CGI Tester</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
             --text-main: #f4f4f5;
             --text-muted: #a1a1aa;
             --input-bg: rgba(0, 0, 0, 0.2);
-            --glow-color: rgba(59, 130, 246, 0.15); /* Blue glow */
+            --glow-color: rgba(168, 85, 247, 0.15); /* Purple glow */
             
             --accent-green: #10b981;
             --accent-green-hover: #059669;
@@ -24,6 +24,8 @@
             --accent-red-hover: #dc2626;
             --accent-blue: #3b82f6;
             --accent-blue-hover: #2563eb;
+            --accent-purple: #a855f7;
+            --accent-purple-hover: #9333ea;
             
             --font-sans: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
@@ -37,7 +39,7 @@
             --text-main: #0f172a;
             --text-muted: #64748b;
             --input-bg: rgba(255, 255, 255, 0.5);
-            --glow-color: rgba(59, 130, 246, 0.1);
+            --glow-color: rgba(168, 85, 247, 0.1);
         }
         
         body.light header {
@@ -63,7 +65,7 @@
             background: #ffffff;
         }
 
-        body.light .preview pre {
+        body.light .btn-clear {
             background: rgba(0, 0, 0, 0.05);
         }
 
@@ -125,10 +127,10 @@
         }
 
         .logo span {
-            color: var(--accent-blue);
+            color: var(--accent-purple);
             font-size: 0.9rem;
             padding: 4px 10px;
-            background: rgba(59, 130, 246, 0.1);
+            background: rgba(168, 85, 247, 0.1);
             border-radius: 20px;
         }
 
@@ -167,6 +169,13 @@
             gap: 24px;
         }
 
+        .page-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
         .controls-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -182,7 +191,7 @@
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease, border-color 0.3s ease;
         }
@@ -203,6 +212,7 @@
             font-weight: 600;
             font-size: 0.95rem;
             letter-spacing: 0.02em;
+            margin-bottom: 8px;
         }
 
         .icon-box {
@@ -217,9 +227,10 @@
         .icon-box.green { background: rgba(16, 185, 129, 0.1); color: var(--accent-green); }
         .icon-box.red { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); }
         .icon-box.blue { background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); }
+        .icon-box.purple { background: rgba(168, 85, 247, 0.1); color: var(--accent-purple); }
 
         /* ---------------- INPUTS & BUTTONS ---------------- */
-        input[type="text"], input[type="file"] {
+        input[type="text"], input[type="file"], textarea {
             width: 100%;
             background: var(--input-bg);
             color: var(--text-main);
@@ -231,13 +242,32 @@
             outline: none;
             transition: all 0.2s ease;
         }
-
-        input[type="text"]:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        
+        /* Container to align the file input and clear button */
+        .file-input-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            width: 100%;
         }
 
-        input[type="text"]::placeholder {
+        .file-input-wrapper input[type="file"] {
+            flex: 1;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+        }
+
+        input[type="text"]::placeholder, textarea::placeholder {
             color: #52525b;
         }
 
@@ -273,6 +303,7 @@
             gap: 8px;
             transition: all 0.2s;
             color: #fff;
+            margin-top: auto;
         }
 
         .btn-green { background: var(--accent-green); }
@@ -283,6 +314,26 @@
 
         .btn-blue { background: var(--accent-blue); }
         .btn-blue:hover { background: var(--accent-blue-hover); }
+        
+        .btn-purple { background: var(--accent-purple); }
+        .btn-purple:hover { background: var(--accent-purple-hover); }
+
+        /* Clear file selection button */
+        .btn-clear {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            color: var(--text-muted);
+            padding: 11px; 
+            border-radius: 10px;
+            margin-top: 0; /* Overrides global button styling */
+            transition: all 0.2s ease;
+        }
+        
+        .btn-clear:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
 
         /* ---------------- TERMINAL OUTPUT ---------------- */
         .terminal-wrapper {
@@ -318,47 +369,14 @@
             padding: 20px;
             font-family: var(--font-mono);
             font-size: 0.85rem;
-            color: #a1a1aa;
+            color: var(--accent-green);
             white-space: pre-wrap;
             line-height: 1.6;
-            min-height: 120px;
-            max-height: 300px;
+            min-height: 200px;
+            max-height: 400px;
             overflow-y: auto;
-            transition: color 0.3s ease;
-        }
-
-        /* ---------------- PREVIEW ---------------- */
-        .preview {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .preview img, .preview video {
-            max-width: 100%;
-            max-height: 500px;
-            border-radius: 12px;
-            border: 1px solid var(--panel-border);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            margin-top: 24px;
-        }
-
-        .preview audio {
-            width: 100%;
-            margin-top: 24px;
-            border-radius: 30px;
-        }
-        
-        .preview pre {
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--panel-border);
-            padding: 16px;
-            border-radius: 8px;
-            width: 100%;
             overflow-x: auto;
-            transition: background 0.3s ease, color 0.3s ease;
+            transition: color 0.3s ease;
         }
 
         @media(max-width: 768px) {
@@ -370,218 +388,290 @@
         }
     </style>
 </head>
+
 <body>
+
     <header>
         <div class="logo">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" color="var(--accent-blue)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-            Hmida Sarbay <span>Media Workspace</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" color="var(--accent-purple)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Hmida Sarbay <span>CGI Workspace</span>
         </div>
         <nav>
-            <a href="/cgi">CGI TEST</a>
-            <a href="/cookies">COOKIES TEST</a>
+            <a href="/">Home</a>
+            <a href="/cookies/">COOKIES TEST</a>
         </nav>
     </header>
 
     <main>
+        <h1 class="page-title">CGI Tester</h1>
+
         <div class="controls-grid">
-            <!-- UPLOAD -->
-            <div class="panel panel-full">
+            
+            <!-- UPLOAD CGI -->
+            <div class="panel">
                 <div class="panel-header">
                     <div class="icon-box green">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                     </div>
-                    Upload Multipart Form-Data
+                    Upload CGI Script
                 </div>
-                <input type="file" id="file" multiple>
-                <button class="btn-green" onclick="upload()">Execute Upload</button>
+                <div class="file-input-wrapper">
+                    <input type="file" id="uploadFile" accept=".py,.php">
+                    <button type="button" class="btn-clear" onclick="clearFile('uploadFile')" title="Clear selection">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <button class="btn-green" onclick="uploadCGI()">Upload</button>
             </div>
 
-            <!-- DELETE -->
+            <!-- DELETE CGI -->
             <div class="panel">
                 <div class="panel-header">
                     <div class="icon-box red">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                     </div>
-                    Delete File
+                    Delete CGI Script
                 </div>
-                <input type="text" id="del" placeholder="Enter filename (e.g., example.png)">
-                <button class="btn-red" onclick="del()">Execute Delete</button>
+                <input type="text" id="deleteFilename" placeholder="example.py">
+                <button class="btn-red" onclick="deleteCGI()">Delete</button>
             </div>
 
-            <!-- GET -->
+            <!-- RUN GET -->
             <div class="panel">
                 <div class="panel-header">
                     <div class="icon-box blue">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </div>
-                    Fetch File
+                    Run CGI GET
                 </div>
-                <input type="text" id="get" placeholder="Enter filename (e.g., example.png)">
-                <button class="btn-blue" onclick="getFile()">Execute Fetch</button>
+                <input type="text" id="getFilename" placeholder="example.py">
+                <button class="btn-blue" onclick="runGET()">Run GET</button>
             </div>
+
+            <!-- RUN POST -->
+            <div class="panel panel-full">
+                <div class="panel-header">
+                    <div class="icon-box purple">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </div>
+                    Run CGI POST
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <input type="text" id="postFilename" placeholder="example.py (Target Script)">
+                        <div class="file-input-wrapper">
+                            <input type="file" id="postFile">
+                            <button type="button" class="btn-clear" onclick="clearFile('postFile')" title="Clear selection">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <textarea id="postBody" placeholder="Write body text here..."></textarea>
+                </div>
+                <button class="btn-purple" onclick="runPOST()">Run POST</button>
+            </div>
+            
         </div>
 
-        <!-- OUTPUT -->
+        <!-- RESULT TERMINAL -->
         <div class="terminal-wrapper">
             <div class="terminal-header">
                 <div class="term-dot"></div>
                 <div class="term-dot"></div>
                 <div class="term-dot"></div>
             </div>
-            <div id="out" class="output-content">System ready. Waiting for instructions...</div>
+            <div id="result" class="output-content">Waiting for request...</div>
         </div>
-        
-        <div class="preview" id="preview"></div>
+
     </main>
 
-    <!-- CORE SCRIPT -->
-    <script>
-    /* ---------------- THEME COOKIE TRACKING ---------------- */
-    function getCookie(name) {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            let cookie = cookies[i].trim();
-            if (cookie.indexOf(name + "=") === 0)
-                return cookie.substring(name.length + 1);
-        }
-        return null;
+<script>
+/* ---------------- THEME COOKIE TRACKING ---------------- */
+function getCookie(name) {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let cookie = cookies[i].trim();
+        if (cookie.indexOf(name + "=") === 0)
+            return cookie.substring(name.length + 1);
+    }
+    return null;
+}
+
+function applyTheme(theme) {
+    if (theme === "light")
+        document.body.classList.add("light");
+    else
+        document.body.classList.remove("light");
+}
+
+window.addEventListener('load', function() {
+    const savedTheme = getCookie("theme");
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    }
+});
+
+/* ---------------- CORE LOGIC ---------------- */
+const resultBox = document.getElementById("result");
+
+function showResult(text) {
+    resultBox.textContent = text;
+}
+
+// =========================
+// Clear File Input
+// =========================
+function clearFile(inputId) {
+    document.getElementById(inputId).value = "";
+}
+
+// =========================
+// Upload CGI
+// =========================
+async function uploadCGI() {
+    const fileInput = document.getElementById("uploadFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showResult("Please select a file.");
+        return;
     }
 
-    function applyTheme(theme) {
-        if (theme === "light")
-            document.body.classList.add("light");
-        else
-            document.body.classList.remove("light");
+    // Strictly validate that it's a script file
+    if (!file.name.endsWith(".py") && !file.name.endsWith(".php")) {
+        showResult("Only .py and .php files are allowed.");
+        return;
     }
 
-    window.addEventListener('load', function() {
-        const savedTheme = getCookie("theme");
-        if (savedTheme) {
-            applyTheme(savedTheme);
-        }
-    });
+    // Create a standard multi-part container
+    const formData = new FormData();
+    
+    // "scriptFile" is the field name; your C++ multipart parser can read this key if needed
+    formData.append("scriptFile", file, file.name);
 
-    /* ---------------- HELPERS ---------------- */
-    function log(text){
-        document.getElementById("out").textContent = text;
-    }
-    function clearPreview(){
-        document.getElementById("preview").innerHTML = "";
-    }
-
-    /* ---------------- UPLOAD (MULTIPART MULTIPLE) ---------------- */
-    function upload(){
-        clearPreview();
-        const fileInput = document.getElementById("file");
-        const files = fileInput.files;
-
-        if (!files || files.length === 0) return log("no files selected");
-
-        const formData = new FormData();
-        // Loop through all selected files and add them to FormData
-        for (let i = 0; i < files.length; i++) {
-            formData.append("files", files[i], files[i].name);
-        }
-
-        log(`Uploading ${files.length} file(s)...`);
-
-        fetch("/upload", {
+    try {
+        // Send POST directly to the execution/upload endpoint route
+        const response = await fetch("/cgi-bin", {
             method: "POST",
-            // Do NOT set "Content-Type" manually — browser sets the boundary automatically
+            // NOTE: Do NOT set the 'Content-Type' header manually here.
+            // Leaving it blank allows the browser to automatically generate 
+            // 'multipart/form-data' along with the exact, unique boundary string.
             body: formData
-        })
-        .then(async response => {
-            const locationHeader = response.headers.get("Location") || "None";
-            const bodyText = await response.text();
-            
-            log(
-                "UPLOAD RESPONSE:\n" +
-                "STATUS: " + response.status + " " + response.statusText + "\n" +
-                "LOCATION: " + locationHeader + "\n" +
-                "BODY: " + (bodyText ? "\n" + bodyText : "(empty body)")
-            );
-        })
-        .catch(e => log("ERROR:\n" + e));
+        });
+
+        const text = await response.text();
+
+        showResult(
+            "UPLOAD CGI\n" +
+            "Status: " + response.status + "\n" +
+            "Response:\n\n" + text
+        );
+    }
+    catch (error) {
+        showResult("Upload failed:\n" + error);
+    }
+}
+
+
+// =========================
+// Delete CGI
+// =========================
+async function deleteCGI() {
+    const filename = document.getElementById("deleteFilename").value.trim();
+
+    if (!filename) {
+        showResult("Please enter a filename.");
+        return;
     }
 
-    /* ---------------- DELETE ---------------- */
-    function del(){
-        clearPreview();
-        const name = document.getElementById("del").value;
-        if (!name) return log("no filename");
-
-        fetch("/upload/" + name, {
+    try {
+        const response = await fetch("/cgi-bin/" + filename, {
             method: "DELETE"
-        })
-        .then(async response => {
-            const bodyText = await response.text();
-            log(
-                "DELETE RESPONSE:\n" +
-                "STATUS: " + response.status + " " + response.statusText + "\n" +
-                "BODY: " + (bodyText ? "\n" + bodyText : "(empty body)")
-            );
-        })
-        .catch(e => log("ERROR:\n" + e));
+        });
+
+        const text = await response.text();
+
+        showResult(
+            "DELETE CGI\n" +
+            "Status: " + response.status + "\n\n" +
+            text
+        );
+    }
+    catch (error) {
+        showResult("Delete failed:\n" + error);
+    }
+}
+
+// =========================
+// Run CGI GET
+// =========================
+async function runGET() {
+    const filename = document.getElementById("getFilename").value.trim();
+
+    if (!filename) {
+        showResult("Please enter a filename.");
+        return;
     }
 
-    /* ---------------- GET + PREVIEW ---------------- */
-    function getFile(){
-        clearPreview();
-        const name = document.getElementById("get").value;
-        if (!name) return log("no filename");
+    try {
+        const response = await fetch("/cgi-bin/" + filename);
 
-        fetch("/upload/" + name)
-        .then(response => {
-            if (!response.ok) throw new Error("HTTP " + response.status + " " + response.statusText);
-            return response.blob();
-        })
-        .then(blob => {
-            log(
-                "GET RESPONSE:\n" +
-                "SIZE: " + blob.size + " bytes\n" +
-                "TYPE: " + (blob.type || "unknown")
-            );
+        const text = await response.text();
 
-            const url = URL.createObjectURL(blob);
-            const preview = document.getElementById("preview");
-
-            /* IMAGE */
-            if (blob.type.startsWith("image/")) {
-                const img = document.createElement("img");
-                img.src = url;
-                preview.appendChild(img);
-            }
-            /* VIDEO */
-            else if (blob.type.startsWith("video/")) {
-                const video = document.createElement("video");
-                video.src = url;
-                video.controls = true;
-                preview.appendChild(video);
-            }
-            /* AUDIO */
-            else if (blob.type.startsWith("audio/")) {
-                const audio = document.createElement("audio");
-                audio.src = url;
-                audio.controls = true;
-                preview.appendChild(audio);
-            }
-            /* TEXT / CODE */
-            else if (
-                blob.type.startsWith("text/") || 
-                blob.type.includes("json") || 
-                blob.type.includes("javascript")
-            ) {
-                blob.text().then(text => {
-                    const pre = document.createElement("pre");
-                    pre.style.marginTop = "20px";
-                    pre.style.whiteSpace = "pre-wrap";
-                    pre.textContent = text;
-                    preview.appendChild(pre);
-                });
-            }
-        })
-        .catch(e => log("ERROR:\n" + e));
+        showResult(
+            "RUN CGI GET\n" +
+            "Status: " + response.status + "\n\n" +
+            text
+        );
     }
-    </script>
+    catch (error) {
+        showResult("GET request failed:\n" + error);
+    }
+}
+
+// =========================
+// Run CGI POST
+// =========================
+async function runPOST() {
+    const filename = document.getElementById("postFilename").value.trim();
+    const bodyText = document.getElementById("postBody").value;
+    const fileInput = document.getElementById("postFile");
+
+    if (!filename) {
+        showResult("Please enter a filename.");
+        return;
+    }
+
+    let body = "";
+
+    // If file selected -> use file content
+    if (fileInput.files.length > 0) {
+        body = await fileInput.files[0].text();
+    }
+    // Else use textarea content
+    else {
+        body = bodyText;
+    }
+
+    try {
+        const response = await fetch("/cgi-bin/" + filename, {
+            method: "POST",
+            body: body
+        });
+
+        const text = await response.text();
+
+        showResult(
+            "RUN CGI POST\n" +
+            "Status: " + response.status + "\n\n" +
+            text
+        );
+    }
+    catch (error) {
+        showResult("POST request failed:\n" + error);
+    }
+}
+</script>
+
 </body>
 </html>
