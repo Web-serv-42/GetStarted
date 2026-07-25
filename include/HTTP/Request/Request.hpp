@@ -46,7 +46,7 @@ class Request {
 		
 		std::string                         m_BodyFilePath;
 		int                                 m_BodyFd;
-		// should we change this size_t ?
+
 		size_t                              m_BodyReceived;
 
 		ParseState                          m_State;
@@ -76,7 +76,6 @@ class Request {
 		void	SetVersion(const std::string& v);
 		void	AddHeader(const std::string& k, const std::string& v);
 		void	AddCookie(const std::string& key, const std::string& value);
-				// void	AppendBody(const std::string& d);
 		void	SetContentLength(size_t l);
 
 		// Getters
@@ -87,7 +86,6 @@ class Request {
 
 		const std::string&	GetPath() const;
 		const std::string&	GetQuery() const;
-		// const std::string& GetBody() const;
 		const std::string&	GetVesrion() const;
 		const std::map<std::string, std::string>& GetHeaders() const;
 		const std::map<std::string, std::string>& GetCookies() const;

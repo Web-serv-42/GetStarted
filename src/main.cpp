@@ -14,7 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <vector>
+#include "Server/Webserv.hpp"
 #include "Parsing/Lexer.hpp"
 #include "HTTP/Request/Request.hpp"
 #include "Parsing/ConfigParser.hpp"
@@ -32,8 +32,6 @@ std::string ReadFileToString(const char* filepath)
     ss << file.rdbuf();
     return ss.str();
 }
-#include "Server/Webserv.hpp"
-
 
 int main(int argc, char const *argv[])
 {

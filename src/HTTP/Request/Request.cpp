@@ -30,7 +30,6 @@ void	Request::SetQuery(const std::string& q) { m_Query = q; }
 void	Request::SetVersion(const std::string& v) { m_Version = v; }
 void	Request::AddHeader(const std::string& k, const std::string& v) { m_Headers[k] = v; }
 void	Request::AddCookie(const std::string& k, const std::string& v) { m_Cookies[k] = v; }
-// void	Request::AppendBody(const std::string& d) { m_Body += d; }
 void	Request::SetContentLength(size_t l) { m_ContentLength = l; }
 
 // Getters
@@ -46,7 +45,6 @@ const std::string& Request::GetPath() const { return m_Path; }
 
 const std::string& Request::GetQuery() const { return m_Query; }
 
-// const std::string& Request::GetBody() const { return m_Body; }
 
 const std::string& Request::GetVesrion() const { return m_Version;}
 
@@ -81,34 +79,8 @@ void	Request::SetOutboundCookie(const std::string& name, const std::string& valu
 		fullValue += "; " + attributes;
 	}
 	this->m_OutboundCookies[name] = fullValue;
-	// How Member 2 will use your system later:
-	// for (std::map<std::string, std::string>::iterator it = m_OutboundCookies.begin(); it != m_OutboundCookies.end(); ++it)
-	// {
-  	//   response << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
-	// }
+	
 }
-
-// (Forbidden)  body appending to file
-
-// bool Request::OpenBodyFile()
-// {
-//     if (m_BodyFd != -1)
-//         return true;
-
-//     char path[] = "./tmp/Request_body_XXXXXX";
-
-//     m_BodyFd = mkstemp(path);
-
-//     // std::cout << "CReated file FD [ " << m_BodyFd << " ] , name => " << path << std::endl;
-
-//     if (m_BodyFd == -1)
-//         return false;
-
-//     // unlink it will delete the file name if no process have the file open
-//     // unlink(path);
-
-//     return true;
-// }
 
 bool Request::OpenBodyFile()
 {
@@ -116,7 +88,6 @@ bool Request::OpenBodyFile()
 	if (m_BodyFd != -1)
 		return true;
 
-	// Use your custom function instead of mkstemp
 	m_BodyFilePath = "./tmp/" + GenerateTmpFileName("request_body");
 
 	// Open using allowed syscall (read/write, create if missing, truncate if exists)
@@ -199,19 +170,14 @@ bool Request::HasOpenMultipartPart() const {
 
 bool Request::OpenNewMultipartPart(const std::string& extension) {
     MultipartPart newPart;
-    // Call your existing GenerateTmpFileName function (e.g., ./tmp/multipart_part_XXXXXX)
     // newPart.extension = extension;
     newPart.fileName = GenerateTmpFileName("mutipartFile_") + extension;
     newPart.tmpFilePath = "./tmp/" + newPart.fileName;
-    // std::cout << newPart.tmpFilePath << std::endl;
 
     newPart.fd = open(newPart.tmpFilePath.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0644);
     if (newPart.fd == -1) {
         return false;
     }
-    // int error = -1;
-    // if ((error = access(newPart.tmpFilePath.c_str(), F_OK | R_OK)) != 0)
-    //     return (false);
 
     m_Parts.push_back(newPart);
     return true;

@@ -1,5 +1,4 @@
-// #ifndef RESPONSE_HPP
-// #define RESPONSE_HPP
+
 #pragma once 
 
 #include <dirent.h>
@@ -62,5 +61,3 @@ class Response
         void handleError(HttpStatusCode statusCode);
         const std::string& getFilePath() const;
 };
-
-// #endif   

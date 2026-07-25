@@ -47,6 +47,7 @@ bool Webserv::Init(const ConfigTree& config)
     Timer::Init();
     this->SetupSignals();
     this->m_Polling.Init();
+	this->m_LastSessionCleanup = Timer::GetServerUptime();
 
     for (size_t i = 0; i < runtime.size(); ++i)
     {
@@ -103,6 +104,7 @@ void	Webserv::Run()
 			}
 		}
 		this->m_ClientManager.CheckTimeouts(this->m_CGIManager);
+		this->CheckSessionExpire();
 	}
 }
 
@@ -144,4 +146,17 @@ void	Webserv::SetupSignals()
 {
 	signal(SIGINT, this->HandleSignals);
 	signal(SIGTERM, this->HandleSignals);
+}
+
+void Webserv::CheckSessionExpire()
+{
+    double currentUptime = Timer::GetServerUptime();
+
+    // Run the memory sweep every 5 minutes (300.0 seconds)
+    if ((currentUptime - this->m_LastSessionCleanup) > 300.0)
+    {
+        this->m_ClientManager.GetSessionManager().CleanupExpiredSessions(3600); 
+        
+        this->m_LastSessionCleanup = currentUptime;
+    }
 }

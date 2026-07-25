@@ -55,4 +55,6 @@ class ClientManager
 		void			SetResolver(ConfigResolver *resolver);
 		Client*			GetClient(int clientFd);
 		void 			PrintRoutingInfo(Client* client);
+
+		SessionManager&	GetSessionManager();
 };

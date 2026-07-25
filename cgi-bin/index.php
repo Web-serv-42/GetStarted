@@ -19,7 +19,7 @@ $response = "<!DOCTYPE html>
 <html>
 <head>
     <meta charset=\"UTF-8\">
-    <title>CGI HTML Generated Page</title>
+    <title>PHP CGI HTML Generated Page</title>
 </head>
 <body>
     <p>" . $data . "</p>

@@ -84,7 +84,7 @@ bool	CGI::Run()
 	// Setup pipes
 	if ((pipe(this->m_PipeOutFd) == -1))
 	{
-		ERROR_LOG("CGI Error: chdir failed!");
+		ERROR_LOG("CGI Error: pipe failed!");
 		return (false);
 	}
 
@@ -123,8 +123,6 @@ bool	CGI::Run()
 	}
 	else
 	{
-		// --- PARENT PROCESS (Webserv Engine) ---
-
 		// Make pipes non blobking [Add them to epoll]
 		fcntl(this->m_PipeOutFd[0], F_SETFL, O_NONBLOCK);
 		
@@ -159,7 +157,7 @@ void	CGI::InitEnvpAndArgv()
 }
 
 // ======================= write() && read() =======================
-bool	CGI::ReadOutputFromScript()
+int	CGI::ReadOutputFromScript()
 {
 	// read() + waitpid
 	char	buffer[BUFFER_SIZE];
@@ -173,7 +171,7 @@ bool	CGI::ReadOutputFromScript()
         {
             write(this->m_TmpOutputFileFd, buffer, bytesRead);
         }
-		return (false); // Not done yet, more data coming from CGI script
+		return (0); // Not done yet, more data coming from CGI script
 	}
 	else if (bytesRead == 0)
 	{
@@ -186,12 +184,17 @@ bool	CGI::ReadOutputFromScript()
 		// Finished reading (EOF)
 		waitpid(this->m_Pid, &status, WNOHANG);
 		this->m_Pid = -1;
-		return (true);
+		// Check if the script crashed or called exit(1)
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
+        {
+            return (-1);
+        }
+		return (1);
 	}
 	else
 	{
 		ERROR_LOG("CGI Error: Error while reading from CGI output");
-		return (true);
+		return (1);
 	}
 }
 
@@ -255,8 +258,13 @@ void	CGI::RedirectIO()
 		close(devNull);
 	}
 	
-	// Redirect from stdout to pipeOut [CgiResponse]
+	// Redirect from stdout and stderr to pipeOut [CgiResponse]
 	if (dup2(this->m_PipeOutFd[1], STDOUT_FILENO) == -1)
+	{
+		ERROR_LOG("CGI Error: dup2 failed!");
+		std::exit(EXIT_FAILURE);
+	}
+	if (dup2(this->m_PipeOutFd[1], STDERR_FILENO) == -1)
 	{
 		ERROR_LOG("CGI Error: dup2 failed!");
 		std::exit(EXIT_FAILURE);

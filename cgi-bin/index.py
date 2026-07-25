@@ -21,7 +21,7 @@ response = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>CGI HTML Generated Page</title>
+    <title>PY CGI HTML Generated Page</title>
 </head>
 <body>
     <p>{text}</p>

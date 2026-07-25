@@ -17,7 +17,6 @@
 #include "Network/Multiplexer.hpp"
 #include "Utils/utils.hpp"
 
-#include <map>
 
 class CGIManager
 {

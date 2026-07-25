@@ -298,7 +298,6 @@ void ClientManager::ServeClient(int clientFd, int eventIndex)
 		}
 		else if (statusCode != NORMAL)
 		{
-			// std::cout << ("PARSING ERROR DETECTED !!!!!!!!!!!!!!!!!!!!!!!!!!!! ") << statusCode << std::endl ;
 			// client->BuildResponse(); // Here !!!!!!!!!!!!
 			client->BuildErrorResponse(statusCode);
 			// client->GetResponse().generateErrorResponse(statusCode);
@@ -340,7 +339,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
 	Request&	request = client->GetRequest();
-	PrintParsedRequest(request);
+	// PrintParsedRequest(request);
 
 	HttpStatusCode	parserError = request.GetErrorCode();
 	if (parserError != NORMAL)
@@ -362,7 +361,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		request.GetPath());
 
 	client->SetRouting(routing);
-	PrintRoutingInfo(client);
+	// PrintRoutingInfo(client);
 
 	this->TrackSession(client, request);
 
@@ -387,8 +386,6 @@ void	ClientManager::TrackSession(Client* client, Request& request)
         currentSession->data["user_tier"] = "guest_account";
         currentSession->data["visit_count"] = "1";
 		
-		// Queue up the Set-Cookie header so the outbound pipeline drops it down the socket
-		// client->SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
 		request.SetOutboundCookie("webserv_sid", currentSession->sessionId, "Path=/; HttpOnly");
 		DEBUG_LOG("Created new server session ID: " + currentSession->sessionId);
 	}
@@ -402,9 +399,9 @@ void	ClientManager::TrackSession(Client* client, Request& request)
         DEBUG_LOG("Welcome back session ID: " + currentSession->sessionId + " | Visits: " + oss.str());
 	}
     
+	currentSession->lastAccessed = time(NULL);
 	this->TrackCookies(request, currentSession);
 
-	// Attach the session reference directly to the client object so your application handles it
     client->SetSession(currentSession);
 }
 
@@ -412,7 +409,6 @@ void	ClientManager::TrackCookies(Request& request, Session* currentSession)
 {
     const std::map<std::string, std::string>& incomingCookies = request.GetCookies();
 
-    // Step A: Update Session with any cookies the browser sent
     for (std::map<std::string, std::string>::const_iterator it = incomingCookies.begin(); 
          it != incomingCookies.end(); ++it)
     {
@@ -425,24 +421,22 @@ void	ClientManager::TrackCookies(Request& request, Session* currentSession)
         currentSession->data[sessionKey] = it->second;
     }
 
-    // Step B: Heal any cookies the browser forgot/deleted
-    for (std::map<std::string, std::string>::iterator it = currentSession->data.begin(); 
-         it != currentSession->data.end(); ++it)
+    std::map<std::string, std::string>::iterator it = currentSession->data.begin();
+    while (it != currentSession->data.end())
     {
-        // Only process keys that start with "cookie_"
         if (it->first.find("cookie_") == 0)
         {
-            std::string actualCookieName = it->first.substr(7); // Remove "cookie_" prefix
-            std::string cookieValue = it->second;
-
-            // If this cookie is NOT in the incoming request, the browser lost it!
+            std::string actualCookieName = it->first.substr(7);
+            
+            // If the browser stopped sending it, delete it from our session memory too!
             if (request.GetCookie(actualCookieName).empty())
             {
-                // Send it back to the browser to heal it
-                request.SetOutboundCookie(actualCookieName, cookieValue, "Path=/; Max-Age=3600");
-                DEBUG_LOG("Healed missing cookie dynamically: " + actualCookieName);
+                DEBUG_LOG("Client deleted cookie: " + actualCookieName + ". Removing from session.");
+                currentSession->data.erase(it++);
+                continue;
             }
         }
+        ++it;
     }
 }
 
@@ -544,3 +538,9 @@ void ClientManager::SetResolver(ConfigResolver* resolver)
 {
 	m_Resolver = resolver;
 }
+
+SessionManager&	ClientManager::GetSessionManager()
+{
+	return (this->m_SessionManager);
+}
+

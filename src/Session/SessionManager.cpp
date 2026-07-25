@@ -20,7 +20,8 @@ SessionManager::~SessionManager()
 {
 	// Clean up session memory allocations
 	for (std::map<std::string, Session*>::iterator it = m_ActiveSessions.begin(); it != m_ActiveSessions.end(); ++it) {
-		delete it->second;
+		if (it->second)
+			delete it->second;
 	}
 }
 
@@ -57,12 +58,25 @@ Session*	SessionManager::GetSession(const std::string& sessionId)
 	return (NULL);
 }
 
-void	SessionManager::DestroySession(const std::string& sessionId)
+void SessionManager::CleanupExpiredSessions(int maxIdleSeconds)
 {
-	std::map<std::string, Session*>::iterator it = m_ActiveSessions.find(sessionId);
-	if (it != m_ActiveSessions.end())
-	{
-		delete it->second;
-		this->m_ActiveSessions.erase(it);
-	}
+    time_t now = time(NULL);
+
+    std::map<std::string, Session*>::iterator it = m_ActiveSessions.begin();
+    
+    while (it != m_ActiveSessions.end())
+    {
+        Session* session = it->second;
+        
+        if ((now - session->lastAccessed) > maxIdleSeconds)
+        {
+            DEBUG_LOG("Deleting expired session: " + session->sessionId);
+            delete session;
+            m_ActiveSessions.erase(it++);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }

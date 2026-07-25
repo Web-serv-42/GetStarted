@@ -62,8 +62,7 @@ class CGI
 		void	ClearInheritedFds(int pipeOut);
 		void	InitEnvpAndArgv();
 		
-		// bool	SendBodyToScript();
-		bool	ReadOutputFromScript();
+		int	ReadOutputFromScript();
 		
 		void			RedirectIO();
 		std::string		GetTmpOutputFile() const;
