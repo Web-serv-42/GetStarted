@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ClientManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
+/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:36 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/17 19:45:39 by wahmane          ###   ########.fr       */
+/*   Updated: 2026/07/26 10:49:02 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -339,7 +339,7 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		return (NORMAL);  // 0 explicitly means: "Nothing to do, keep reading"
 	}
 	Request&	request = client->GetRequest();
-	// PrintParsedRequest(request);
+	PrintParsedRequest(request);
 
 	HttpStatusCode	parserError = request.GetErrorCode();
 	if (parserError != NORMAL)
@@ -358,10 +358,12 @@ HttpStatusCode	ClientManager::HandleInboundData(Client* client)
 		client->GetLocalIp(),
 		client->GetLocalPort(),
 		host,
-		request.GetPath());
+		request.GetPath(),
+		request.GetMethod()
+	);
 
 	client->SetRouting(routing);
-	// PrintRoutingInfo(client);
+	PrintRoutingInfo(client);
 
 	this->TrackSession(client, request);
 
@@ -445,7 +447,7 @@ void	ClientManager::DispatchResponse(Client* client)
 	const Routing& routing = client->GetRouting();
 	HttpStatusCode			statusCode = NORMAL;
 
-	if (routing.isCgi && client->GetRequest().GetMethod() != HTTP_DELETE)
+	if (routing.isCgi)
 	{
 		client->SetState(STATE_WAITING_CGI);
 		statusCode = this->m_CGIManager.AttachCGI(client);

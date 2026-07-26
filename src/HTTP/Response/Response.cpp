@@ -330,7 +330,8 @@ HttpStatusCode Response::handleDelete()
 
 HttpStatusCode Response::handlePost()
 {
-    size_t limitInMB = m_Routing.location->client_max_body_size;
+    // 1. Check Body Size Limit
+    size_t limitInMB = (m_Routing.location) ? m_Routing.location->client_max_body_size : 0;
     size_t limitInBytes = limitInMB * 1024 * 1024;
 
     if (limitInMB > 0 && m_Request.GetBodyReceived() > limitInBytes)
@@ -338,18 +339,35 @@ HttpStatusCode Response::handlePost()
         return (HTTP_PAYLOAD_TOO_LARGE);
     }
 
+    // 2. Verify if Uploads are Allowed on this Route
+    bool uploadAllowed = false;
     std::string uploadDir = ".";
+
     if (this->m_Routing.location) {
-        if (!this->m_Routing.location->upload_file.empty())
+        if (!this->m_Routing.location->upload_file.empty()) {
             uploadDir = this->m_Routing.location->upload_file;
-        else if (!this->m_Routing.location->root.empty())
+            uploadAllowed = true;
+        } else if (!this->m_Routing.location->root.empty()) {
             uploadDir = this->m_Routing.location->root;
+            uploadAllowed = true; // Route accepts raw file POSTs to root
+        }
+    }
+
+    if (!uploadAllowed) {
+        return (HTTP_METHOD_NOT_ALLOWED);
     }
 
     std::string createdResourceUrl = "";
 
+    // 3. Handle Multipart Uploads
     if (this->m_Request.IsMultipart()) 
     {
+        // Verify destination upload folder exists
+        struct stat dirStat;
+        if (stat(uploadDir.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode)) {
+            return (HTTP_NOT_FOUND);
+        }
+
         const std::vector<MultipartPart>& parts = this->m_Request.GetParts();
         
         for (size_t i = 0; i < parts.size(); ++i) {
@@ -358,11 +376,9 @@ HttpStatusCode Response::handlePost()
             std::string destPath = uploadDir + "/" + parts[i].fileName;
             
             if (std::rename(parts[i].tmpFilePath.c_str(), destPath.c_str()) != 0) {
-                std::cout << "\033[1;31m[POST] Failed to rename: " << parts[i].fileName << "\033[0m\n";
                 return (HTTP_INTERNAL_SERVER_ERROR);
             }
 
-            // Track the client-facing HTTP URL path of the first created file
             if (createdResourceUrl.empty()) {
                 std::string reqPath = this->m_Request.GetPath();
                 if (!reqPath.empty() && reqPath[reqPath.length() - 1] == '/')
@@ -373,15 +389,39 @@ HttpStatusCode Response::handlePost()
         }
 
         this->buildStatusLine(HTTP_CREATED);
-        this->_body = "";
+        this->_body = "<html><body><h1>201 Created: File Uploaded</h1></body></html>";
     }
+    // 4. Handle Raw Non-Multipart Uploads (e.g. POST /non-exist_file.html)
     else
     {
-        // Non-multipart POST request
-        this->buildStatusLine(HTTP_OK);
-        this->_body = "";
+        std::string targetFilePath = this->m_Routing.filePath;
+
+        // Check if the parent directory of the target file exists
+        size_t lastSlash = targetFilePath.find_last_of('/');
+        std::string parentDir = (lastSlash != std::string::npos) ? targetFilePath.substr(0, lastSlash) : ".";
+
+        struct stat dirStat;
+        if (stat(parentDir.c_str(), &dirStat) != 0 || !S_ISDIR(dirStat.st_mode)) {
+            return (HTTP_NOT_FOUND); // Parent directory does not exist
+        }
+
+        std::string tmpBodyPath = this->m_Request.GetBodyFilePath();
+        if (!tmpBodyPath.empty()) {
+            // Move the parsed request body from temp file to destination
+            if (std::rename(tmpBodyPath.c_str(), targetFilePath.c_str()) != 0) {
+                return (HTTP_INTERNAL_SERVER_ERROR);
+            }
+            
+            createdResourceUrl = this->m_Request.GetPath();
+            this->buildStatusLine(HTTP_CREATED);
+            this->_body = "<html><body><h1>201 Created: Resource Created</h1></body></html>";
+        } else {
+            this->buildStatusLine(HTTP_OK);
+            this->_body = "<html><body><h1>200 OK: Request Processed</h1></body></html>";
+        }
     }
 
+    // 5. Construct Response Headers
     this->_headers = "";
 
     if (!createdResourceUrl.empty()) {
