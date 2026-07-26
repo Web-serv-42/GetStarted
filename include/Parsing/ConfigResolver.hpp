@@ -1,5 +1,6 @@
 #pragma once
 #include "ConfigParser.hpp"
+#include "HTTP/Request/Request.hpp"
 #include <cstdlib>
 #include <iostream>
 #include "Utils/utils.hpp"
@@ -78,6 +79,7 @@ class ConfigResolver
 		// this for routing resolving 
 		Routing ResolveRequest(const std::string& localIp,int port,
 								const std::string& hostHeader,
-								const std::string& uri) const;
+								const std::string& uri,
+								HttpMethod method) const;
 
 };

@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 18:37:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/07/13 11:42:54 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/26 10:45:08 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,7 +148,7 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
         // Use your existing error builder so it serves standard error pages
 		client->SetState(STATE_SENDING_CGI_ERROR_RESPONSE);
         this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-        INFO_LOG("CGI Failed - Sending 502 Bad Gateway");
+        ERROR_LOG("CGI Failed - Sending 502 Bad Gateway");
     }
 }
 
