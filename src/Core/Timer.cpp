@@ -62,7 +62,6 @@ struct tm	Timer::GetTime()
 	return	(tm);
 }
 
-
 // Nginx-style timestamp: [day/month/year:hour:minute:second]
 std::string	Timer::GetLogTime()
 {
@@ -71,7 +70,7 @@ std::string	Timer::GetLogTime()
 	struct tm tm = *std::gmtime(&now); // Use gmtime for UTC or localtime for system time
 	
 	// Full format [%d/%b/%Y:%H:%M:%S +0000]
-	std::strftime(buf, sizeof(buf), "[%s:%d/%b/%Y:%H:%M:%S +0000]", &tm);
+	std::strftime(buf, sizeof(buf), "[%d/%b/%Y:%H:%M:%S +0000]", &tm);
 	return std::string(buf);
 }
 

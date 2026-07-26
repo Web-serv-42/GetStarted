@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   TcpServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:03 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/09 19:02:44 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/02 14:46:22 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,7 +15,6 @@
 #include "Core/Log.hpp"
 #include "Client/Client.hpp"
 
-#include <sstream>
 #include <unistd.h>
 #include <cstring>
 
@@ -28,12 +27,13 @@
 class TcpServer
 {
 	private:
-		int	m_Port;
-		int	m_ListenFd;
+		std::string	m_Host;
+		int			m_Port;
+		int			m_ListenFd;
 
 	public:
 		TcpServer();
-		TcpServer(int port);
+		TcpServer(std::string host, int port);
 		~TcpServer();
 
 		bool	Setup();

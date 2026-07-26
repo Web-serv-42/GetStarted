@@ -14,5 +14,11 @@
 
 #include "Core/Timer.hpp"
 #include <string>
+#include <sstream>
+#include "Parsing/ConfigParser.hpp"
+#include "Core/HttpStatus.hpp"
 
 std::string	GenerateTmpFileName(std::string contex);
+std::string toString(int port);
+void PrintConfigTree(const ConfigTree& tree);
+void PrintParsedConfig(const ConfigTree& tree);

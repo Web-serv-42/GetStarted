@@ -21,7 +21,7 @@ response = f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>CGI HTML Generated Page</title>
+    <title>PY CGI HTML Generated Page</title>
 </head>
 <body>
     <p>{text}</p>
@@ -31,14 +31,8 @@ response = f"""<!DOCTYPE html>
 
 # while True:
 #     continue
-    
 
 response_bytes = response.encode("utf-8")
-
-# Send headers
-# sys.stdout.buffer.write(b"Content-Type: text/html; charset=utf-8\r\n")
-# sys.stdout.buffer.write(f"Content-Length: {len(response_bytes)}\r\n".encode())
-# sys.stdout.buffer.write(b"\r\n")
 
 # Send body
 sys.stdout.buffer.write(response_bytes)

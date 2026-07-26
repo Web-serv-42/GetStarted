@@ -6,18 +6,24 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 19:03:47 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:13:59 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 17:09:49 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include "Client/Client.hpp"
+#include "Parsing/ConfigResolver.hpp"
 #include "Network/Multiplexer.hpp"
 #include "Network/TcpServer.hpp"
 #include "CGI/CGIManager.hpp"
+#include "Session/SessionManager.hpp"
+#include "Core/Timer.hpp"
 
 #include <map>
+
+#define CGI_TIMEOUT 5.0
+#define CLIENT_TIMEOUT 5.0
 
 class ClientManager
 {
@@ -25,16 +31,30 @@ class ClientManager
 		std::map<int, Client*>	m_Clients;
 		Multiplexer&			m_Polling;
 		CGIManager&				m_CGIManager;
+		SessionManager			m_SessionManager;
+		// we would use this for the routing phase , to get the server and location
+		ConfigResolver* 		m_Resolver;
+		
 
 	public:
 		ClientManager(Multiplexer& poller, CGIManager& CGIManager);
+		ClientManager(Multiplexer& poller, CGIManager& CGIManager,ConfigResolver * resolver);
 		~ClientManager();
 
-		void		ConnectClient(TcpServer* server);
-		void		ServeClient(int clientFd, int eventIndex);
-		void		ExecuteRequest(Client* client);
-		void		DisconnectClient(Client* client);
-		void		CheckClientTimeouts();
+		void			ConnectClient(TcpServer* server);
 
-		Client*		GetClient(int clientFd);
+		void			ServeClient(int clientFd, int eventIndex);
+		HttpStatusCode	HandleInboundData(Client* client);
+		void			TrackSession(Client* client, Request& request);
+		void			TrackCookies(Request& request, Session* currentSession);
+		void			DispatchResponse(Client* client);
+
+		void			DisconnectClient(Client* client);
+		void			CheckTimeouts(CGIManager& cgiManager);
+
+		void			SetResolver(ConfigResolver *resolver);
+		Client*			GetClient(int clientFd);
+		void 			PrintRoutingInfo(Client* client);
+
+		SessionManager&	GetSessionManager();
 };

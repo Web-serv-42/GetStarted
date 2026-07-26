@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 15:40:24 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/09 19:01:18 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 10:55:48 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ bool	Multiplexer::Init()
 	this->m_EpollFd = epoll_create(1337);
 	if (this->m_EpollFd == -1)
 	{
-		ERROR_LOG("Failed to create an epoll instance");
+		ERROR_LOG("Epoll error: Failed to create an epoll instance");
 		return (false);
 	}
 	fcntl(this->m_EpollFd, F_SETFD, FD_CLOEXEC);
@@ -60,7 +60,7 @@ bool	Multiplexer::AddConnection(int fd, uint32_t events)
 
 	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_ADD, fd, &event)) == -1)
 	{
-		ERROR_LOG("Failed to add entry to the interest list of the epoll fd");
+		ERROR_LOG("Epoll error: Failed to add entry to the interest list of the epoll fd");
 		return (false);
 	}
 	return (true);
@@ -76,7 +76,7 @@ bool	Multiplexer::ModifyConnection(int fd, uint32_t events)
 
 	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_MOD, fd, &event)) == -1)
 	{
-		ERROR_LOG("Failed to modify entry to the interest list of the epoll fd");
+		ERROR_LOG("Epoll error: Failed to modify entry to the interest list of the epoll fd");
 		return (false);
 	}
 	return (true);
@@ -88,7 +88,7 @@ bool	Multiplexer::RemoveConnection(int fd)
 
 	if ((status = epoll_ctl(this->m_EpollFd, EPOLL_CTL_DEL, fd, NULL)) == -1)
 	{
-		ERROR_LOG("Failed to remove entry from the interest list of the epoll fd");
+		ERROR_LOG("Epoll error: Failed to remove entry from the interest list of the epoll fd");
 		return (false);
 	}
 	return (true);
@@ -98,9 +98,12 @@ int	Multiplexer::WaitEvents()
 {
 	int	numEvents = 0;
 
-	if ((numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, 1000)) == -1)
+	numEvents = epoll_wait(this->m_EpollFd, this->m_Events, MAX_QUEUE_EVENTS_LENGTH, EPOLL_WAIT_TIMEOUT);
+	if (numEvents < 0)
 	{
-		ERROR_LOG("Failed to waits for events on the epoll instance");
+		if (errno == EINTR)
+			return  (0);
+		ERROR_LOG("Epoll error: Failed to waits for events on the epoll instance");
 	}
 	return (numEvents);
 }

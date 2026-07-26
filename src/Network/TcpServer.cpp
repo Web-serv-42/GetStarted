@@ -6,7 +6,7 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/19 16:50:19 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/13 16:53:24 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 10:56:32 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,15 +16,15 @@ TcpServer::TcpServer()
 {
 }
 
-TcpServer::TcpServer(int port) : m_Port(port), m_ListenFd(-1)
+TcpServer::TcpServer(std::string host, int port) : m_Host(host), m_Port(port), m_ListenFd(-1)
 {
 }
 
-	TcpServer::~TcpServer()
-	{
-		if (this->m_ListenFd != -1)
-			close(this->m_ListenFd);
-	}
+TcpServer::~TcpServer()
+{
+	if (this->m_ListenFd != -1)
+		close(this->m_ListenFd);
+}
 
 bool	TcpServer::Setup()
 {
@@ -37,22 +37,22 @@ bool	TcpServer::Setup()
 
 	// Prepare the target connection speceification
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
+	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags =AI_PASSIVE;
 
 	// Get all set of connection possible
 	std::stringstream	ss;
 	ss << this->m_Port;
-	if ((status = getaddrinfo(NULL, ss.str().c_str(), &hints, &servinfo)))
+	if ((status = getaddrinfo(this->m_Host.c_str(), ss.str().c_str(), &hints, &servinfo)))
 	{	
-		ERROR_LOG("getaddrinfo: " + std::string(gai_strerror(status)));
+		ERROR_LOG("Connection error: getaddrinfo: " + std::string(gai_strerror(status)));
 		return (false);
 	}
 
 	// Loop through all connection and try to setup-bind it to a specifique port
 	struct addrinfo*	current;
-	for (current = servinfo; current != NULL; current = servinfo->ai_next)
+	for (current = servinfo; current != NULL; current = current->ai_next)
 	{
 		// creates  an endpoint (network connection) for communication and returns a file descriptor
 		if ((sockfd = socket(current->ai_family, current->ai_socktype, current->ai_protocol)) == -1)
@@ -61,46 +61,89 @@ bool	TcpServer::Setup()
 		if ((status = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(int))) == -1)
 			TRACE_LOG("Failed to reuse the port");
 		// Assigning a name to a socket
-		if ((status = bind(sockfd, current->ai_addr, current->ai_addrlen) == 0))
+		if ((status = bind(sockfd, current->ai_addr, current->ai_addrlen)) == 0)
 			break ;
-		if ((status = close(sockfd) == -1))
-			ERROR_LOG("Failed to close sockfd endpoint");
+		if ((status = close(sockfd)) == -1)
+			ERROR_LOG("Connection error: Failed to close sockfd endpoint");
 	}
 	// No result in servinfo is valid
 	if (current == NULL)
 	{
-		ERROR_LOG("Failed to setup socket");
+		ERROR_LOG("Connection error: Failed to setup socket");
+		freeaddrinfo(servinfo);
+        return (false);
 	}
 
 	freeaddrinfo(servinfo);
 
 	if ((status = listen(sockfd, SOMAXCONN)) == -1)
 	{
-		ERROR_LOG("Failed to listening / queue is full");
+		ERROR_LOG("Connection error: Failed to listening / queue is full");
+		close(sockfd);
 		return(false);
 	}
 
 	// Store the ListenFd
 	this->m_ListenFd = sockfd;
-	SUCCESS_LOG("Listening on : http://127.0.0.1:" + ss.str());
+	fcntl(this->m_ListenFd, F_SETFD, FD_CLOEXEC);
+	fcntl(this->m_ListenFd, F_SETFL, O_NONBLOCK);
+	SUCCESS_LOG("Listening on : http://" + this->m_Host + ":" + ss.str());
 	return (true);
 }
 
-Client*	TcpServer::AcceptNewClient()
+Client* TcpServer::AcceptNewClient()
 {
-	int						clientFd;
-	struct sockaddr_storage	clientAddr;
-	socklen_t				addrLen = sizeof(clientAddr);
+    int clientFd;
+    struct sockaddr_storage clientAddr;
+    socklen_t addrLen = sizeof(clientAddr);
 
-	if ((clientFd = accept(this->m_ListenFd, (struct sockaddr*)&clientAddr, &addrLen)) == -1)
-	{
-		ERROR_LOG("Failed to accept client connection");
-		return (NULL);
-	}
-	// By default, sockets are Blocking. This is the "Wait for me" mode.
-	fcntl(clientFd, F_SETFL, O_NONBLOCK);
-	return (new Client(clientFd, clientAddr));
+    if ((clientFd = accept(this->m_ListenFd,
+            (struct sockaddr*)&clientAddr, &addrLen)) == -1)
+    {
+        ERROR_LOG("Connection error: Failed to accept client connection");
+        return NULL;
+    }
+
+    fcntl(clientFd, F_SETFL, O_NONBLOCK);
+    fcntl(clientFd, F_SETFD, FD_CLOEXEC);
+
+    // ADD THIS PART
+    struct sockaddr_in local;
+    socklen_t len = sizeof(local);
+
+    getsockname(clientFd, (struct sockaddr*)&local, &len);
+
+    char ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &local.sin_addr, ip, sizeof(ip));
+
+    int port = ntohs(local.sin_port);
+
+    Client* client = new Client(clientFd, clientAddr);
+
+    client->SetLocalIp(ip);
+    client->SetLocalPort(port);
+
+    return client;
 }
+
+// Client*	TcpServer::AcceptNewClient()
+// {
+// 	int						clientFd;
+// 	struct sockaddr_storage	clientAddr;
+// 	socklen_t				addrLen = sizeof(clientAddr);
+
+// 	if ((clientFd = accept(this->m_ListenFd, (struct sockaddr*)&clientAddr, &addrLen)) == -1)
+// 	{
+// 		ERROR_LOG("Connection error: Failed to accept client connection");
+// 		return (NULL);
+// 	}
+// 	// By default, sockets are Blocking. This is the "Wait for me" mode.
+// 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
+// 	fcntl(clientFd, F_SETFD, FD_CLOEXEC);
+
+	
+// 	return (new Client(clientFd, clientAddr));
+// }
 
 int	TcpServer::GetPort() const
 {

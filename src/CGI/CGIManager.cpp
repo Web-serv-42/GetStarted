@@ -6,11 +6,12 @@
 /*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/06/09 18:37:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/10 19:37:38 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/13 11:42:54 by abnsila          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "CGI/CGIManager.hpp"
+#include "Core/HttpStatus.hpp"
 
 CGIManager::CGIManager(Multiplexer& poller) : m_Polling(poller)
 {
@@ -21,49 +22,95 @@ CGIManager::~CGIManager()
 {
 }
 
-void		CGIManager::AttachCGI(Client* client)
+HttpStatusCode      CGIManager::AttachCGI(Client* client)
 {
-	if (!client)
-		return;
-	// --- FAKE ROUTER START ---
-	// In the future, this comes from Member 3's logic.
-	std::string interpreter = "/usr/bin/python3"; // Or path to cgi_tester
-	std::string scriptPath = "./ect/generateHtmlPage.py";
-	std::string	tmpFileBody = "./ect/cgiBody_1.tmp";
-	std::string	tmpFileOutput = GenerateTmpFileName("cgi");
-	bool		hasBody = true;
+    if (!client)
+        return (HTTP_INTERNAL_SERVER_ERROR);
 
-	std::vector<std::string> envVars;
-	envVars.push_back("REQUEST_METHOD=POST");
-	envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
-	envVars.push_back("CONTENT_LENGTH=809"); // Length of requestBody
-	envVars.push_back("CONTENT_TYPE=plain/text");
-	envVars.push_back("SCRIPT_FILENAME=" + scriptPath);
-	envVars.push_back("REDIRECT_STATUS=200"); // Required by python-cgi
-	// --- FAKE ROUTER END ---
+    const Request& request = client->GetRequest();
+    const Routing& routing = client->GetRouting();
+    size_t limitInMB = routing.location->client_max_body_size;
+    size_t limitInBytes = limitInMB * 1024 * 1024;
+    std::vector<std::string> envVars;
 
-	CGI*	cgi = new CGI(interpreter, scriptPath, envVars, hasBody, tmpFileBody, tmpFileOutput);
-	//TODO Track tmp file or fd so you can work with both static or CGI
-	if (cgi->Run() == true)
-	{
-		client->SetCGI(cgi);
-		client->SetState(STATE_WAITING_CGI);
+    // Check limit (assuming 0 means unlimited)
+    if (limitInMB > 0 && request.GetBodyReceived() > limitInBytes)
+    {
+        return (HTTP_PAYLOAD_TOO_LARGE);
+    }
+    // 1. Verify the CGI interpreter binary exists and can be executed
+    if (access(routing.cgiInterpreter.c_str(), F_OK | X_OK) != 0)
+    {
+        ERROR_LOG("CGI Error: Interpreter not found or not executable: " + routing.cgiInterpreter);
+        return (HTTP_BAD_GATEWAY);
+    }
+    std::string interpreter = routing.cgiInterpreter;
 
-		int	pipeOutFd = cgi->GetPipeOutFd();
-		this->m_Polling.AddConnection(pipeOutFd, EPOLLIN);
-		this->m_CgiFdToClient[pipeOutFd] = client;
-	}
-	else
-	{
-		ERROR_LOG("Failed to execute CGI");
-		delete	cgi;
-		client->SetCGI(NULL);
-		//TODO Member 2 client->BuildStaticErrorResponse(500); // You will need to implement this
-		client->BuildStaticErrorResponse();
-		// Switch state so we can send an error immediately
-		client->SetState(STATE_SENDING_ERROR_RESPONSE);
-		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-	}
+    // 2. Verify the actual target script exists and is readable
+    if (access(routing.filePath.c_str(), F_OK | R_OK) != 0)
+    {
+        ERROR_LOG("CGI Error: Script file not found or unreadable: " + routing.filePath);
+        return (HTTP_BAD_GATEWAY);
+    }
+    std::string fullPath = routing.filePath;
+    std::string scriptPath = "./"; 
+    std::string scriptName = fullPath;
+
+    size_t lastSlashPos = fullPath.find_last_of('/');
+    if (lastSlashPos != std::string::npos)
+    {
+        scriptPath = fullPath.substr(0, lastSlashPos + 1); // , "./cgi-bin/"
+        scriptName = fullPath.substr(lastSlashPos + 1);    // , "info.php"
+    }
+
+    // 3. Only validate the body path if the request actually contains a body payload!
+    bool hasBody = (request.GetContentLength() > 0); 
+    std::string tmpFileBody = "";
+    if (hasBody)
+    {
+        tmpFileBody = request.GetBodyFilePath();
+        if (access(tmpFileBody.c_str(), F_OK | R_OK) != 0)
+        {
+            ERROR_LOG("CGI Error: Input body file missing or unreadable: " + tmpFileBody);
+            return (HTTP_BAD_GATEWAY);
+        }
+    }
+
+    // The file hasn't been created yet—let your cgi->Run() loop handle creating it safely.
+    std::string tmpFileOutput = "./tmp/" + GenerateTmpFileName("cgi_out");
+
+    // 5. Build Environment Block
+    envVars.push_back("REQUEST_METHOD=" + request.GetMethodString());
+    envVars.push_back("SERVER_PROTOCOL=HTTP/1.0");
+    if (hasBody)
+    {
+        envVars.push_back("CONTENT_LENGTH=" + request.GetHeader("content-length"));
+        envVars.push_back("CONTENT_TYPE=" + request.GetHeader("content-type"));
+    }
+    envVars.push_back("SCRIPT_FILENAME=" + scriptName);
+    if (!request.GetQuery().empty())
+        envVars.push_back("QUERY_STRING=" + request.GetQuery());    
+    envVars.push_back("REDIRECT_STATUS=200");
+
+    // 6. Instantiation and execution fork sequence
+    CGI*    cgi = new CGI(interpreter, scriptPath, scriptName, envVars, hasBody, tmpFileBody, tmpFileOutput);
+    if (cgi->Run() == true)
+    {
+        client->SetCGI(cgi);
+        client->SetState(STATE_WAITING_CGI);
+
+        int pipeOutFd = cgi->GetPipeOutFd();
+        this->m_Polling.AddConnection(pipeOutFd, EPOLLIN);
+        this->m_CgiFdToClient[pipeOutFd] = client;
+    }
+    else
+    {
+        ERROR_LOG("CGI Error: Runtime fork/execve processing failure occurred inside cgi->Run()");
+        delete  cgi;
+        client->SetCGI(NULL);
+        return (HTTP_BAD_GATEWAY);
+    }
+    return (NORMAL);
 }
 
 void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
@@ -75,22 +122,34 @@ void		CGIManager::HandleCGI(int pipeFd, int eventIndex)
 
 	if (this->m_Polling.IsErrorFired(eventIndex))
 	{
-		client->BuildStaticErrorResponse();
-		client->SetState(STATE_SENDING_ERROR_RESPONSE);
+		ERROR_LOG("CGI Error: CGI pipe error or hangup detected");
+		this->DetachCGI(cgi); // Remove pipe from epoll and map
+		client->DeleteCGI();  // Fire destructor to clean up process/files
+		
+        client->BuildErrorResponse(HTTP_INTERNAL_SERVER_ERROR);
+		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		return;
 	}
 	// Read output from the CGI script via read()
-	if (cgi->ReadOutputFromScript())
+    int status = cgi->ReadOutputFromScript();
+	if (status == 1)
 	{
-		//TODO Member 2: HttpResponse Builder For CGI
-		// Stop watching the read pipe so it doesn't trigger anymore
 		this->DetachPipe(pipeFd);
-		cgi->ClosePipeOut(); // Safely close and set to -1
+		cgi->ClosePipeOut();
 		// 4. Wake the client socket back up in epoll to send the data
-		client->SetState(STATE_SENDING_HEADERS); ///////////
+		client->SetState(STATE_SENDING_HEADERS);
 		this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
 		INFO_LOG("CGI Terminated and Response Ready");
 	}
+    else if (status == -1) // CRASH / FAILURE
+    {
+        this->DetachPipe(pipeFd);
+        cgi->ClosePipeOut();
+        // Use your existing error builder so it serves standard error pages
+		client->SetState(STATE_SENDING_CGI_ERROR_RESPONSE);
+        this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
+        INFO_LOG("CGI Failed - Sending 502 Bad Gateway");
+    }
 }
 
 void		CGIManager::DetachPipe(int pipeFd)
@@ -117,40 +176,4 @@ bool	CGIManager::IsCGIPipe(int triggeredFd)
 	if (this->m_CgiFdToClient.find(triggeredFd) != this->m_CgiFdToClient.end())
 		return (true);
 	return (false);
-}
-
-void		CGIManager::CheckCGITimeouts()
-{
-	// Iterate through all active clients/CGIs
-    for (std::map<int, Client*>::iterator it = this->m_CgiFdToClient.begin(); it != this->m_CgiFdToClient.end();)
-    {
-		Client*	client = it->second;
-		CGI*	cgi = client->GetCGI();
-		if (cgi && client->GetState() == STATE_WAITING_CGI)
-		{
-			if (cgi->GetTimer().Elapsed() > TIMEOUT)
-			{
-				std::map<int, Client*>::iterator next = it;
-        		++next;
-				ERROR_LOG("CGI Timeout! Killing process");
-				// 1. Delete the CGI and clean up the pipes safely
-                this->DetachCGI(cgi);
-                client->DeleteCGI();
-
-                // 2. Build a 504 Gateway Timeout response
-                // You will need to implement this so BuildStaticErrorResponse takes an arg
-                client->BuildStaticErrorResponse(/* 504 */); 
-
-                // 3. Switch the client state to send the error
-                client->SetState(STATE_SENDING_ERROR_RESPONSE);
-                this->m_Polling.ModifyConnection(client->GetClientFd(), EPOLLOUT);
-                
-                // Let the next iteration of the epoll loop handle sending 
-                // the data via ServeClient(). DO NOT disconnect here.
-				it = next;
-        		continue;
-			}
-		}
-		++it;
-	}
 }

@@ -7,6 +7,8 @@ RM          = rm -rf
 SRC_DIR     = src
 INC_DIR     = include
 OBJ_DIR     = build
+TMP_DIR     = tmp
+UPLOAD_DIR  = uploads
 
 # ---------------- Files ---------------
 # 1. Find all .cpp files
@@ -25,19 +27,21 @@ INCLUDES    = -I$(INC_DIR)
 all: $(NAME)
 
 $(NAME): $(OBJS)
+	@mkdir -p $(TMP_DIR) $(UPLOAD_DIR)
 	$(CPP) $(CPPFLAGS) $(OBJS) -o $(NAME)
 	@echo "Webserver built! 🚀"
 
-# This rule now matches the paths in $(OBJS)
+# This rule matches the paths in $(OBJS)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(CPP) $(CPPFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	$(RM) $(OBJ_DIR)
+	$(RM) $(TMP_DIR)/*
 
 fclean: clean
-	$(RM) $(NAME)
+	$(RM) $(NAME) $(TMP_DIR) $(UPLOAD_DIR)
 
 re: fclean all
 

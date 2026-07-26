@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Webserv.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: ablabib <ablabib@student.1337.ma>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/04/18 13:00:40 by abnsila           #+#    #+#             */
-/*   Updated: 2026/06/11 14:52:01 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/02 16:36:37 by ablabib          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,61 +20,41 @@
 #include "Client/ClientManager.hpp"
 #include "CGI/CGI.hpp"
 #include "CGI/CGIManager.hpp"
+#include "Parsing/ConfigParser.hpp"
+#include "Parsing/ConfigResolver.hpp"
+
+
 
 #include <vector>
 #include <map>
 
+#include <csignal>
 
 class Webserv
 {
 	private:
-		bool					m_IsRunning;
-		// Vector is bad
+		volatile static bool	m_IsRunning;
 		std::vector<TcpServer*>	m_Servers;
 		Multiplexer				m_Polling;
 		CGIManager				m_CGIManager;
 		ClientManager			m_ClientManager;
+		ConfigResolver*			m_Resolver;
+		double					m_LastSessionCleanup;
 
-	public:
+	public:	
 		Webserv();
 		~Webserv();
 
-		bool		Init();
+		// bool		Init();
+		bool 		Init(const ConfigTree& config);
 		void		Run();
 		void		Shutdown();
 
+		static void	HandleSignals(int sigint);
+		void		SetupSignals();
+
 		bool		IsServerFd(int triggeredFd);
 		TcpServer*	GetServerByFd(int serverFd);
-};
 
-// ================================== Webserv Life-Cycle ==================================
-//	Init Webserv:
-//		Parse Config file
-//		Init Multiplexer 
-//		Init TcpServers
-//	 Track Clients: [always]
-//	 	Connect/Disconnect Client 
-//	 	Handle Client Request: 
-//	 		Read Headers
-//	 		Parse Headers
-//	 		Router:
-//				Method Check + Location Lookup + build environment_variables/parameters
-//				Read Body if it exist:
-//	 				Store as String [small] both Normal Request and CGI Request / large_body_error if Normal Request / Tmp_file if CGI Request [large] 
-//	 			Normal Method [GET - POST - DELETE]
-//					Deliver static content from disk + ...
-//	 			CGI Script:
-//	 				Read body if it exist:
-//	 					stdin => [small body]
-//	 					tmp_File => [large body]
-//	 				Redirect body input to stdin pipe
-//	 				Execute script
-//	 				Redirect output to stdout pipe
-//	 				chunk output ? tmp_file approach ?
-//	 			Handle Error + error pages
-//	 		Parse response
-//	 		Build correct response
-//	 		Handle Error + error pages
-//	 	Clear Recources	
-//	 Shutdown Webserv		
-//	 	
+		void		CheckSessionExpire();
+};

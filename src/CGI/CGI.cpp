@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   CGI.cpp                                            :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abnsila <abnsila@student.1337.ma>          +#+  +:+       +#+        */
+/*   By: wahmane <wahmane@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/05/02 21:24:00 by abnsila           #+#    #+#             */
-/*   Updated: 2026/05/23 11:48:12 by abnsila          ###   ########.fr       */
+/*   Updated: 2026/07/20 17:13:09 by wahmane          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,24 +14,23 @@
 #include "Core/Timer.hpp"
 #include "Core/Log.hpp"
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 131072
 
 CGI::CGI()
 {
 }
-
-CGI::CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile)
-	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_EnvVars(envVars), m_HasBody(hasBody), m_TmpBodyFile(tmpBodyFile),  m_TmpOutputFile(tmpOutputFile)
+CGI::CGI(std::string interpreter, std::string scriptPath, std::string scriptName, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile)
+	: m_Interpreter(interpreter), m_ScriptPath(scriptPath), m_ScriptName(scriptName), m_EnvVars(envVars), m_HasBody(hasBody), m_TmpBodyFile(tmpBodyFile),  m_TmpOutputFile(tmpOutputFile)
 {
 	this->m_Pid = -1;
-	this->m_TmpFileFd = -1;
+	this->m_TmpBodyFileFd = -1;
+	this->m_TmpOutputFileFd = -1;
 	this->m_PipeOutFd[0] = -1;
 	this->m_PipeOutFd[1] = -1;
 	this->m_Envp = NULL;
 	this->m_Argv = NULL;
 	this->m_BodyBytesSent = 0;
 }
-
 CGI&	CGI::operator=(const CGI& copy)
 {
 	// Later
@@ -41,25 +40,30 @@ CGI&	CGI::operator=(const CGI& copy)
 
 CGI::~CGI()
 {
-	if (this->m_Pid > 0) // Add this safety check
+	// Check if process is still alive before touching it
+	if (this->m_Pid != -1)
 	{
 		kill(this->m_Pid, SIGKILL);
-		waitpid(this->m_Pid, NULL, WNOHANG);
+		waitpid(this->m_Pid, NULL, 0); // Block until it's dead to prevent zombies!
 	}
-	//TODO: uncomment this after request part is done
-	// Tmp_File FD ?
-	// if (!this->m_TmpBodyFile.empty()
-	// {
-	// 	unlink(this->m_TmpBodyFile.c_str());
-	// }
 	this->ClosePipeOut();
-	if (this->m_TmpFileFd != -1)
+	// Body File
+	if (this->m_TmpBodyFileFd != -1)
 	{
-		close(this->m_TmpFileFd);
+		close(this->m_TmpBodyFileFd);
+	}
+	if (this->m_TmpOutputFileFd != -1)
+	{
+		close(this->m_TmpOutputFileFd);
+	}
+	// Output File
+	if (!this->m_TmpBodyFile.empty())
+	{
+		std::remove(this->m_TmpBodyFile.c_str());
 	}
 	if (!this->m_TmpOutputFile.empty())
 	{
-		unlink(this->m_TmpOutputFile.c_str());
+		std::remove(this->m_TmpOutputFile.c_str());
 	}
 }
 
@@ -69,9 +73,18 @@ bool	CGI::Run()
 	// Build this->m_Envp and this->m_Argv
 	this->InitEnvpAndArgv();
 
+	// Open the output file ONCE right here
+    this->m_TmpOutputFileFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_RDWR | O_TRUNC, 0666);
+    if (this->m_TmpOutputFileFd == -1)
+    {
+		ERROR_LOG("CGI Error: Tmp output file not created" + this->m_TmpOutputFile);
+        return (false);
+    }
+
 	// Setup pipes
 	if ((pipe(this->m_PipeOutFd) == -1))
 	{
+		ERROR_LOG("CGI Error: pipe failed!");
 		return (false);
 	}
 
@@ -79,7 +92,13 @@ bool	CGI::Run()
 	this->m_Pid = fork();
 	if (this->m_Pid == -1)
 	{
-		// Close pipes
+		close(this->m_PipeOutFd[0]);
+		close(this->m_PipeOutFd[1]);
+		if (this->m_TmpOutputFileFd != -1)
+		{
+			close(this->m_TmpOutputFileFd);
+			this->m_TmpOutputFileFd = -1;
+		}
 		return (false);
 	}
 	// --- CHILD PROCESS (The Script) ---
@@ -89,17 +108,21 @@ bool	CGI::Run()
 		close(this->m_PipeOutFd[0]);
 		this->ClearInheritedFds(this->m_PipeOutFd[1]);
 		this->RedirectIO();
+		// run in the correct directory
+		if (chdir(this->m_ScriptPath.c_str()) != 0)
+		{
+			ERROR_LOG("CGI Error: chdir failed!");
+			std::exit(EXIT_FAILURE);
+		}
 		// Exevce with correct parametres
 		if (execve(this->m_Interpreter.c_str(), this->m_Argv, this->m_Envp) == -1)
 		{
-			ERROR_LOG("execve failed!");
+			ERROR_LOG("CGI Error: execve failed!");
 			std::exit(EXIT_FAILURE);
 		}
 	}
 	else
 	{
-		// --- PARENT PROCESS (Webserv Engine) ---
-
 		// Make pipes non blobking [Add them to epoll]
 		fcntl(this->m_PipeOutFd[0], F_SETFL, O_NONBLOCK);
 		
@@ -127,47 +150,53 @@ void	CGI::InitEnvpAndArgv()
 	// Initialize Argv
 	this->m_ArgvStrings.clear();
 	this->m_ArgvStrings.push_back(const_cast<char*>(this->m_Interpreter.c_str()));
-	this->m_ArgvStrings.push_back(const_cast<char*>(this->m_ScriptPath.c_str()));
+	this->m_ArgvStrings.push_back(const_cast<char*>(this->m_ScriptName.c_str()));
 	this->m_ArgvStrings.push_back(NULL); // Null-terminate for execve
 	
 	this->m_Argv = &this->m_ArgvStrings[0];
 }
 
 // ======================= write() && read() =======================
-bool	CGI::ReadOutputFromScript()
+int	CGI::ReadOutputFromScript()
 {
 	// read() + waitpid
 	char	buffer[BUFFER_SIZE];
 	int		bytesRead = 0;
-	int		status;
+	int		status = 0;
 
 	bytesRead = read(this->m_PipeOutFd[0], buffer, BUFFER_SIZE);
 	if (bytesRead > 0)
-	{		
-		// Open the response tmp file in append mode
-		int outFd = open(this->m_TmpOutputFile.c_str(), O_CREAT | O_RDWR | O_APPEND, 0666);
-		if (outFd != -1)
-		{
-			write(outFd, buffer, bytesRead);
-		}
-		close(outFd);
-		return (false); // Not done yet, more data coming from CGI script
+	{
+		if (this->m_TmpOutputFileFd != -1)
+        {
+            write(this->m_TmpOutputFileFd, buffer, bytesRead);
+        }
+		return (0); // Not done yet, more data coming from CGI script
 	}
 	else if (bytesRead == 0)
 	{
 		DEBUG_LOG("CGI Output ready");
+		if (this->m_TmpOutputFileFd != -1)
+		{
+			close(this->m_TmpOutputFileFd);
+			this->m_TmpOutputFileFd = -1;
+		}
 		// Finished reading (EOF)
 		waitpid(this->m_Pid, &status, WNOHANG);
-		return (true);
+		this->m_Pid = -1;
+		// Check if the script crashed or called exit(1)
+        if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
+        {
+            return (-1);
+        }
+		return (1);
 	}
 	else
 	{
-		// Error [Bug ? Timeout]
-		ERROR_LOG("Error while reading from CGI output");
-		return (true);
+		ERROR_LOG("CGI Error: Error while reading from CGI output");
+		return (1);
 	}
 }
-
 
 // ======================= Pipes && Fds =======================
 void	CGI::ClearInheritedFds(int pipeOut)
@@ -198,41 +227,46 @@ void	CGI::RedirectIO()
 {
 	if (this->m_HasBody)
 	{
-		this->m_TmpFileFd = open(this->m_TmpBodyFile.c_str(), O_RDONLY);
-		if (this->m_TmpFileFd == -1)
+		this->m_TmpBodyFileFd = open(this->m_TmpBodyFile.c_str(), O_RDONLY);
+		if (this->m_TmpBodyFileFd == -1)
 		{
-			ERROR_LOG("open failed!");
+			ERROR_LOG("CGI Error: open failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		// Redirect from stdin to inFd [RequestBody]
-		if (dup2(this->m_TmpFileFd, STDIN_FILENO) == -1)
+		if (dup2(this->m_TmpBodyFileFd, STDIN_FILENO) == -1)
 		{
-			ERROR_LOG("dup2 failed!");
+			ERROR_LOG("CGI Error: dup2 failed!");
 			std::exit(EXIT_FAILURE);
 		}
-		close(this->m_TmpFileFd);
+		close(this->m_TmpBodyFileFd);
 	}
 	else
 	{
 		int devNull = open("/dev/null", O_RDONLY);
 		if (devNull == -1)
 		{
-			ERROR_LOG("open failed!");
+			ERROR_LOG("CGI Error: open failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		// Redirect from stdin to /dev/null [RequestBody]
 		if (dup2(devNull, STDIN_FILENO) == -1)
 		{
-			ERROR_LOG("dup2 failed!");
+			ERROR_LOG("CGI Error: dup2 failed!");
 			std::exit(EXIT_FAILURE);
 		}
 		close(devNull);
 	}
 	
-	// Redirect from stdout to pipeOut [CgiResponse]
+	// Redirect from stdout and stderr to pipeOut [CgiResponse]
 	if (dup2(this->m_PipeOutFd[1], STDOUT_FILENO) == -1)
 	{
-		ERROR_LOG("dup2 failed!");
+		ERROR_LOG("CGI Error: dup2 failed!");
+		std::exit(EXIT_FAILURE);
+	}
+	if (dup2(this->m_PipeOutFd[1], STDERR_FILENO) == -1)
+	{
+		ERROR_LOG("CGI Error: dup2 failed!");
 		std::exit(EXIT_FAILURE);
 	}
 	close(this->m_PipeOutFd[1]);

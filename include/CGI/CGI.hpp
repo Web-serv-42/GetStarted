@@ -19,6 +19,7 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 
 #include <dirent.h>
 #include <sys/types.h>
@@ -30,6 +31,7 @@ class CGI
 	private:
 		std::string					m_Interpreter;
 		std::string					m_ScriptPath;
+		std::string					m_ScriptName;
 		std::vector<std::string>	m_EnvVars;
 
 		bool						m_HasBody;
@@ -43,7 +45,8 @@ class CGI
 		std::vector<char*>			m_ArgvStrings;
 
 		pid_t						m_Pid;
-		int							m_TmpFileFd;
+		int							m_TmpBodyFileFd;
+		int							m_TmpOutputFileFd;
 		int							m_PipeOutFd[2];
 
 		size_t						m_BodyBytesSent;
@@ -52,16 +55,14 @@ class CGI
 		TimerBenchmark				m_Timer;
 	public:
 		CGI();
-		CGI(std::string interpreter, std::string scriptPath, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile);
-		CGI&	operator=(const CGI& copy);
+		CGI(std::string interpreter, std::string scriptPath, std::string scriptName, std::vector<std::string> envVars, bool hasBody, std::string tmpBodyFile, std::string tmpOutputFile);		CGI&	operator=(const CGI& copy);
 		~CGI();
 
 		bool	Run();
 		void	ClearInheritedFds(int pipeOut);
 		void	InitEnvpAndArgv();
 		
-		// bool	SendBodyToScript();
-		bool	ReadOutputFromScript();
+		int	ReadOutputFromScript();
 		
 		void			RedirectIO();
 		std::string		GetTmpOutputFile() const;
