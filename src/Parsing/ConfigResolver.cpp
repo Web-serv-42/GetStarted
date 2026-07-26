@@ -194,7 +194,8 @@ Routing ConfigResolver::ResolveRequest(
     const std::string& localIp,
     int port,
     const std::string& hostHeader,
-    const std::string& uri) const
+    const std::string& uri,
+    HttpMethod method) const
 {
     Routing routing;
 
@@ -227,21 +228,19 @@ Routing ConfigResolver::ResolveRequest(
 
     routing.filePath = root + remaining;
 
-    // --- NEW: DETERMINE IF IT IS A CGI REQUEST ---
-    if (routing.location != NULL)
+    // --- DETERMINE IF IT IS A CGI REQUEST ---
+    // CGI is only triggered for executable methods (GET / POST), NOT for static file deletion (DELETE)
+    if (routing.location != NULL && method != HTTP_DELETE)
     {
-        // 1. Find the position of the last dot '.' in the path to get the extension
         size_t dotPos = routing.filePath.find_last_of('.');
         if (dotPos != std::string::npos)
         {
-            std::string extension = routing.filePath.substr(dotPos); // returns ".php" or ".py"
+            std::string extension = routing.filePath.substr(dotPos);
 
-            // 2. Check if this specific extension exists in our location's CGI map
             std::map<std::string, std::string>::const_iterator it = routing.location->cgis.find(extension);
             if (it != routing.location->cgis.end())
             {
-                // Extension found! Save the interpreter path to your routing object
-                routing.cgiInterpreter = it->second; // "/usr/bin/php-cgi"
+                routing.cgiInterpreter = it->second;
                 routing.isCgi = true;
             }
         }
